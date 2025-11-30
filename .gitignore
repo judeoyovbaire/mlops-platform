@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+.venv/
+env/
+.env
+
+# Kubernetes secrets (never commit)
+*-secret.yaml
+*-secrets.yaml
+secrets/
+
+# Helm
+*.tgz
+charts/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# Logs
+*.log
+logs/
+
+# Compiled pipeline outputs
+*.yaml.compiled
+ml_training_pipeline.yaml
