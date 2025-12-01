@@ -1,4 +1,9 @@
-# ArgoCD Helm Chart Values
+# ArgoCD Helm Chart Values (v3.x compatible)
+
+# Global configurations
+global:
+  # Domain for ArgoCD (update for your environment)
+  domain: argocd.example.com
 
 # Server configuration
 server:
@@ -73,21 +78,39 @@ configs:
     # Application reconciliation timeout
     timeout.reconciliation: 180s
 
-    # Resource customizations for Seldon
+    # Resource customizations for KServe InferenceService
     resource.customizations: |
-      machinelearning.seldon.io/SeldonDeployment:
+      serving.kserve.io/InferenceService:
         health.lua: |
           hs = {}
           if obj.status ~= nil then
-            if obj.status.state == "Available" then
-              hs.status = "Healthy"
-              hs.message = "Seldon Deployment is available"
-            elseif obj.status.state == "Creating" then
-              hs.status = "Progressing"
-              hs.message = "Seldon Deployment is being created"
-            else
-              hs.status = "Degraded"
-              hs.message = obj.status.description
+            if obj.status.conditions ~= nil then
+              for i, condition in ipairs(obj.status.conditions) do
+                if condition.type == "Ready" then
+                  if condition.status == "True" then
+                    hs.status = "Healthy"
+                    hs.message = "InferenceService is ready"
+                  elseif condition.status == "False" then
+                    hs.status = "Degraded"
+                    hs.message = condition.message
+                  else
+                    hs.status = "Progressing"
+                    hs.message = "InferenceService is being created"
+                  end
+                  return hs
+                end
+              end
             end
           end
+          hs.status = "Progressing"
+          hs.message = "Waiting for InferenceService status"
           return hs
+
+    # Resource exclusions (ArgoCD 3.x)
+    resource.exclusions: |
+      - apiGroups:
+          - cilium.io
+        kinds:
+          - CiliumIdentity
+        clusters:
+          - "*"

@@ -10,7 +10,7 @@ A production-ready MLOps platform for model training, versioning, and deployment
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                   │
-│  │   Kubeflow   │    │    MLflow    │    │ Seldon Core  │                   │
+│  │   Kubeflow   │    │   MLflow 3   │    │   KServe     │                   │
 │  │  Pipelines   │───▶│  Tracking &  │───▶│   Model      │                   │
 │  │              │    │  Registry    │    │   Serving    │                   │
 │  └──────────────┘    └──────────────┘    └──────────────┘                   │
@@ -30,23 +30,23 @@ A production-ready MLOps platform for model training, versioning, and deployment
 ## Features
 
 - **Kubeflow Pipelines**: Orchestrate ML workflows with reproducible pipelines
-- **MLflow**: Experiment tracking, model registry, and artifact storage
-- **Seldon Core**: Production model serving with A/B testing and canary deployments
-- **ArgoCD**: GitOps-based deployment automation
+- **MLflow 3.x**: Experiment tracking, model registry with aliases, and GenAI support
+- **KServe**: Production model serving with canary deployments and autoscaling (CNCF Incubating)
+- **ArgoCD 3.x**: GitOps-based deployment automation
 - **GPU Support**: NVIDIA GPU scheduling and resource optimization
 - **Observability**: Prometheus metrics and Grafana dashboards for ML workloads
 
 ## Tech Stack
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| Pipeline Orchestration | Kubeflow Pipelines | ML workflow automation |
-| Experiment Tracking | MLflow | Model versioning & metrics |
-| Model Serving | Seldon Core | Production inference |
-| GitOps | ArgoCD | Declarative deployments |
-| Service Mesh | Istio | Traffic management |
-| Monitoring | Prometheus + Grafana | Observability |
-| Infrastructure | Terraform | IaC for cloud resources |
+| Component | Technology | Version | Purpose |
+|-----------|------------|---------|---------|
+| Pipeline Orchestration | Kubeflow Pipelines | Latest | ML workflow automation |
+| Experiment Tracking | MLflow | 3.6.0 | Model versioning & metrics |
+| Model Serving | KServe | 0.15.0 | Production inference (CNCF) |
+| GitOps | ArgoCD | 3.2.x | Declarative deployments |
+| Service Mesh | Istio | Latest | Traffic management |
+| Monitoring | Prometheus + Grafana | Latest | Observability |
+| Infrastructure | Terraform | Latest | IaC for cloud resources |
 
 ## Project Structure
 
@@ -62,7 +62,7 @@ mlops-platform/
 ├── components/
 │   ├── mlflow/           # MLflow configuration
 │   ├── kubeflow/         # Kubeflow setup
-│   └── seldon/           # Seldon Core configs
+│   └── kserve/           # KServe InferenceService configs
 ├── scripts/              # Utility scripts
 ├── docs/                 # Documentation
 └── examples/             # Example ML projects
@@ -93,16 +93,43 @@ terraform init && terraform apply
 
 # 4. Access the dashboards
 kubectl port-forward svc/mlflow 5000:5000 -n mlflow
-kubectl port-forward svc/istio-ingressgateway 8080:80 -n istio-system
+kubectl port-forward svc/argocd-server 8080:443 -n argocd
+```
+
+### Deploy a Model with KServe
+
+```bash
+# Deploy an sklearn model
+kubectl apply -f components/kserve/inferenceservice-examples.yaml
+
+# Check status
+kubectl get inferenceservice -n mlops
+
+# Test inference
+SERVICE_URL=$(kubectl get inferenceservice sklearn-iris -n mlops -o jsonpath='{.status.url}')
+curl -X POST "$SERVICE_URL/v1/models/sklearn-iris:predict" \
+  -H "Content-Type: application/json" \
+  -d '{"instances": [[5.1, 3.5, 1.4, 0.2]]}'
+```
+
+### Run a Training Pipeline
+
+```python
+# Compile the pipeline
+cd pipelines/training
+python example-pipeline.py
+
+# Upload to Kubeflow Pipelines UI or run via SDK
 ```
 
 ## Roadmap
 
 ### Phase 1: Foundation (Current)
-- [ ] Set up Kubernetes cluster with GPU support
-- [ ] Deploy MLflow for experiment tracking
-- [ ] Basic Kubeflow Pipelines installation
-- [ ] ArgoCD for GitOps
+- [x] Set up Kubernetes cluster with GPU support
+- [x] Deploy MLflow 3.x for experiment tracking
+- [x] Basic Kubeflow Pipelines installation
+- [x] ArgoCD 3.x for GitOps
+- [x] KServe for model serving
 
 ### Phase 2: Training Infrastructure
 - [ ] GPU scheduling and resource quotas
@@ -111,9 +138,9 @@ kubectl port-forward svc/istio-ingressgateway 8080:80 -n istio-system
 - [ ] Data versioning with DVC
 
 ### Phase 3: Model Serving
-- [ ] Seldon Core deployment
+- [x] KServe deployment
+- [x] Canary deployment examples
 - [ ] A/B testing framework
-- [ ] Canary deployment automation
 - [ ] Model monitoring and drift detection
 
 ### Phase 4: Production Hardening
@@ -125,17 +152,35 @@ kubectl port-forward svc/istio-ingressgateway 8080:80 -n istio-system
 ## Documentation
 
 - [Architecture Deep Dive](docs/architecture.md)
-- [Installation Guide](docs/installation.md)
-- [Training Pipeline Guide](docs/training-pipelines.md)
-- [Model Serving Guide](docs/model-serving.md)
+
+## Why These Tools?
+
+### MLflow 3.x over alternatives
+- Open source, framework-agnostic
+- Native GenAI/LLM support (prompt versioning, agent tracing)
+- Model aliases replace deprecated staging workflow
+- Largest community adoption
+
+### KServe over Seldon Core
+- **Licensing**: Seldon Core moved to BSL 1.1 (paid for commercial use as of Jan 2024)
+- KServe is fully open source (Apache 2.0), CNCF Incubating project
+- Better PyTorch support out-of-the-box
+- Serverless inference with scale-to-zero
+- Native Kubeflow integration
+
+### ArgoCD for GitOps
+- CNCF graduated project
+- Declarative, version-controlled deployments
+- Strong Kubernetes native support
+- Active community and enterprise adoption
 
 ## Contributing
 
-Contributions are welcome! Please read the [contributing guidelines](CONTRIBUTING.md) first.
+Contributions are welcome! Please read the contributing guidelines first.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License - see LICENSE for details.
 
 ## Author
 

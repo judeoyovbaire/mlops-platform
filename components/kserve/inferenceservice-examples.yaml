@@ -1,0 +1,133 @@
+# Basic sklearn model deployment
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: sklearn-iris
+  namespace: mlops
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: sklearn
+      storageUri: gs://kfserving-examples/models/sklearn/1.0/model
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+---
+# Canary deployment example (90/10 traffic split)
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: sklearn-iris-canary
+  namespace: mlops
+spec:
+  predictor:
+    # Stable model receives 90% traffic
+    canaryTrafficPercent: 10
+    model:
+      modelFormat:
+        name: sklearn
+      storageUri: gs://kfserving-examples/models/sklearn/1.0/model
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+---
+# PyTorch model deployment
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: pytorch-cifar10
+  namespace: mlops
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: pytorch
+      storageUri: gs://kfserving-examples/models/torchserve/image_classifier/v1
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+---
+# MLflow model from registry
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: mlflow-wine
+  namespace: mlops
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: mlflow
+      protocolVersion: v2
+      storageUri: s3://mlflow-artifacts/models/wine-classifier/1
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+---
+# LLM serving with vLLM backend
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: llama-vllm
+  namespace: mlops
+  annotations:
+    serving.kserve.io/enable-prometheus-scraping: "true"
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: vllm
+      storageUri: s3://models/llama-2-7b
+      args:
+        - --model=/mnt/models
+        - --tensor-parallel-size=1
+      resources:
+        requests:
+          cpu: "4"
+          memory: 16Gi
+          nvidia.com/gpu: "1"
+        limits:
+          cpu: "8"
+          memory: 32Gi
+          nvidia.com/gpu: "1"
+---
+# Autoscaling configuration with HPA
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: sklearn-iris-autoscale
+  namespace: mlops
+  annotations:
+    autoscaling.knative.dev/target: "10"
+    autoscaling.knative.dev/minScale: "1"
+    autoscaling.knative.dev/maxScale: "5"
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: sklearn
+      storageUri: gs://kfserving-examples/models/sklearn/1.0/model
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi

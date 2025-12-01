@@ -5,8 +5,8 @@ namespace: mlops
 
 resources:
   - namespace.yaml
-  - mlflow/
-  - seldon/
+  - ../../components/mlflow/
+  - ../../components/kserve/
 
 commonLabels:
   app.kubernetes.io/managed-by: kustomize
