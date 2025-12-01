@@ -2,6 +2,8 @@
 
 A production-ready MLOps platform for model training, versioning, and deployment on Kubernetes. Enables data science teams to go from experiment to production with self-service workflows.
 
+[![CI](https://github.com/judeoyovbaire/mlops-platform/actions/workflows/ci.yaml/badge.svg)](https://github.com/judeoyovbaire/mlops-platform/actions/workflows/ci.yaml)
+
 ## Architecture
 
 ```
@@ -33,8 +35,10 @@ A production-ready MLOps platform for model training, versioning, and deployment
 - **MLflow 3.x**: Experiment tracking, model registry with aliases, and GenAI support
 - **KServe**: Production model serving with canary deployments and autoscaling (CNCF Incubating)
 - **ArgoCD 3.x**: GitOps-based deployment automation
-- **GPU Support**: NVIDIA GPU scheduling and resource optimization
-- **Observability**: Prometheus metrics and Grafana dashboards for ML workloads
+- **Terraform**: Infrastructure as Code for AWS EKS with GPU node groups
+- **GitHub Actions**: CI/CD pipeline with validation, linting, and security scanning
+- **Observability**: Prometheus ServiceMonitors, alerting rules, and Grafana dashboards
+- **Security**: NetworkPolicies for namespace isolation
 
 ## Tech Stack
 
@@ -46,26 +50,43 @@ A production-ready MLOps platform for model training, versioning, and deployment
 | GitOps | ArgoCD | 3.2.x | Declarative deployments |
 | Service Mesh | Istio | Latest | Traffic management |
 | Monitoring | Prometheus + Grafana | Latest | Observability |
-| Infrastructure | Terraform | Latest | IaC for cloud resources |
+| Infrastructure | Terraform | 1.6+ | IaC for AWS EKS |
+| CI/CD | GitHub Actions | - | Automated testing |
 
 ## Project Structure
 
 ```
 mlops-platform/
-├── infrastructure/
-│   ├── kubernetes/       # K8s manifests and Kustomize
-│   ├── terraform/        # Cloud infrastructure (EKS/GKE)
-│   └── helm/             # Helm chart values
-├── pipelines/
-│   ├── training/         # Training pipeline definitions
-│   └── inference/        # Inference pipeline definitions
+├── .github/
+│   └── workflows/           # CI/CD pipelines
+│       ├── ci.yaml          # Validation, linting, security scans
+│       └── release.yaml     # Release automation
 ├── components/
-│   ├── mlflow/           # MLflow configuration
-│   ├── kubeflow/         # Kubeflow setup
-│   └── kserve/           # KServe InferenceService configs
-├── scripts/              # Utility scripts
-├── docs/                 # Documentation
-└── examples/             # Example ML projects
+│   ├── mlflow/              # MLflow deployment manifests
+│   ├── kubeflow/            # Kubeflow setup
+│   └── kserve/              # KServe InferenceService examples
+├── examples/
+│   └── iris-classifier/     # Complete end-to-end example
+│       ├── train.py         # Training script
+│       ├── test_inference.py # Inference testing
+│       └── kserve-deployment.yaml
+├── infrastructure/
+│   ├── kubernetes/          # K8s manifests and Kustomize
+│   │   ├── namespace.yaml
+│   │   ├── network-policies.yaml
+│   │   └── monitoring.yaml  # ServiceMonitors & alerts
+│   ├── terraform/           # AWS EKS infrastructure
+│   │   ├── modules/eks/     # Reusable EKS module
+│   │   └── environments/dev/ # Dev environment config
+│   └── helm/                # Helm chart values
+├── pipelines/
+│   ├── training/            # Training pipeline definitions
+│   └── inference/           # Inference pipeline definitions
+├── scripts/
+│   └── install.sh           # Platform installation script
+├── docs/
+│   └── architecture.md      # Architecture documentation
+└── Makefile                 # Common operations
 ```
 
 ## Getting Started
@@ -75,7 +96,8 @@ mlops-platform/
 - Kubernetes cluster (EKS, GKE, AKS, or local with kind/minikube)
 - kubectl configured
 - Helm 3.x
-- Terraform (for cloud infrastructure)
+- Terraform 1.6+ (for cloud infrastructure)
+- Python 3.10+
 
 ### Quick Start
 
@@ -84,16 +106,29 @@ mlops-platform/
 git clone https://github.com/judeoyovbaire/mlops-platform.git
 cd mlops-platform
 
-# 2. Set up infrastructure (optional - for cloud deployment)
-cd infrastructure/terraform
+# 2. Set up AWS EKS infrastructure (optional)
+cd infrastructure/terraform/environments/dev
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your settings
 terraform init && terraform apply
 
 # 3. Install platform components
 ./scripts/install.sh
 
 # 4. Access the dashboards
-kubectl port-forward svc/mlflow 5000:5000 -n mlflow
-kubectl port-forward svc/argocd-server 8080:443 -n argocd
+make port-forward-mlflow   # MLflow at localhost:5000
+make port-forward-argocd   # ArgoCD at localhost:8080
+```
+
+### Using the Makefile
+
+```bash
+make help                  # Show all available commands
+make install               # Install platform components
+make validate              # Validate all manifests
+make lint                  # Lint Python and Terraform code
+make status                # Check platform status
+make deploy-example        # Deploy iris classifier example
 ```
 
 ### Deploy a Model with KServe
@@ -112,46 +147,54 @@ curl -X POST "$SERVICE_URL/v1/models/sklearn-iris:predict" \
   -d '{"instances": [[5.1, 3.5, 1.4, 0.2]]}'
 ```
 
-### Run a Training Pipeline
+### Run the Example End-to-End
 
-```python
-# Compile the pipeline
-cd pipelines/training
-python example-pipeline.py
+```bash
+cd examples/iris-classifier
 
-# Upload to Kubeflow Pipelines UI or run via SDK
+# Train locally (optional)
+pip install -r requirements.txt
+python train.py --register
+
+# Deploy to KServe
+kubectl apply -f kserve-deployment.yaml
+
+# Test inference
+python test_inference.py
 ```
 
 ## Roadmap
 
-### Phase 1: Foundation (Current)
-- [x] Set up Kubernetes cluster with GPU support
-- [x] Deploy MLflow 3.x for experiment tracking
-- [x] Basic Kubeflow Pipelines installation
+### Phase 1: Foundation ✅
+- [x] Kubernetes cluster with GPU support (Terraform EKS)
+- [x] MLflow 3.x for experiment tracking
+- [x] Kubeflow Pipelines installation
 - [x] ArgoCD 3.x for GitOps
 - [x] KServe for model serving
+- [x] CI/CD pipeline (GitHub Actions)
 
 ### Phase 2: Training Infrastructure
-- [ ] GPU scheduling and resource quotas
+- [x] GPU node groups in Terraform
 - [ ] Distributed training support
 - [ ] Pipeline templates for common ML tasks
 - [ ] Data versioning with DVC
 
-### Phase 3: Model Serving
+### Phase 3: Model Serving ✅
 - [x] KServe deployment
 - [x] Canary deployment examples
-- [ ] A/B testing framework
+- [x] Working end-to-end example
 - [ ] Model monitoring and drift detection
 
 ### Phase 4: Production Hardening
 - [ ] Multi-tenancy support
 - [ ] Cost optimization and FinOps
-- [ ] Security hardening (RBAC, network policies)
-- [ ] Comprehensive observability
+- [x] Security hardening (NetworkPolicies)
+- [x] Observability (ServiceMonitors, alerts, dashboards)
 
 ## Documentation
 
 - [Architecture Deep Dive](docs/architecture.md)
+- [Example: Iris Classifier](examples/iris-classifier/README.md)
 
 ## Why These Tools?
 

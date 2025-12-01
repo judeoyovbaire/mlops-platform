@@ -91,6 +91,50 @@ All platform configurations are managed through Git, enabling:
 - Rollback capabilities
 - Multi-environment promotion
 
+## Infrastructure
+
+### Terraform EKS Module
+
+The platform includes a production-ready Terraform module for AWS EKS:
+
+```
+infrastructure/terraform/
+├── modules/eks/
+│   ├── main.tf          # VPC, EKS cluster, node groups
+│   ├── variables.tf     # Configurable inputs
+│   └── outputs.tf       # Cluster endpoints, ARNs
+└── environments/dev/
+    ├── main.tf          # Dev environment config
+    └── terraform.tfvars.example
+```
+
+**Node Groups:**
+- **General**: Platform services (t3.large, ON_DEMAND)
+- **Training**: ML training jobs (c5.2xlarge, SPOT)
+- **GPU**: GPU workloads (g4dn.xlarge, SPOT)
+
+**AWS Resources Created:**
+- VPC with public/private subnets across 3 AZs
+- EKS cluster with managed node groups
+- S3 bucket for MLflow artifacts
+- RDS PostgreSQL for MLflow metadata
+- IAM roles with IRSA for secure pod authentication
+
+### CI/CD Pipeline
+
+GitHub Actions workflows provide automated validation:
+
+```yaml
+# .github/workflows/ci.yaml
+jobs:
+  validate-manifests:    # Kubernetes manifest validation
+  lint-python:           # Ruff linter and formatter
+  validate-terraform:    # Terraform fmt and validate
+  security-scan:         # Trivy and Checkov security scans
+  validate-helm:         # Helm values validation
+  test-python:           # Pipeline compilation tests
+```
+
 ## Data Flow
 
 ```
@@ -135,6 +179,24 @@ All platform configurations are managed through Git, enabling:
 
 ## Security Architecture
 
+### Network Policies
+
+The platform implements namespace isolation with Kubernetes NetworkPolicies:
+
+```
+infrastructure/kubernetes/network-policies.yaml
+```
+
+**Policy Summary:**
+| Namespace | Ingress From | Egress To |
+|-----------|--------------|-----------|
+| mlops | istio-system (inference) | - |
+| mlflow | mlops, kubeflow, kserve | PostgreSQL, S3 |
+| kubeflow | istio-system (UI) | mlflow, kserve |
+| kserve | kube-system | Kubernetes API |
+
+### Security Layers
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    Security Layers                       │
@@ -150,9 +212,44 @@ All platform configurations are managed through Git, enabling:
 │  ─────────────────   │  ──────────────│  ─────         │
 │  - External Secrets  │  - Signed images│  - Audit logs │
 │  - Vault integration │  - Vulnerability│  - Compliance │
-│                      │    scanning    │    reports    │
+│  - IRSA (AWS)        │    scanning    │    reports    │
 └─────────────────────────────────────────────────────────┘
 ```
+
+## Observability
+
+### Prometheus Monitoring
+
+The platform includes ServiceMonitors for metrics collection:
+
+```yaml
+# infrastructure/kubernetes/monitoring.yaml
+- ServiceMonitor: mlflow          # MLflow tracking server
+- ServiceMonitor: kserve-inference # Inference services
+- PodMonitor: kubeflow-pipelines  # Pipeline runs
+```
+
+### Alerting Rules
+
+Pre-configured PrometheusRules for common issues:
+
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| HighInferenceLatency | P95 > 1s for 5m | warning |
+| HighInferenceErrorRate | >5% errors for 5m | critical |
+| InferenceServiceRestarts | >3 restarts/hour | warning |
+| MLflowDown | Server unreachable for 2m | critical |
+| HighPipelineFailureRate | >10% failures/hour | warning |
+| LowGPUUtilization | <20% for 30m | info |
+
+### Grafana Dashboard
+
+A pre-built dashboard is included as a ConfigMap:
+- Inference requests/sec
+- P95 latency by model
+- Active models count
+- Error rate percentage
+- Request rate by model
 
 ## Scalability Considerations
 
@@ -178,3 +275,49 @@ spec:
 - GPU time-slicing for inference
 - Cluster autoscaler with scale-to-zero
 - Resource requests/limits enforcement
+
+## Development Workflow
+
+### Local Development
+
+```bash
+# Validate all manifests
+make validate
+
+# Lint code
+make lint
+
+# Compile pipeline
+make compile-pipeline
+
+# Port forward services
+make port-forward-mlflow
+make port-forward-argocd
+```
+
+### Deployment
+
+```bash
+# Install platform
+make install
+
+# Deploy example model
+make deploy-example
+
+# Check status
+make status
+```
+
+### CI/CD Flow
+
+```
+Push to main
+    │
+    ├── validate-manifests (kubeconform)
+    ├── lint-python (ruff)
+    ├── validate-terraform (fmt, validate)
+    ├── security-scan (trivy, checkov)
+    └── test-python (pipeline compilation)
+         │
+         └── All pass → Ready for deployment
+```
