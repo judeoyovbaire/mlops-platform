@@ -96,3 +96,16 @@ spec:
       name: http
   selector:
     app: mlflow
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mlflow
+  namespace: mlflow
+  labels:
+    app: mlflow
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: mlflow
