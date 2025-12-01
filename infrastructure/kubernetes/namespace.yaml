@@ -25,7 +25,7 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: seldon-system
+  name: kserve
   labels:
     app.kubernetes.io/name: mlops-platform
-    app.kubernetes.io/component: seldon
+    app.kubernetes.io/component: kserve

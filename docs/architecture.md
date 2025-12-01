@@ -27,15 +27,20 @@ pipeline:
   - model-registration
 ```
 
-### 2. MLflow
+### 2. MLflow 3.x
 
 MLflow provides the experiment tracking and model registry capabilities.
 
 **Components:**
 - **Tracking Server**: Logs parameters, metrics, and artifacts
-- **Model Registry**: Central repository for model versions
+- **Model Registry**: Central repository for model versions with aliases
 - **Backend Store**: PostgreSQL for metadata
 - **Artifact Store**: S3/GCS/MinIO for model artifacts
+
+**New in MLflow 3.x:**
+- Model aliases replace deprecated staging workflow
+- Native GenAI/LLM support (prompt versioning, agent tracing)
+- Model Context Protocol (MCP) server integration
 
 **Architecture:**
 ```
@@ -51,30 +56,34 @@ MLflow provides the experiment tracking and model registry capabilities.
               └───────────┘           └───────────────┘
 ```
 
-### 3. Seldon Core
+### 3. KServe
 
-Seldon Core handles model serving with advanced deployment strategies.
+KServe (CNCF Incubating) handles model serving with advanced deployment strategies. It replaced Seldon Core due to licensing changes (Seldon moved to BSL 1.1 in Jan 2024).
 
 **Features:**
-- A/B testing with traffic splitting
-- Canary deployments
-- Multi-armed bandit optimization
-- Custom inference graphs
+- Serverless inference with scale-to-zero
+- Canary deployments with traffic splitting
+- Native support for sklearn, PyTorch, TensorFlow, vLLM
+- MLflow model integration
+- Autoscaling with Knative or KEDA
 
-**Deployment Types:**
+**Deployment Example:**
 ```yaml
-# A/B Test Configuration
-apiVersion: machinelearning.seldon.io/v1
-kind: SeldonDeployment
+# Canary Deployment Configuration
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: sklearn-iris-canary
 spec:
-  predictors:
-    - name: model-a
-      traffic: 50
-    - name: model-b
-      traffic: 50
+  predictor:
+    canaryTrafficPercent: 10
+    model:
+      modelFormat:
+        name: sklearn
+      storageUri: gs://models/sklearn/iris
 ```
 
-### 4. GitOps with ArgoCD
+### 4. GitOps with ArgoCD 3.x
 
 All platform configurations are managed through Git, enabling:
 - Version-controlled infrastructure
@@ -114,8 +123,8 @@ All platform configurations are managed through Git, enabling:
 
 ### Layer 3: ML Platform
 - Kubeflow Pipelines
-- MLflow
-- Seldon Core
+- MLflow 3.x
+- KServe
 - Jupyter Hub (optional)
 
 ### Layer 4: Applications
@@ -150,7 +159,7 @@ All platform configurations are managed through Git, enabling:
 ### Horizontal Scaling
 - Kubeflow Pipelines: Multiple workflow controllers
 - MLflow: Stateless tracking server behind load balancer
-- Seldon: HPA based on inference latency/throughput
+- KServe: HPA/KEDA based on inference latency/throughput, scale-to-zero
 
 ### GPU Resource Management
 ```yaml
