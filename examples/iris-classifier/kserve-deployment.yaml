@@ -1,0 +1,91 @@
+# KServe InferenceService for Iris Classifier
+# This deploys the trained model from MLflow registry
+
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: iris-classifier
+  namespace: mlops
+  annotations:
+    # Enable Prometheus metrics scraping
+    serving.kserve.io/enable-prometheus-scraping: "true"
+spec:
+  predictor:
+    # Minimum replicas (set to 0 for scale-to-zero)
+    minReplicas: 1
+    maxReplicas: 3
+
+    model:
+      # Use MLflow model format
+      modelFormat:
+        name: mlflow
+      # Protocol version (v2 for MLflow models)
+      protocolVersion: v2
+
+      # Model location - update this to your MLflow model URI
+      # Option 1: From MLflow model registry using alias
+      # storageUri: models:/iris-classifier@champion
+
+      # Option 2: From S3 bucket (update bucket name)
+      storageUri: s3://mlops-platform-mlflow-artifacts/models/iris-classifier/1
+
+      # Resource limits
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+    # Autoscaling configuration
+    # scaleTarget: 10  # Target concurrent requests per replica
+    # scaleMetric: concurrency
+
+---
+# Alternative: Direct sklearn model deployment (without MLflow)
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: iris-classifier-sklearn
+  namespace: mlops
+spec:
+  predictor:
+    minReplicas: 1
+
+    model:
+      modelFormat:
+        name: sklearn
+      storageUri: gs://kfserving-examples/models/sklearn/1.0/model
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+---
+# Canary deployment example (90/10 traffic split)
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: iris-classifier-canary
+  namespace: mlops
+spec:
+  predictor:
+    # Canary receives 10% of traffic
+    canaryTrafficPercent: 10
+
+    model:
+      modelFormat:
+        name: sklearn
+      # Canary model (new version)
+      storageUri: s3://mlops-platform-mlflow-artifacts/models/iris-classifier/2
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi

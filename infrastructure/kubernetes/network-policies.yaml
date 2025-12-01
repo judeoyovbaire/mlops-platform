@@ -1,0 +1,290 @@
+# Network Policies for MLOps Platform
+# Implements namespace isolation and controlled traffic flow
+
+---
+# Default deny all ingress traffic in mlops namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: mlops
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+
+---
+# Allow ingress to inference services from istio-system (ingress gateway)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-inference-ingress
+  namespace: mlops
+spec:
+  podSelector:
+    matchLabels:
+      serving.kserve.io/inferenceservice: "true"
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8012
+
+---
+# Allow inference services to communicate with each other (for pipelines)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-inference-internal
+  namespace: mlops
+spec:
+  podSelector:
+    matchLabels:
+      serving.kserve.io/inferenceservice: "true"
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mlops
+      ports:
+        - protocol: TCP
+          port: 8080
+
+---
+# MLflow namespace policies
+---
+# Default deny all ingress in mlflow namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: mlflow
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+
+---
+# Allow MLflow access from mlops namespace (training jobs)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mlflow-from-mlops
+  namespace: mlflow
+spec:
+  podSelector:
+    matchLabels:
+      app: mlflow
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mlops
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kubeflow
+      ports:
+        - protocol: TCP
+          port: 5000
+
+---
+# Allow MLflow access from kserve namespace (model loading)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mlflow-from-kserve
+  namespace: mlflow
+spec:
+  podSelector:
+    matchLabels:
+      app: mlflow
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kserve
+      ports:
+        - protocol: TCP
+          port: 5000
+
+---
+# Allow MLflow to connect to PostgreSQL (egress)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mlflow-db-egress
+  namespace: mlflow
+spec:
+  podSelector:
+    matchLabels:
+      app: mlflow
+  policyTypes:
+    - Egress
+  egress:
+    # PostgreSQL
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 5432
+    # S3 (HTTPS)
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+    # DNS
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+
+---
+# Kubeflow namespace policies
+---
+# Default deny ingress in kubeflow namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: kubeflow
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+
+---
+# Allow Kubeflow UI access from istio-system
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kubeflow-ui
+  namespace: kubeflow
+spec:
+  podSelector:
+    matchLabels:
+      app: ml-pipeline-ui
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system
+      ports:
+        - protocol: TCP
+          port: 3000
+
+---
+# Allow Kubeflow components to communicate internally
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kubeflow-internal
+  namespace: kubeflow
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kubeflow
+
+---
+# Allow Kubeflow to access MLflow for experiment tracking
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kubeflow-mlflow-egress
+  namespace: kubeflow
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    # MLflow
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mlflow
+      ports:
+        - protocol: TCP
+          port: 5000
+    # KServe for model deployment
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kserve
+    # DNS
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+    # HTTPS (for external data sources)
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+
+---
+# KServe namespace policies
+---
+# Default deny ingress in kserve namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: kserve
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+
+---
+# Allow KServe controller to manage inference services
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kserve-controller
+  namespace: kserve
+spec:
+  podSelector:
+    matchLabels:
+      control-plane: kserve-controller-manager
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8443
+  egress:
+    # Kubernetes API
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+    # DNS
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53

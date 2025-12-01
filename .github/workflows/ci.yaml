@@ -1,0 +1,193 @@
+# CI Pipeline for MLOps Platform
+# Validates manifests, lints code, and runs security scans
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.10"
+  TERRAFORM_VERSION: "1.6.0"
+
+jobs:
+  # Validate Kubernetes manifests
+  validate-manifests:
+    name: Validate K8s Manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubeconform
+        uses: yokawasa/action-setup-kube-tools@v0.11.1
+        with:
+          kubeconform: "0.6.4"
+          kustomize: "5.3.0"
+
+      - name: Validate Kubernetes manifests
+        run: |
+          echo "Validating Kubernetes manifests..."
+
+          # Validate raw YAML files
+          find components infrastructure/kubernetes -name '*.yaml' -o -name '*.yml' | \
+            xargs -I {} kubeconform -strict -summary \
+              -schema-location default \
+              -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+              {} || true
+
+          echo "Manifest validation complete"
+
+      - name: Validate Kustomize build
+        run: |
+          echo "Building Kustomize manifests..."
+          kustomize build infrastructure/kubernetes/ > /dev/null
+          echo "Kustomize build successful"
+
+  # Lint Python code
+  lint-python:
+    name: Lint Python
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff mypy
+
+      - name: Run Ruff linter
+        run: |
+          ruff check pipelines/ examples/ --output-format=github
+
+      - name: Run Ruff formatter check
+        run: |
+          ruff format --check pipelines/ examples/
+
+  # Validate Terraform code
+  validate-terraform:
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Format Check
+        run: |
+          terraform fmt -check -recursive infrastructure/terraform/
+
+      - name: Terraform Init (Module)
+        working-directory: infrastructure/terraform/modules/eks
+        run: terraform init -backend=false
+
+      - name: Terraform Validate (Module)
+        working-directory: infrastructure/terraform/modules/eks
+        run: terraform validate
+
+      - name: Terraform Init (Dev)
+        working-directory: infrastructure/terraform/environments/dev
+        run: terraform init -backend=false
+
+      - name: Terraform Validate (Dev)
+        working-directory: infrastructure/terraform/environments/dev
+        run: terraform validate
+
+  # Security scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner (IaC)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infrastructure/
+          framework: terraform,kubernetes
+          soft_fail: true
+          output_format: cli
+
+  # Validate Helm charts
+  validate-helm:
+    name: Validate Helm Values
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v3.13.0'
+
+      - name: Lint Helm values
+        run: |
+          echo "Validating Helm values files..."
+          # Validate YAML syntax
+          for f in infrastructure/helm/*.yaml; do
+            echo "Checking $f..."
+            python3 -c "import yaml; yaml.safe_load(open('$f'))"
+          done
+          echo "Helm values validation complete"
+
+  # Test Python pipeline code
+  test-python:
+    name: Test Python
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          pip install pandas scikit-learn mlflow kfp
+
+      - name: Test example imports
+        run: |
+          cd examples/iris-classifier
+          python -c "from train import load_data, preprocess_data, train_model"
+          echo "Import tests passed"
+
+      - name: Test pipeline compilation
+        run: |
+          cd pipelines/training
+          pip install kfp
+          python -c "from kfp import compiler; exec(open('example-pipeline.py').read()); compiler.Compiler().compile(ml_training_pipeline, 'test.yaml')"
+          echo "Pipeline compilation successful"

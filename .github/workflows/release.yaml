@@ -1,0 +1,93 @@
+# Release Pipeline for MLOps Platform
+# Triggered on version tags
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Kustomize
+        uses: yokawasa/action-setup-kube-tools@v0.11.1
+        with:
+          kustomize: "5.3.0"
+
+      - name: Build release artifacts
+        run: |
+          mkdir -p release
+
+          # Build Kustomize manifests
+          kustomize build infrastructure/kubernetes/ > release/mlops-platform.yaml
+
+          # Package Terraform module
+          tar -czvf release/terraform-eks-module.tar.gz -C infrastructure/terraform/modules eks
+
+          # Package examples
+          tar -czvf release/examples.tar.gz examples/
+
+          # Create install script bundle
+          cp scripts/install.sh release/
+
+      - name: Generate changelog
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@v4
+        with:
+          configuration: |
+            {
+              "categories": [
+                {"title": "Features", "labels": ["feature", "enhancement"]},
+                {"title": "Bug Fixes", "labels": ["bug", "fix"]},
+                {"title": "Infrastructure", "labels": ["infrastructure", "terraform"]},
+                {"title": "Documentation", "labels": ["documentation"]}
+              ]
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body: |
+            ## MLOps Platform ${{ github.ref_name }}
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            ### Installation
+
+            ```bash
+            # Quick install
+            curl -sSL https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/install.sh | bash
+
+            # Or apply manifests directly
+            kubectl apply -f https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/mlops-platform.yaml
+            ```
+
+            ### Components
+            - MLflow v3.6.0
+            - KServe v0.15.0
+            - ArgoCD v3.2.x
+            - Kubeflow Pipelines (latest)
+
+          files: |
+            release/mlops-platform.yaml
+            release/terraform-eks-module.tar.gz
+            release/examples.tar.gz
+            release/install.sh
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

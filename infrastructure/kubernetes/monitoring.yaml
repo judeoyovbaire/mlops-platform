@@ -1,0 +1,267 @@
+# Prometheus ServiceMonitors for MLOps Platform
+# Requires prometheus-operator to be installed
+
+---
+# ServiceMonitor for MLflow
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: mlflow
+  namespace: mlflow
+  labels:
+    app: mlflow
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: mlflow
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+  namespaceSelector:
+    matchNames:
+      - mlflow
+
+---
+# ServiceMonitor for KServe InferenceServices
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kserve-inference
+  namespace: mlops
+  labels:
+    app: kserve
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      serving.kserve.io/inferenceservice: "true"
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+  namespaceSelector:
+    matchNames:
+      - mlops
+
+---
+# PodMonitor for Kubeflow Pipeline runs
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: kubeflow-pipelines
+  namespace: kubeflow
+  labels:
+    app: kubeflow
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      pipelines.kubeflow.org/enabled: "true"
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+  namespaceSelector:
+    matchNames:
+      - kubeflow
+
+---
+# PrometheusRule for MLOps alerts
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: mlops-alerts
+  namespace: mlops
+  labels:
+    release: prometheus
+spec:
+  groups:
+    - name: mlops.rules
+      rules:
+        # High inference latency
+        - alert: HighInferenceLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(revision_request_latencies_bucket{namespace="mlops"}[5m])) by (le, revision_name)
+            ) > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High inference latency for {{ $labels.revision_name }}"
+            description: "P95 latency is above 1 second for inference service {{ $labels.revision_name }}"
+
+        # Inference service errors
+        - alert: HighInferenceErrorRate
+          expr: |
+            sum(rate(revision_request_count{response_code!="200",namespace="mlops"}[5m])) by (revision_name)
+            /
+            sum(rate(revision_request_count{namespace="mlops"}[5m])) by (revision_name)
+            > 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "High error rate for {{ $labels.revision_name }}"
+            description: "Error rate is above 5% for inference service {{ $labels.revision_name }}"
+
+        # Model serving pod restarts
+        - alert: InferenceServiceRestarts
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="mlops"}[1h]) > 3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Multiple restarts for {{ $labels.pod }}"
+            description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in the last hour"
+
+        # MLflow tracking server down
+        - alert: MLflowDown
+          expr: |
+            up{job="mlflow", namespace="mlflow"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "MLflow tracking server is down"
+            description: "MLflow tracking server has been down for more than 2 minutes"
+
+        # Pipeline failure rate
+        - alert: HighPipelineFailureRate
+          expr: |
+            sum(rate(pipeline_run_status{status="failed"}[1h]))
+            /
+            sum(rate(pipeline_run_status[1h]))
+            > 0.1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High pipeline failure rate"
+            description: "More than 10% of pipeline runs are failing in the last hour"
+
+        # GPU utilization low (cost optimization)
+        - alert: LowGPUUtilization
+          expr: |
+            avg(DCGM_FI_DEV_GPU_UTIL{namespace="mlops"}) by (pod) < 20
+          for: 30m
+          labels:
+            severity: info
+          annotations:
+            summary: "Low GPU utilization for {{ $labels.pod }}"
+            description: "GPU utilization is below 20% for pod {{ $labels.pod }}. Consider scaling down."
+
+---
+# Grafana Dashboard ConfigMap (for auto-provisioning)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mlops-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  mlops-overview.json: |
+    {
+      "annotations": {
+        "list": []
+      },
+      "title": "MLOps Platform Overview",
+      "uid": "mlops-overview",
+      "version": 1,
+      "panels": [
+        {
+          "title": "Inference Requests/sec",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(rate(revision_request_count{namespace=\"mlops\"}[5m]))",
+              "legendFormat": "Requests/sec"
+            }
+          ]
+        },
+        {
+          "title": "P95 Latency",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(revision_request_latencies_bucket{namespace=\"mlops\"}[5m])) by (le))",
+              "legendFormat": "P95 Latency"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "title": "Active Models",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "targets": [
+            {
+              "expr": "count(kube_pod_info{namespace=\"mlops\", pod=~\".*predictor.*\"})",
+              "legendFormat": "Models"
+            }
+          ]
+        },
+        {
+          "title": "Error Rate",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(rate(revision_request_count{response_code!=\"200\",namespace=\"mlops\"}[5m])) / sum(rate(revision_request_count{namespace=\"mlops\"}[5m])) * 100",
+              "legendFormat": "Error %"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "red", "value": 5}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "title": "Inference Latency by Model",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(revision_request_latencies_bucket{namespace=\"mlops\"}[5m])) by (le, revision_name))",
+              "legendFormat": "{{revision_name}}"
+            }
+          ]
+        },
+        {
+          "title": "Request Rate by Model",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+          "targets": [
+            {
+              "expr": "sum(rate(revision_request_count{namespace=\"mlops\"}[5m])) by (revision_name)",
+              "legendFormat": "{{revision_name}}"
+            }
+          ]
+        }
+      ]
+    }

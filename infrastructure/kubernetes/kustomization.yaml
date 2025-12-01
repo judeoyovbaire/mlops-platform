@@ -5,9 +5,12 @@ namespace: mlops
 
 resources:
   - namespace.yaml
+  - network-policies.yaml
+  - monitoring.yaml
   - ../../components/mlflow/
   - ../../components/kserve/
 
-commonLabels:
-  app.kubernetes.io/managed-by: kustomize
-  app.kubernetes.io/part-of: mlops-platform
+labels:
+  - pairs:
+      app.kubernetes.io/managed-by: kustomize
+      app.kubernetes.io/part-of: mlops-platform
