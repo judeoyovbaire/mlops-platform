@@ -7,7 +7,6 @@ resources:
   - namespace.yaml
   - network-policies.yaml
   - monitoring.yaml
-  - ../../components/mlflow/
   - ../../components/kserve/
 
 labels:

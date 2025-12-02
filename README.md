@@ -58,27 +58,26 @@ A production-ready MLOps platform for model training, versioning, and deployment
 ```
 mlops-platform/
 ├── .github/
-│   └── workflows/           # CI/CD pipelines
-│       ├── ci.yaml          # Validation, linting, security scans
-│       └── release.yaml     # Release automation
+│   └── workflows/           # CI/CD pipelines (disabled by default)
 ├── components/
-│   ├── mlflow/              # MLflow deployment manifests
 │   ├── kubeflow/            # Kubeflow setup
-│   └── kserve/              # KServe InferenceService examples
+│   └── kserve/              # KServe InferenceService examples (Kustomize)
 ├── examples/
 │   └── iris-classifier/     # Complete end-to-end example
 │       ├── train.py         # Training script
 │       ├── test_inference.py # Inference testing
 │       └── kserve-deployment.yaml
 ├── infrastructure/
-│   ├── kubernetes/          # K8s manifests and Kustomize
+│   ├── kubernetes/          # Kustomize-managed manifests
 │   │   ├── namespace.yaml
 │   │   ├── network-policies.yaml
 │   │   └── monitoring.yaml  # ServiceMonitors & alerts
 │   ├── terraform/           # AWS EKS infrastructure
 │   │   ├── modules/eks/     # Reusable EKS module
 │   │   └── environments/dev/ # Dev environment config
-│   └── helm/                # Helm chart values
+│   └── helm/                # Helm values for third-party apps
+│       ├── mlflow-values.yaml   # MLflow configuration
+│       └── argocd-values.yaml   # ArgoCD configuration
 ├── pipelines/
 │   ├── training/            # Training pipeline definitions
 │   └── inference/           # Inference pipeline definitions
@@ -88,6 +87,13 @@ mlops-platform/
 │   └── architecture.md      # Architecture documentation
 └── Makefile                 # Common operations
 ```
+
+### Helm vs Kustomize
+
+| Tool | Used For | Location |
+|------|----------|----------|
+| **Helm** | Third-party apps (MLflow, ArgoCD) | `infrastructure/helm/` |
+| **Kustomize** | Our manifests (namespaces, policies, KServe examples) | `infrastructure/kubernetes/` |
 
 ## Getting Started
 
