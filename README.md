@@ -60,7 +60,6 @@ mlops-platform/
 ├── .github/
 │   └── workflows/           # CI/CD pipelines (disabled by default)
 ├── components/
-│   ├── kubeflow/            # Kubeflow setup
 │   └── kserve/              # KServe InferenceService examples (Kustomize)
 ├── examples/
 │   └── iris-classifier/     # Complete end-to-end example
