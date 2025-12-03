@@ -74,6 +74,25 @@ spec:
     - Ingress
 
 ---
+# Allow MLflow access from external (NodePort for local development)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mlflow-external
+  namespace: mlflow
+spec:
+  podSelector:
+    matchLabels:
+      app: mlflow
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from any source (needed for NodePort access in local dev)
+    - ports:
+        - protocol: TCP
+          port: 5000
+
+---
 # Allow MLflow access from mlops namespace (training jobs)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -242,19 +261,11 @@ spec:
 ---
 # KServe namespace policies
 ---
-# Default deny ingress in kserve namespace
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: default-deny-ingress
-  namespace: kserve
-spec:
-  podSelector: {}
-  policyTypes:
-    - Ingress
-
----
-# Allow KServe controller to manage inference services
+# Allow KServe controller webhook and management traffic
+# Note: We allow all ingress to kserve namespace because:
+# 1. Webhook server needs to receive admission requests from API server
+# 2. Controller needs to be accessible for health checks
+# In production, this can be tightened based on specific requirements
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -268,13 +279,14 @@ spec:
     - Ingress
     - Egress
   ingress:
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
-      ports:
+    # Allow webhook calls from any namespace (API server proxies these)
+    - ports:
+        - protocol: TCP
+          port: 9443
         - protocol: TCP
           port: 8443
+        - protocol: TCP
+          port: 8081
   egress:
     # Kubernetes API
     - to: []
@@ -288,3 +300,8 @@ spec:
       ports:
         - protocol: UDP
           port: 53
+    # Access to mlops namespace for managing inference services
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mlops

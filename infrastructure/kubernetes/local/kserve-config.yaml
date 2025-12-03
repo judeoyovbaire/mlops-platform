@@ -1,0 +1,17 @@
+# KServe configuration for local development
+# Configures RawDeployment mode (no Knative required)
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inferenceservice-config-patch
+  namespace: kserve
+  labels:
+    app.kubernetes.io/part-of: mlops-platform
+data:
+  # This is applied as a patch to the KServe inferenceservice-config
+  # to enable RawDeployment mode for local development without Knative
+  deploy: |
+    {
+      "defaultDeploymentMode": "RawDeployment"
+    }

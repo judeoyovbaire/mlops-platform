@@ -3,7 +3,8 @@
 
 .PHONY: help install install-dev uninstall validate lint test clean \
         terraform-init terraform-plan terraform-apply terraform-destroy \
-        port-forward-mlflow port-forward-argocd compile-pipeline
+        port-forward-mlflow port-forward-argocd compile-pipeline \
+        local-deploy local-cleanup
 
 # Default target
 help:
@@ -202,3 +203,15 @@ logs-mlflow:
 
 logs-argocd:
 	$(KUBECTL) logs -f deployment/argocd-server -n argocd
+
+# =============================================================================
+# Local Development (Kind)
+# =============================================================================
+
+local-deploy:
+	@echo "Deploying MLOps Platform locally with Kind..."
+	./scripts/deploy-local.sh
+
+local-cleanup:
+	@echo "Cleaning up local Kind cluster..."
+	./scripts/deploy-local.sh cleanup

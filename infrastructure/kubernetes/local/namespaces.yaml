@@ -1,0 +1,29 @@
+# Namespaces for local MLOps platform deployment
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mlops
+  labels:
+    app.kubernetes.io/part-of: mlops-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mlflow
+  labels:
+    app.kubernetes.io/part-of: mlops-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+  labels:
+    app.kubernetes.io/part-of: mlops-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kserve
+  labels:
+    app.kubernetes.io/part-of: mlops-platform
