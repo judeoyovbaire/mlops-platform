@@ -1,0 +1,95 @@
+# ArgoCD Helm Chart Values for AWS EKS
+
+global:
+  domain: ""
+
+# Server configuration
+server:
+  replicas: 1
+
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/backend-protocol: HTTPS
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+    hosts: []
+
+  # Insecure mode for ALB (ALB handles TLS)
+  extraArgs:
+    - --insecure
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Controller configuration
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Repo server configuration
+repoServer:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Redis configuration
+redis:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# ApplicationSet controller
+applicationSet:
+  enabled: true
+  replicas: 1
+
+# Notifications controller
+notifications:
+  enabled: false
+
+# Resource customizations for KServe InferenceService
+configs:
+  cm:
+    resource.customizations: |
+      serving.kserve.io/InferenceService:
+        health.lua: |
+          hs = {}
+          if obj.status ~= nil then
+            if obj.status.conditions ~= nil then
+              for i, condition in ipairs(obj.status.conditions) do
+                if condition.type == "Ready" and condition.status == "True" then
+                  hs.status = "Healthy"
+                  hs.message = "InferenceService is ready"
+                  return hs
+                end
+              end
+            end
+          end
+          hs.status = "Progressing"
+          hs.message = "Waiting for InferenceService to be ready"
+          return hs

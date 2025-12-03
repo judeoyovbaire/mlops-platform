@@ -145,8 +145,8 @@ module "eks" {
       desired_size = var.gpu_desired_size
 
       labels = {
-        role                             = "gpu"
-        "nvidia.com/gpu.present"         = "true"
+        role                     = "gpu"
+        "nvidia.com/gpu.present" = "true"
       }
 
       taints = [
@@ -176,6 +176,24 @@ module "ebs_csi_irsa" {
     main = {
       provider_arn               = module.eks.oidc_provider_arn
       namespace_service_accounts = ["kube-system:ebs-csi-controller-sa"]
+    }
+  }
+
+  tags = var.tags
+}
+
+# IRSA for AWS Load Balancer Controller
+module "aws_lb_controller_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.0"
+
+  role_name                              = "${var.cluster_name}-aws-lb-controller"
+  attach_load_balancer_controller_policy = true
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["kube-system:aws-load-balancer-controller"]
     }
   }
 
@@ -295,10 +313,10 @@ resource "aws_security_group" "mlflow_rds" {
 resource "aws_db_instance" "mlflow" {
   identifier = "${var.cluster_name}-mlflow"
 
-  engine               = "postgres"
-  engine_version       = "15"
-  instance_class       = var.mlflow_db_instance_class
-  allocated_storage    = 20
+  engine                = "postgres"
+  engine_version        = "15"
+  instance_class        = var.mlflow_db_instance_class
+  allocated_storage     = 20
   max_allocated_storage = 100
 
   db_name  = "mlflow"

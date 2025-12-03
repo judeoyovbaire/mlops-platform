@@ -198,3 +198,130 @@ resource "kubernetes_service_account" "mlflow" {
 
   depends_on = [kubernetes_namespace.mlflow]
 }
+
+# =============================================================================
+# Helm Releases
+# =============================================================================
+
+# AWS Load Balancer Controller
+resource "helm_release" "aws_load_balancer_controller" {
+  name       = "aws-load-balancer-controller"
+  repository = "https://aws.github.io/eks-charts"
+  chart      = "aws-load-balancer-controller"
+  version    = "1.7.1"
+  namespace  = "kube-system"
+
+  set {
+    name  = "clusterName"
+    value = module.eks.cluster_name
+  }
+
+  set {
+    name  = "serviceAccount.create"
+    value = "true"
+  }
+
+  set {
+    name  = "serviceAccount.name"
+    value = "aws-load-balancer-controller"
+  }
+
+  set {
+    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = module.eks.aws_lb_controller_irsa_role_arn
+  }
+
+  set {
+    name  = "region"
+    value = var.aws_region
+  }
+
+  set {
+    name  = "vpcId"
+    value = module.eks.vpc_id
+  }
+
+  depends_on = [module.eks]
+}
+
+# cert-manager (required by KServe)
+resource "helm_release" "cert_manager" {
+  name             = "cert-manager"
+  repository       = "https://charts.jetstack.io"
+  chart            = "cert-manager"
+  version          = "v1.16.2"
+  namespace        = "cert-manager"
+  create_namespace = true
+
+  set {
+    name  = "installCRDs"
+    value = "true"
+  }
+
+  depends_on = [module.eks]
+}
+
+# ArgoCD
+resource "helm_release" "argocd" {
+  name             = "argocd"
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argo-cd"
+  version          = "7.7.10"
+  namespace        = "argocd"
+  create_namespace = true
+
+  values = [file("${path.module}/../../helm/aws/argocd-values.yaml")]
+
+  depends_on = [helm_release.aws_load_balancer_controller]
+}
+
+# KServe CRDs
+resource "helm_release" "kserve" {
+  name       = "kserve"
+  repository = "oci://ghcr.io/kserve/charts"
+  chart      = "kserve-crd"
+  version    = "0.14.1"
+  namespace  = kubernetes_namespace.kserve.metadata[0].name
+
+  depends_on = [helm_release.cert_manager]
+}
+
+# KServe Controller
+resource "helm_release" "kserve_controller" {
+  name       = "kserve-controller"
+  repository = "oci://ghcr.io/kserve/charts"
+  chart      = "kserve"
+  version    = "0.14.1"
+  namespace  = kubernetes_namespace.kserve.metadata[0].name
+
+  set {
+    name  = "kserve.controller.deploymentMode"
+    value = "RawDeployment"
+  }
+
+  depends_on = [helm_release.kserve]
+}
+
+# MLflow
+resource "helm_release" "mlflow" {
+  name       = "mlflow"
+  repository = "https://community-charts.github.io/helm-charts"
+  chart      = "mlflow"
+  version    = "0.7.19"
+  namespace  = kubernetes_namespace.mlflow.metadata[0].name
+
+  values = [
+    templatefile("${path.module}/../../helm/aws/mlflow-values.yaml", {
+      db_host    = split(":", module.eks.mlflow_db_endpoint)[0]
+      db_name    = module.eks.mlflow_db_name
+      s3_bucket  = module.eks.mlflow_s3_bucket
+      aws_region = var.aws_region
+    })
+  ]
+
+  depends_on = [
+    kubernetes_service_account.mlflow,
+    kubernetes_secret.mlflow_postgres,
+    helm_release.aws_load_balancer_controller
+  ]
+}

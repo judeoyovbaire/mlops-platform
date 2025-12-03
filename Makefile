@@ -1,36 +1,36 @@
 # MLOps Platform Makefile
-# Common operations for development and deployment
+# AWS EKS Deployment
 
-.PHONY: help install install-dev uninstall validate lint test clean \
+.PHONY: help deploy status destroy validate lint test clean deps \
         terraform-init terraform-plan terraform-apply terraform-destroy \
-        port-forward-mlflow port-forward-argocd compile-pipeline \
-        local-deploy local-cleanup
+        port-forward-mlflow port-forward-argocd compile-pipeline deploy-example
 
 # Default target
 help:
 	@echo "MLOps Platform - Available Commands"
 	@echo "===================================="
 	@echo ""
-	@echo "Installation:"
-	@echo "  make install          - Install platform components"
-	@echo "  make install-dev      - Install with dev configurations"
-	@echo "  make uninstall        - Remove platform components"
+	@echo "AWS EKS Deployment:"
+	@echo "  make deploy           - Deploy to AWS EKS (~15-20 min)"
+	@echo "  make status           - Check deployment status"
+	@echo "  make destroy          - Destroy AWS resources"
+	@echo ""
+	@echo "Terraform (Advanced):"
+	@echo "  make terraform-init   - Initialize Terraform"
+	@echo "  make terraform-plan   - Plan infrastructure changes"
+	@echo "  make terraform-apply  - Apply infrastructure changes"
+	@echo "  make terraform-destroy - Destroy infrastructure"
 	@echo ""
 	@echo "Validation & Testing:"
 	@echo "  make validate         - Validate all manifests"
 	@echo "  make lint             - Lint Python and Terraform code"
 	@echo "  make test             - Run tests"
 	@echo ""
-	@echo "Terraform:"
-	@echo "  make terraform-init   - Initialize Terraform"
-	@echo "  make terraform-plan   - Plan infrastructure changes"
-	@echo "  make terraform-apply  - Apply infrastructure changes"
-	@echo "  make terraform-destroy - Destroy infrastructure"
-	@echo ""
-	@echo "Development:"
+	@echo "Development (after deployment):"
 	@echo "  make port-forward-mlflow  - Forward MLflow to localhost:5000"
 	@echo "  make port-forward-argocd  - Forward ArgoCD to localhost:8080"
 	@echo "  make compile-pipeline     - Compile Kubeflow pipeline"
+	@echo "  make deploy-example       - Deploy example inference service"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  make clean            - Clean generated files"
@@ -41,44 +41,52 @@ KUBECTL ?= kubectl
 HELM ?= helm
 TERRAFORM ?= terraform
 PYTHON ?= python3
-KUSTOMIZE ?= kustomize
 
 TERRAFORM_DIR = infrastructure/terraform/environments/dev
 PIPELINE_DIR = pipelines/training
 
 # =============================================================================
-# Installation
+# AWS EKS Deployment
 # =============================================================================
 
-install:
-	@echo "Installing MLOps Platform..."
-	./scripts/install.sh
+deploy:
+	@echo "Deploying MLOps Platform to AWS EKS..."
+	./scripts/deploy-aws.sh deploy
 
-install-dev:
-	@echo "Installing MLOps Platform (dev mode)..."
-	$(KUBECTL) apply -f infrastructure/kubernetes/namespace.yaml
-	$(KUSTOMIZE) build infrastructure/kubernetes | $(KUBECTL) apply -f -
+status:
+	@echo "Checking AWS deployment status..."
+	./scripts/deploy-aws.sh status
 
-uninstall:
-	@echo "Uninstalling MLOps Platform..."
-	$(HELM) uninstall argocd -n argocd || true
-	$(HELM) uninstall mlflow -n mlflow || true
-	$(KUBECTL) delete -f https://github.com/kserve/kserve/releases/download/v0.15.0/kserve.yaml || true
-	$(KUBECTL) delete namespace mlops mlflow kubeflow kserve argocd || true
-	@echo "Uninstall complete"
+destroy:
+	@echo "Destroying AWS EKS deployment..."
+	./scripts/deploy-aws.sh destroy
+
+# =============================================================================
+# Terraform (Advanced)
+# =============================================================================
+
+terraform-init:
+	@echo "Initializing Terraform..."
+	cd $(TERRAFORM_DIR) && $(TERRAFORM) init
+
+terraform-plan:
+	@echo "Planning Terraform changes..."
+	cd $(TERRAFORM_DIR) && $(TERRAFORM) plan
+
+terraform-apply:
+	@echo "Applying Terraform changes..."
+	cd $(TERRAFORM_DIR) && $(TERRAFORM) apply
+
+terraform-destroy:
+	@echo "Destroying Terraform resources..."
+	cd $(TERRAFORM_DIR) && $(TERRAFORM) destroy
 
 # =============================================================================
 # Validation & Testing
 # =============================================================================
 
-validate: validate-k8s validate-terraform validate-python
+validate: validate-terraform validate-python
 	@echo "All validations passed!"
-
-validate-k8s:
-	@echo "Validating Kubernetes manifests..."
-	@find components infrastructure/kubernetes -name '*.yaml' -exec $(KUBECTL) apply --dry-run=client -f {} \; 2>/dev/null || true
-	@$(KUSTOMIZE) build infrastructure/kubernetes > /dev/null
-	@echo "Kubernetes validation passed"
 
 validate-terraform:
 	@echo "Validating Terraform..."
@@ -118,27 +126,7 @@ test:
 	@echo "Tests passed"
 
 # =============================================================================
-# Terraform
-# =============================================================================
-
-terraform-init:
-	@echo "Initializing Terraform..."
-	cd $(TERRAFORM_DIR) && $(TERRAFORM) init
-
-terraform-plan:
-	@echo "Planning Terraform changes..."
-	cd $(TERRAFORM_DIR) && $(TERRAFORM) plan
-
-terraform-apply:
-	@echo "Applying Terraform changes..."
-	cd $(TERRAFORM_DIR) && $(TERRAFORM) apply
-
-terraform-destroy:
-	@echo "Destroying Terraform resources..."
-	cd $(TERRAFORM_DIR) && $(TERRAFORM) destroy
-
-# =============================================================================
-# Development
+# Development (post-deployment)
 # =============================================================================
 
 port-forward-mlflow:
@@ -185,33 +173,8 @@ clean:
 	find . -type f -name "*.pyc" -delete
 	@echo "Clean complete"
 
-status:
-	@echo "=== Namespaces ==="
-	$(KUBECTL) get namespaces -l app.kubernetes.io/part-of=mlops-platform
-	@echo ""
-	@echo "=== MLflow ==="
-	$(KUBECTL) get pods -n mlflow
-	@echo ""
-	@echo "=== KServe InferenceServices ==="
-	$(KUBECTL) get inferenceservice -n mlops 2>/dev/null || echo "No InferenceServices found"
-	@echo ""
-	@echo "=== ArgoCD ==="
-	$(KUBECTL) get pods -n argocd
-
 logs-mlflow:
 	$(KUBECTL) logs -f deployment/mlflow -n mlflow
 
 logs-argocd:
 	$(KUBECTL) logs -f deployment/argocd-server -n argocd
-
-# =============================================================================
-# Local Development (Kind)
-# =============================================================================
-
-local-deploy:
-	@echo "Deploying MLOps Platform locally with Kind..."
-	./scripts/deploy-local.sh
-
-local-cleanup:
-	@echo "Cleaning up local Kind cluster..."
-	./scripts/deploy-local.sh cleanup

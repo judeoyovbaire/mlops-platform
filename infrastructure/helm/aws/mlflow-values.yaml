@@ -1,0 +1,95 @@
+# MLflow Helm Chart Values for AWS EKS
+# Uses RDS PostgreSQL and S3 for artifacts
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/mlflow/mlflow
+  tag: "v2.17.2"
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: false
+  name: "mlflow"
+
+service:
+  type: ClusterIP
+  port: 5000
+
+# Backend store - RDS PostgreSQL
+backendStore:
+  databaseMigration: true
+  postgres:
+    enabled: true
+    host: "${db_host}"
+    port: 5432
+    database: "${db_name}"
+    user: "mlflow"
+    existingSecret: "mlflow-postgres"
+    existingSecretPasswordKey: "password"
+
+# Artifact store - S3
+artifactRoot:
+  s3:
+    enabled: true
+    bucket: "${s3_bucket}"
+    awsAccessKeyId: ""
+    awsSecretAccessKey: ""
+
+# Environment variables for AWS SDK
+extraEnvVars:
+  - name: AWS_DEFAULT_REGION
+    value: "${aws_region}"
+  - name: MLFLOW_S3_ENDPOINT_URL
+    value: ""
+
+# Resource configuration
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Pod security
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+# Probes
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+# ALB Ingress
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+  hosts:
+    - paths:
+        - path: /
+          pathType: Prefix

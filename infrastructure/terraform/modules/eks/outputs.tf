@@ -57,6 +57,11 @@ output "mlflow_irsa_role_arn" {
   value       = module.mlflow_irsa.iam_role_arn
 }
 
+output "aws_lb_controller_irsa_role_arn" {
+  description = "IAM role ARN for AWS Load Balancer Controller IRSA"
+  value       = module.aws_lb_controller_irsa.iam_role_arn
+}
+
 output "mlflow_db_endpoint" {
   description = "Endpoint for MLflow RDS database"
   value       = aws_db_instance.mlflow.endpoint
