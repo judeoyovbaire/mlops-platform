@@ -46,13 +46,13 @@ A production-ready MLOps platform for model training, versioning, and deployment
 | Component | Technology | Version | Purpose |
 |-----------|------------|---------|---------|
 | Pipeline Orchestration | Kubeflow Pipelines | Latest | ML workflow automation |
-| Experiment Tracking | MLflow | 3.6.0 | Model versioning & metrics |
-| Model Serving | KServe | 0.14.1 | Production inference (CNCF) |
-| GitOps | ArgoCD | 7.7.x | Declarative deployments |
-| Ingress | AWS ALB Controller | 1.7.1 | External load balancing |
-| TLS | cert-manager | 1.16.2 | Certificate management |
+| Experiment Tracking | MLflow | 3.5.1 | Model versioning & metrics |
+| Model Serving | KServe | 0.15.2 | Production inference (CNCF) |
+| GitOps | ArgoCD | 7.8.0 | Declarative deployments |
+| Ingress | AWS ALB Controller | 1.11.0 | External load balancing |
+| TLS | cert-manager | 1.17.0 | Certificate management |
 | Monitoring | Prometheus + Grafana | Latest | Observability |
-| Infrastructure | Terraform | 1.6+ | IaC for AWS EKS |
+| Infrastructure | Terraform EKS | 21.x | IaC for AWS EKS |
 | CI/CD | GitHub Actions | - | Automated testing |
 
 ## Project Structure
