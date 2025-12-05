@@ -52,7 +52,7 @@ A production-ready MLOps platform for model training, versioning, and deployment
 | Ingress | AWS ALB Controller | 1.11.0 | External load balancing |
 | TLS | cert-manager | 1.17.0 | Certificate management |
 | Monitoring | Prometheus + Grafana | Latest | Observability |
-| Infrastructure | Terraform EKS | 21.x | IaC for AWS EKS |
+| Infrastructure | Terraform EKS | 20.x | IaC for AWS EKS |
 | CI/CD | GitHub Actions | - | Automated testing |
 
 ## Project Structure
