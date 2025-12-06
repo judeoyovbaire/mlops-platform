@@ -114,11 +114,12 @@ spec:
 ```
 
 **Included Models:**
-| Model | Size | GPU Memory | Use Case |
-|-------|------|------------|----------|
-| Mistral-7B-Instruct | 7B | ~14GB | General purpose |
-| TinyLlama-1.1B | 1.1B | ~4GB | Testing, demos |
-| CodeLlama-7B | 7B | ~14GB | Code generation |
+
+| Model               | Size | GPU Memory | Use Case        |
+|---------------------|------|------------|-----------------|
+| Mistral-7B-Instruct | 7B   | ~14GB      | General purpose |
+| TinyLlama-1.1B      | 1.1B | ~4GB       | Testing, demos  |
+| CodeLlama-7B        | 7B   | ~14GB      | Code generation |
 
 ### 5. GitOps with ArgoCD
 
@@ -132,11 +133,11 @@ All platform configurations are managed through Git, enabling:
 
 The platform architecture is designed for portability across major cloud providers:
 
-| Cloud | Module | Status | Key Services |
-|-------|--------|--------|--------------|
-| AWS | `modules/eks` | **Production Ready** | EKS, S3, RDS, ALB, IRSA |
-| GCP | `modules/gke` | Coming Soon | GKE, GCS, Cloud SQL, Workload Identity |
-| Azure | `modules/aks` | Coming Soon | AKS, Blob Storage, PostgreSQL, Workload Identity |
+| Cloud | Module         | Status             | Key Services                            |
+|-------|----------------|--------------------|-----------------------------------------|
+| AWS   | `modules/eks`  | **Production Ready** | EKS, S3, RDS, ALB, IRSA               |
+| GCP   | `modules/gke`  | Coming Soon        | GKE, GCS, Cloud SQL, Workload Identity  |
+| Azure | `modules/aks`  | Coming Soon        | AKS, Blob Storage, PostgreSQL, Workload Identity |
 
 The Kubernetes layer (KServe, MLflow, ArgoCD) remains consistent across clouds—only the infrastructure provisioning differs.
 
@@ -178,14 +179,14 @@ infrastructure/terraform/
 
 The dev environment Terraform automatically deploys:
 
-| Component | Chart | Purpose |
-|-----------|-------|---------|
-| AWS Load Balancer Controller | eks-charts/aws-load-balancer-controller | ALB Ingress |
-| cert-manager | jetstack/cert-manager | TLS certificates |
-| ArgoCD | argo/argo-cd | GitOps deployments |
-| KServe CRDs | kserve/kserve-crd | Custom resources |
-| KServe Controller | kserve/kserve | Model serving |
-| MLflow | community-charts/mlflow | Experiment tracking |
+| Component                    | Chart                                    | Purpose             |
+|------------------------------|------------------------------------------|---------------------|
+| AWS Load Balancer Controller | eks-charts/aws-load-balancer-controller  | ALB Ingress         |
+| cert-manager                 | jetstack/cert-manager                    | TLS certificates    |
+| ArgoCD                       | argo/argo-cd                             | GitOps deployments  |
+| KServe CRDs                  | kserve/kserve-crd                        | Custom resources    |
+| KServe Controller            | kserve/kserve                            | Model serving       |
+| MLflow                       | community-charts/mlflow                  | Experiment tracking |
 
 ### CI/CD Pipeline
 
@@ -256,12 +257,13 @@ infrastructure/kubernetes/network-policies.yaml
 ```
 
 **Policy Summary:**
-| Namespace | Ingress From | Egress To |
-|-----------|--------------|-----------|
-| mlops | ALB (inference), internal | - |
-| mlflow | mlops, kubeflow, kserve, ALB | PostgreSQL (RDS), S3 |
-| kubeflow | ALB (UI) | mlflow, kserve |
-| kserve | kube-system | Kubernetes API |
+
+| Namespace | Ingress From                 | Egress To            |
+|-----------|------------------------------|----------------------|
+| mlops     | ALB (inference), internal    | -                    |
+| mlflow    | mlops, kubeflow, kserve, ALB | PostgreSQL (RDS), S3 |
+| kubeflow  | ALB (UI)                     | mlflow, kserve       |
+| kserve    | kube-system                  | Kubernetes API       |
 
 ### Security Layers
 
@@ -301,14 +303,14 @@ The platform includes ServiceMonitors for metrics collection:
 
 Pre-configured PrometheusRules for common issues:
 
-| Alert | Condition | Severity |
-|-------|-----------|----------|
-| HighInferenceLatency | P95 > 1s for 5m | warning |
-| HighInferenceErrorRate | >5% errors for 5m | critical |
-| InferenceServiceRestarts | >3 restarts/hour | warning |
-| MLflowDown | Server unreachable for 2m | critical |
-| HighPipelineFailureRate | >10% failures/hour | warning |
-| LowGPUUtilization | <20% for 30m | info |
+| Alert                    | Condition               | Severity |
+|--------------------------|-------------------------|----------|
+| HighInferenceLatency     | P95 > 1s for 5m         | warning  |
+| HighInferenceErrorRate   | >5% errors for 5m       | critical |
+| InferenceServiceRestarts | >3 restarts/hour        | warning  |
+| MLflowDown               | Server unreachable 2m   | critical |
+| HighPipelineFailureRate  | >10% failures/hour      | warning  |
+| LowGPUUtilization        | <20% for 30m            | info     |
 
 ### Grafana Dashboard
 
