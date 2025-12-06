@@ -83,13 +83,62 @@ spec:
       storageUri: s3://models/sklearn/iris
 ```
 
-### 4. GitOps with ArgoCD 3.x
+### 4. LLM Inference with vLLM
+
+The platform includes support for LLM inference using vLLM on GPU nodes:
+
+**Features:**
+- PagedAttention for efficient memory management
+- Continuous batching for high throughput
+- OpenAI-compatible API endpoints
+- Scale-to-zero for cost optimization
+
+**Example Deployment:**
+```yaml
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: llm-mistral
+spec:
+  predictor:
+    containers:
+      - name: kserve-container
+        image: vllm/vllm-openai:v0.8.0
+        args:
+          - --model=mistralai/Mistral-7B-Instruct-v0.2
+          - --max-model-len=4096
+          - --gpu-memory-utilization=0.9
+        resources:
+          limits:
+            nvidia.com/gpu: "1"
+```
+
+**Included Models:**
+| Model | Size | GPU Memory | Use Case |
+|-------|------|------------|----------|
+| Mistral-7B-Instruct | 7B | ~14GB | General purpose |
+| TinyLlama-1.1B | 1.1B | ~4GB | Testing, demos |
+| CodeLlama-7B | 7B | ~14GB | Code generation |
+
+### 5. GitOps with ArgoCD
 
 All platform configurations are managed through Git, enabling:
 - Version-controlled infrastructure
 - Automated sync and drift detection
 - Rollback capabilities
 - Multi-environment promotion
+
+## Multi-Cloud Support
+
+The platform architecture is designed for portability across major cloud providers:
+
+| Cloud | Module | Status | Key Services |
+|-------|--------|--------|--------------|
+| AWS | `modules/eks` | **Production Ready** | EKS, S3, RDS, ALB, IRSA |
+| GCP | `modules/gke` | Coming Soon | GKE, GCS, Cloud SQL, Workload Identity |
+| Azure | `modules/aks` | Coming Soon | AKS, Blob Storage, PostgreSQL, Workload Identity |
+
+The Kubernetes layer (KServe, MLflow, ArgoCD) remains consistent across clouds—only the infrastructure provisioning differs.
 
 ## AWS Infrastructure
 
@@ -99,10 +148,13 @@ The platform includes a production-ready Terraform module for AWS EKS:
 
 ```
 infrastructure/terraform/
-├── modules/eks/
-│   ├── main.tf          # VPC, EKS cluster, node groups, S3, RDS, IRSA
-│   ├── variables.tf     # Configurable inputs
-│   └── outputs.tf       # Cluster endpoints, ARNs
+├── modules/
+│   ├── eks/             # AWS EKS (production-ready)
+│   │   ├── main.tf      # VPC, EKS cluster, node groups, S3, RDS, IRSA
+│   │   ├── variables.tf # Configurable inputs
+│   │   └── outputs.tf   # Cluster endpoints, ARNs
+│   ├── gke/             # GCP GKE (coming soon)
+│   └── aks/             # Azure AKS (coming soon)
 └── environments/dev/
     ├── main.tf          # Dev environment config with Helm releases
     ├── outputs.tf       # Access information
@@ -361,3 +413,26 @@ For local development or when ALB is not needed:
 make port-forward-mlflow   # MLflow at localhost:5000
 make port-forward-argocd   # ArgoCD at localhost:8080
 ```
+
+## Examples
+
+The platform includes working examples to help you get started:
+
+| Example | Description | Complexity |
+|---------|-------------|------------|
+| [Iris Classifier](../examples/iris-classifier/) | sklearn model with MLflow tracking and KServe deployment | Beginner |
+| [LLM Inference](../examples/llm-inference/) | Mistral-7B, TinyLlama, CodeLlama with vLLM on GPU | Advanced |
+
+## Component Versions
+
+Current versions deployed by the platform:
+
+| Component | Version | Notes |
+|-----------|---------|-------|
+| MLflow | 3.5.1 | With model aliases and GenAI support |
+| KServe | 0.16.0 | CNCF Incubating, RawDeployment mode |
+| ArgoCD | 7.9.0 | Chart deploys ArgoCD v2.x |
+| AWS ALB Controller | 1.16.0 | With Gateway API support |
+| cert-manager | 1.19.1 | TLS certificate management |
+| vLLM | 0.8.0 | High-throughput LLM inference |
+| Terraform EKS Module | 20.x | Compatible with AWS provider 5.x |
