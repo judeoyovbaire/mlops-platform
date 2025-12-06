@@ -85,10 +85,10 @@ Data Scientist                    Platform (Automated)
 |-----------|------------|---------|---------|
 | Pipeline Orchestration | Kubeflow Pipelines | Latest | ML workflow automation |
 | Experiment Tracking | MLflow | 3.5.1 | Model versioning & metrics |
-| Model Serving | KServe | 0.15.2 | Production inference (CNCF) |
-| GitOps | ArgoCD | 7.8.0 | Declarative deployments |
-| Ingress | AWS ALB Controller | 1.11.0 | External load balancing |
-| TLS | cert-manager | 1.17.0 | Certificate management |
+| Model Serving | KServe | 0.16.0 | Production inference (CNCF) |
+| GitOps | ArgoCD | 7.9.0 | Declarative deployments |
+| Ingress | AWS ALB Controller | 1.16.0 | External load balancing |
+| TLS | cert-manager | 1.19.1 | Certificate management |
 | Monitoring | Prometheus + Grafana | Latest | Observability |
 | Infrastructure | Terraform EKS | 20.x | IaC for AWS EKS |
 | CI/CD | GitHub Actions | - | Automated testing |

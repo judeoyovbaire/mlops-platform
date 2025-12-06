@@ -208,7 +208,7 @@ resource "helm_release" "aws_load_balancer_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
-  version    = "1.11.0"
+  version    = "1.16.0"
   namespace  = "kube-system"
 
   set {
@@ -249,7 +249,7 @@ resource "helm_release" "cert_manager" {
   name             = "cert-manager"
   repository       = "https://charts.jetstack.io"
   chart            = "cert-manager"
-  version          = "v1.17.0"
+  version          = "v1.19.1"
   namespace        = "cert-manager"
   create_namespace = true
 
@@ -266,7 +266,7 @@ resource "helm_release" "argocd" {
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
   chart            = "argo-cd"
-  version          = "7.8.0"
+  version          = "7.9.0"
   namespace        = "argocd"
   create_namespace = true
 
@@ -280,7 +280,7 @@ resource "helm_release" "kserve" {
   name       = "kserve"
   repository = "oci://ghcr.io/kserve/charts"
   chart      = "kserve-crd"
-  version    = "0.15.2"
+  version    = "0.16.0"
   namespace  = kubernetes_namespace.kserve.metadata[0].name
 
   depends_on = [helm_release.cert_manager]
@@ -291,7 +291,7 @@ resource "helm_release" "kserve_controller" {
   name       = "kserve-controller"
   repository = "oci://ghcr.io/kserve/charts"
   chart      = "kserve"
-  version    = "0.15.2"
+  version    = "0.16.0"
   namespace  = kubernetes_namespace.kserve.metadata[0].name
 
   set {
