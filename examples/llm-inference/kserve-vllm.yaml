@@ -1,0 +1,203 @@
+# KServe InferenceService for LLM with vLLM
+# Deploys Mistral-7B-Instruct for text generation
+#
+# Prerequisites:
+#   - GPU node pool with NVIDIA GPUs (g4dn.xlarge or larger)
+#   - At least 16GB GPU memory
+#
+# Usage:
+#   kubectl apply -f kserve-vllm.yaml
+#   kubectl wait --for=condition=Ready inferenceservice/llm-mistral -n mlops --timeout=600s
+
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: llm-mistral
+  namespace: mlops
+  annotations:
+    # Autoscaling configuration
+    autoscaling.knative.dev/target: "5"
+    autoscaling.knative.dev/metric: "concurrency"
+    autoscaling.knative.dev/minScale: "0"
+    autoscaling.knative.dev/maxScale: "2"
+spec:
+  predictor:
+    # Timeout for model loading (large models need more time)
+    timeout: 1800
+
+    containers:
+      - name: kserve-container
+        image: vllm/vllm-openai:v0.6.4
+
+        args:
+          - --model=mistralai/Mistral-7B-Instruct-v0.2
+          - --max-model-len=4096
+          - --gpu-memory-utilization=0.9
+          - --dtype=float16
+          - --port=8080
+          - --served-model-name=mistral-7b
+
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+
+        env:
+          # HuggingFace token for gated models (optional)
+          # - name: HUGGING_FACE_HUB_TOKEN
+          #   valueFrom:
+          #     secretKeyRef:
+          #       name: huggingface-secret
+          #       key: token
+          - name: VLLM_ATTENTION_BACKEND
+            value: "FLASH_ATTN"
+
+        resources:
+          limits:
+            nvidia.com/gpu: "1"
+            memory: "24Gi"
+          requests:
+            cpu: "4"
+            memory: "16Gi"
+            nvidia.com/gpu: "1"
+
+        # Health checks
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+    # GPU node selector
+    nodeSelector:
+      role: gpu
+
+    # Toleration for GPU taint
+    tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+
+---
+# Smaller model for testing (TinyLlama - works on smaller GPUs)
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: llm-tinyllama
+  namespace: mlops
+  annotations:
+    autoscaling.knative.dev/minScale: "0"
+    autoscaling.knative.dev/maxScale: "1"
+spec:
+  predictor:
+    timeout: 600
+
+    containers:
+      - name: kserve-container
+        image: vllm/vllm-openai:v0.6.4
+
+        args:
+          - --model=TinyLlama/TinyLlama-1.1B-Chat-v1.0
+          - --max-model-len=2048
+          - --gpu-memory-utilization=0.8
+          - --dtype=float16
+          - --port=8080
+          - --served-model-name=tinyllama
+
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+
+        resources:
+          limits:
+            nvidia.com/gpu: "1"
+            memory: "8Gi"
+          requests:
+            cpu: "2"
+            memory: "4Gi"
+            nvidia.com/gpu: "1"
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          failureThreshold: 20
+
+    nodeSelector:
+      role: gpu
+
+    tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+
+---
+# Code generation model (CodeLlama)
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: llm-codellama
+  namespace: mlops
+  annotations:
+    autoscaling.knative.dev/minScale: "0"
+    autoscaling.knative.dev/maxScale: "1"
+spec:
+  predictor:
+    timeout: 1800
+
+    containers:
+      - name: kserve-container
+        image: vllm/vllm-openai:v0.6.4
+
+        args:
+          - --model=codellama/CodeLlama-7b-Instruct-hf
+          - --max-model-len=4096
+          - --gpu-memory-utilization=0.9
+          - --dtype=float16
+          - --port=8080
+          - --served-model-name=codellama
+
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+
+        resources:
+          limits:
+            nvidia.com/gpu: "1"
+            memory: "24Gi"
+          requests:
+            cpu: "4"
+            memory: "16Gi"
+            nvidia.com/gpu: "1"
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          failureThreshold: 30
+
+    nodeSelector:
+      role: gpu
+
+    tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"

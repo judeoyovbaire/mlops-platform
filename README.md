@@ -102,22 +102,19 @@ mlops-platform/
 ├── components/
 │   └── kserve/              # KServe InferenceService examples
 ├── examples/
-│   └── iris-classifier/     # Complete end-to-end example
-│       ├── train.py         # Training script
-│       ├── test_inference.py # Inference testing
-│       └── kserve-deployment.yaml
+│   ├── iris-classifier/     # sklearn model (beginner)
+│   └── llm-inference/       # LLM with vLLM (advanced)
 ├── infrastructure/
 │   ├── kubernetes/          # Network policies, monitoring
-│   │   ├── network-policies.yaml
-│   │   └── monitoring.yaml  # ServiceMonitors & alerts
-│   ├── terraform/           # AWS EKS infrastructure
-│   │   ├── modules/eks/     # Reusable EKS module
-│   │   └── environments/dev/ # Dev environment config
+│   ├── terraform/
+│   │   ├── modules/
+│   │   │   ├── eks/         # AWS EKS (production-ready)
+│   │   │   ├── gke/         # GCP GKE (coming soon)
+│   │   │   └── aks/         # Azure AKS (coming soon)
+│   │   └── environments/dev/
 │   └── helm/aws/            # AWS-specific Helm values
-│       ├── mlflow-values.yaml
-│       └── argocd-values.yaml
 ├── pipelines/
-│   └── training/            # Training pipeline definitions
+│   └── training/            # Kubeflow pipeline definitions
 ├── scripts/
 │   └── deploy-aws.sh        # AWS deployment script
 ├── docs/
@@ -276,10 +273,32 @@ Estimated monthly costs for the dev environment (us-west-2):
 - [x] Security hardening (NetworkPolicies, IRSA)
 - [x] Observability (ServiceMonitors, alerts, dashboards)
 
+## Multi-Cloud Support
+
+The platform architecture is designed for portability across major cloud providers:
+
+| Cloud | Module | Status | Key Services |
+|-------|--------|--------|--------------|
+| AWS | `modules/eks` | **Production Ready** | EKS, S3, RDS, ALB, IRSA |
+| GCP | `modules/gke` | Coming Soon | GKE, GCS, Cloud SQL, Workload Identity |
+| Azure | `modules/aks` | Coming Soon | AKS, Blob Storage, PostgreSQL, Workload Identity |
+
+The Kubernetes layer (KServe, MLflow, ArgoCD) remains consistent across clouds—only the infrastructure provisioning differs. See individual module READMEs for cloud-specific architecture mappings.
+
+## Examples
+
+| Example | Description | Complexity |
+|---------|-------------|------------|
+| [Iris Classifier](examples/iris-classifier/) | sklearn model with MLflow tracking | Beginner |
+| [LLM Inference](examples/llm-inference/) | Mistral-7B with vLLM on GPU | Advanced |
+
 ## Documentation
 
 - [Architecture Deep Dive](docs/architecture.md)
 - [Example: Iris Classifier](examples/iris-classifier/README.md)
+- [Example: LLM Inference](examples/llm-inference/README.md)
+- [GKE Module (Coming Soon)](infrastructure/terraform/modules/gke/README.md)
+- [AKS Module (Coming Soon)](infrastructure/terraform/modules/aks/README.md)
 
 ## Why These Tools?
 
