@@ -206,17 +206,17 @@ jobs:
 ## Data Flow
 
 ```
-┌─────────┐    ┌──────────┐    ┌─────────┐    ┌──────────┐    ┌─────────┐
-│  Data   │───▶│ Feature  │───▶│ Train   │───▶│ Register │───▶│  Serve  │
-│ Source  │    │ Store    │    │ Model   │    │ Model    │    │ Model   │
-└─────────┘    └──────────┘    └─────────┘    └──────────┘    └─────────┘
+┌─────────┐    ┌──────────┐    ┌─────────┐    ┌──────────┐    ┌────────┐
+│  Data   │───▶│ Feature  │───▶│ Train   │───▶│ Register │───▶│ Serve  │
+│ Source  │    │  Store   │    │ Model   │    │  Model   │    │ Model  │
+└─────────┘    └──────────┘    └─────────┘    └──────────┘    └────────┘
      │              │               │              │               │
      └──────────────┴───────────────┴──────────────┴───────────────┘
                               │
-                    ┌─────────▼─────────┐
-                    │   Observability   │
-                    │ (Prometheus/Grafana)│
-                    └───────────────────┘
+                    ┌─────────▼────────────┐
+                    │     Observability    │
+                    │ (Prometheus/Grafana) │
+                    └──────────────────────┘
 ```
 
 ## Infrastructure Layers
@@ -268,22 +268,22 @@ infrastructure/kubernetes/network-policies.yaml
 ### Security Layers
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Security Layers                           │
-├─────────────────────────────────────────────────────────────┤
-│  Network Policies    │  Pod Security    │  RBAC             │
-│  ─────────────────   │  ─────────────   │  ──────           │
-│  - Namespace isolation│  - Non-root     │  - Role per       │
-│  - Ingress/Egress    │  - Read-only FS │    namespace      │
-│  - VPC security groups│  - Capabilities │  - Least          │
-│                      │                 │    privilege      │
-├─────────────────────────────────────────────────────────────┤
-│  IRSA (AWS)          │  Image Security │  Audit            │
-│  ─────────────────   │  ──────────────│  ─────             │
-│  - Pod-level IAM     │  - Signed images│  - CloudTrail     │
-│  - No static creds   │  - Vulnerability│  - EKS audit logs │
-│  - S3/RDS access     │    scanning    │                   │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│                    Security Layers                            │
+├───────────────────────────────────────────────────────────────┤
+│  Network Policies      │  Pod Security    │  RBAC             │
+│  ─────────────────     │  ─────────────   │  ──────           │
+│  - Namespace isolation │  - Non-root      │  - Role per       │
+│  - Ingress/Egress      │  - Read-only FS  │    namespace      │
+│  - VPC security groups │  - Capabilities  │  - Least          │
+│                        │                  │    privilege      │
+├───────────────────────────────────────────────────────────────┤
+│  IRSA (AWS)            │  Image Security  │  Audit            │
+│  ─────────────────     │  ──────────────  │  ─────            │
+│  - Pod-level IAM       │  - Signed images │  - CloudTrail     │
+│  - No static creds     │  - Vulnerability │  - EKS audit logs │
+│  - S3/RDS access       │    scanning      │                   │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 ## Observability
