@@ -121,7 +121,38 @@ spec:
 | TinyLlama-1.1B      | 1.1B | ~4GB       | Testing, demos  |
 | CodeLlama-7B        | 7B   | ~14GB      | Code generation |
 
-### 5. GitOps with ArgoCD
+### 5. Karpenter for GPU Autoscaling
+
+Karpenter provides just-in-time node provisioning for GPU and training workloads:
+
+**Key Benefits:**
+- Faster node provisioning than Cluster Autoscaler
+- Native SPOT instance support with fallback to on-demand
+- Right-sizing: Provisions optimal instance types automatically
+- Consolidation: Removes underutilized nodes to reduce costs
+
+**NodePools Configured:**
+
+| NodePool | Instance Types | Capacity | Taints |
+|----------|---------------|----------|--------|
+| gpu-workloads | g4dn, g5, p3, p4d | SPOT preferred | `nvidia.com/gpu=true:NoSchedule` |
+| training-workloads | c5, m5, r5 (xlarge-4xlarge) | SPOT only | `workload=training:NoSchedule` |
+
+**Example GPU Pod Spec:**
+```yaml
+spec:
+  nodeSelector:
+    node-type: gpu
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+  resources:
+    limits:
+      nvidia.com/gpu: "1"
+```
+
+### 6. GitOps with ArgoCD
 
 All platform configurations are managed through Git, enabling:
 - Version-controlled infrastructure
@@ -433,6 +464,8 @@ Current versions deployed by the platform:
 |-----------|---------|-------|
 | MLflow | 3.5.1 | With model aliases and GenAI support |
 | KServe | 0.16.0 | CNCF Incubating, RawDeployment mode |
+| Argo Workflows | 0.46.1 | ML pipeline execution engine |
+| Karpenter | 1.5.6 | GPU autoscaling with SPOT support |
 | ArgoCD | 7.9.0 | Chart deploys ArgoCD v2.x |
 | AWS ALB Controller | 1.16.0 | With Gateway API support |
 | cert-manager | 1.19.1 | TLS certificate management |

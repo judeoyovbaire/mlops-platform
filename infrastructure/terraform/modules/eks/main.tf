@@ -331,3 +331,99 @@ resource "aws_db_instance" "mlflow" {
 
   tags = var.tags
 }
+
+# =============================================================================
+# Karpenter
+# =============================================================================
+
+# IRSA for Karpenter
+module "karpenter_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.0"
+
+  role_name                          = "${var.cluster_name}-karpenter"
+  attach_karpenter_controller_policy = true
+
+  karpenter_controller_cluster_name = module.eks.cluster_name
+  karpenter_controller_node_iam_role_arns = [
+    module.eks.eks_managed_node_groups["general"].iam_role_arn
+  ]
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["karpenter:karpenter"]
+    }
+  }
+
+  tags = var.tags
+}
+
+# IAM Role for Karpenter nodes
+resource "aws_iam_role" "karpenter_node" {
+  name = "${var.cluster_name}-karpenter-node"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter_node_worker" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.karpenter_node.name
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter_node_cni" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+  role       = aws_iam_role.karpenter_node.name
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter_node_ecr" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.karpenter_node.name
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter_node_ssm" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  role       = aws_iam_role.karpenter_node.name
+}
+
+resource "aws_iam_instance_profile" "karpenter_node" {
+  name = "${var.cluster_name}-karpenter-node"
+  role = aws_iam_role.karpenter_node.name
+
+  tags = var.tags
+}
+
+# Allow Karpenter nodes to join the cluster
+resource "aws_eks_access_entry" "karpenter_node" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = aws_iam_role.karpenter_node.arn
+  type          = "EC2_LINUX"
+}
+
+# Tag subnets for Karpenter discovery
+resource "aws_ec2_tag" "private_subnet_karpenter" {
+  for_each    = toset(module.vpc.private_subnets)
+  resource_id = each.value
+  key         = "karpenter.sh/discovery"
+  value       = var.cluster_name
+}
+
+# Tag security group for Karpenter discovery
+resource "aws_ec2_tag" "node_sg_karpenter" {
+  resource_id = module.eks.node_security_group_id
+  key         = "karpenter.sh/discovery"
+  value       = var.cluster_name
+}

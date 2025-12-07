@@ -77,3 +77,19 @@ output "configure_kubectl" {
   description = "Command to configure kubectl"
   value       = "aws eks update-kubeconfig --region ${data.aws_availability_zones.available.id} --name ${module.eks.cluster_name}"
 }
+
+# Karpenter outputs
+output "karpenter_irsa_role_arn" {
+  description = "IAM role ARN for Karpenter IRSA"
+  value       = module.karpenter_irsa.iam_role_arn
+}
+
+output "karpenter_node_role_name" {
+  description = "IAM role name for Karpenter nodes"
+  value       = aws_iam_role.karpenter_node.name
+}
+
+output "karpenter_node_instance_profile_name" {
+  description = "Instance profile name for Karpenter nodes"
+  value       = aws_iam_instance_profile.karpenter_node.name
+}

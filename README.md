@@ -83,9 +83,10 @@ Data Scientist                    Platform (Automated)
 
 | Component | Technology | Version | Purpose |
 |-----------|------------|---------|---------|
-| Pipeline Orchestration | Kubeflow Pipelines | Latest | ML workflow automation |
+| Pipeline Orchestration | Argo Workflows | 0.46.1 | ML workflow automation |
 | Experiment Tracking | MLflow | 3.5.1 | Model versioning & metrics |
 | Model Serving | KServe | 0.16.0 | Production inference (CNCF) |
+| GPU Autoscaling | Karpenter | 1.5.6 | Dynamic GPU node provisioning |
 | GitOps | ArgoCD | 7.9.0 | Declarative deployments |
 | Ingress | AWS ALB Controller | 1.16.0 | External load balancing |
 | TLS | cert-manager | 1.19.1 | Certificate management |
@@ -257,8 +258,9 @@ Estimated monthly costs for the dev environment (us-west-2):
 
 ### Phase 2: Training Infrastructure
 - [x] GPU node groups in Terraform
+- [x] Argo Workflows for ML pipelines
+- [x] Karpenter for dynamic GPU autoscaling
 - [ ] Distributed training support
-- [ ] Pipeline templates for common ML tasks
 - [ ] Data versioning with DVC
 
 ### Phase 3: Model Serving

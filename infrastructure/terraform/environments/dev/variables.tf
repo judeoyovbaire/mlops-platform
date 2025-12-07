@@ -42,6 +42,13 @@ variable "mlflow_db_password" {
   sensitive   = true
 }
 
+variable "pipeline_db_password" {
+  description = "Password for Kubeflow Pipelines MySQL database"
+  type        = string
+  sensitive   = true
+  default     = "changeme-in-production"
+}
+
 variable "tags" {
   description = "Additional tags for resources"
   type        = map(string)

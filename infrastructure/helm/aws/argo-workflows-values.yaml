@@ -1,0 +1,109 @@
+# Argo Workflows values for Kubeflow Pipelines
+# This provides the workflow execution engine for ML pipelines
+
+# Controller configuration
+controller:
+  replicas: 1
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Workflow defaults
+  workflowDefaults:
+    spec:
+      # Default TTL for completed workflows
+      ttlStrategy:
+        secondsAfterCompletion: 86400  # 24 hours
+        secondsAfterSuccess: 43200      # 12 hours
+        secondsAfterFailure: 172800     # 48 hours
+
+      # Pod garbage collection
+      podGC:
+        strategy: OnPodCompletion
+
+  # Persistence for workflow archive
+  persistence:
+    archive: true
+    mysql:
+      host: mysql
+      port: 3306
+      database: mlpipeline
+      tableName: argo_workflows
+      userNameSecret:
+        name: mysql
+        key: mysql-password
+      passwordSecret:
+        name: mysql
+        key: mysql-password
+
+  # Metrics for Prometheus
+  metricsConfig:
+    enabled: true
+
+# Server (UI) configuration
+server:
+  replicas: 1
+
+  # Expose via ClusterIP (use port-forward or ingress)
+  serviceType: ClusterIP
+
+  # Auth mode - client for dev, sso for production
+  authModes:
+    - client
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  # Extra arguments
+  extraArgs:
+    - --auth-mode=client
+
+# Artifact repository configuration
+artifactRepository:
+  # Use MinIO for S3-compatible artifact storage
+  s3:
+    endpoint: minio:9000
+    bucket: mlpipeline
+    insecure: true
+    accessKeySecret:
+      name: minio
+      key: rootUser
+    secretKeySecret:
+      name: minio
+      key: rootPassword
+
+# Workflow templates
+workflowTemplates:
+  # Enable workflow templates CRD
+  enabled: true
+
+# Use emissary executor (recommended)
+# Tag should match Argo Workflows version (chart 0.46.1 = app v3.6.x)
+executor:
+  image:
+    registry: quay.io
+    repository: argoproj/argoexec
+    tag: v3.6.4
+
+# RBAC configuration
+createAggregateRoles: true
+
+# Service account
+workflow:
+  serviceAccount:
+    create: true
+    name: argo-workflow
+
+  rbac:
+    create: true
