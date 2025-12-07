@@ -16,6 +16,10 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 2.11"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
 
   # Uncomment to use S3 backend for state management
@@ -65,6 +69,94 @@ provider "helm" {
   }
 }
 
+# =============================================================================
+# Secret Generation and SSM Parameter Store
+# =============================================================================
+
+# Generate secure random passwords
+resource "random_password" "mlflow_db" {
+  length           = 32
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+resource "random_password" "pipeline_db" {
+  length           = 32
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+resource "random_password" "minio" {
+  length           = 32
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+resource "random_password" "argocd_admin" {
+  length           = 24
+  special          = false
+}
+
+# Store secrets in AWS SSM Parameter Store (SecureString)
+resource "aws_ssm_parameter" "mlflow_db_password" {
+  name        = "/${var.cluster_name}/mlflow/db-password"
+  description = "MLflow PostgreSQL database password"
+  type        = "SecureString"
+  value       = random_password.mlflow_db.result
+  key_id      = "alias/aws/ssm"
+
+  tags = var.tags
+}
+
+resource "aws_ssm_parameter" "pipeline_db_password" {
+  name        = "/${var.cluster_name}/kubeflow/db-password"
+  description = "Kubeflow Pipelines MySQL database password"
+  type        = "SecureString"
+  value       = random_password.pipeline_db.result
+  key_id      = "alias/aws/ssm"
+
+  tags = var.tags
+}
+
+resource "aws_ssm_parameter" "minio_root_password" {
+  name        = "/${var.cluster_name}/minio/root-password"
+  description = "MinIO root password"
+  type        = "SecureString"
+  value       = random_password.minio.result
+  key_id      = "alias/aws/ssm"
+
+  tags = var.tags
+}
+
+resource "aws_ssm_parameter" "argocd_admin_password" {
+  name        = "/${var.cluster_name}/argocd/admin-password"
+  description = "ArgoCD admin password"
+  type        = "SecureString"
+  value       = random_password.argocd_admin.result
+  key_id      = "alias/aws/ssm"
+
+  tags = var.tags
+}
+
+# Store non-secret configuration in SSM for easy access
+resource "aws_ssm_parameter" "cluster_endpoint" {
+  name        = "/${var.cluster_name}/cluster/endpoint"
+  description = "EKS cluster endpoint"
+  type        = "String"
+  value       = module.eks.cluster_endpoint
+
+  tags = var.tags
+}
+
+resource "aws_ssm_parameter" "cluster_name_param" {
+  name        = "/${var.cluster_name}/cluster/name"
+  description = "EKS cluster name"
+  type        = "String"
+  value       = module.eks.cluster_name
+
+  tags = var.tags
+}
+
 # EKS Cluster
 module "eks" {
   source = "../../modules/eks"
@@ -99,9 +191,9 @@ module "eks" {
   gpu_max_size       = 2
   gpu_desired_size   = 0
 
-  # MLflow database
+  # MLflow database (uses auto-generated password)
   mlflow_db_instance_class = "db.t3.small"
-  mlflow_db_password       = var.mlflow_db_password
+  mlflow_db_password       = random_password.mlflow_db.result
 
   tags = var.tags
 }
@@ -155,7 +247,7 @@ resource "kubernetes_namespace" "kserve" {
   depends_on = [module.eks]
 }
 
-# MLflow secrets
+# MLflow secrets (using generated password)
 resource "kubernetes_secret" "mlflow_postgres" {
   metadata {
     name      = "mlflow-postgres"
@@ -164,7 +256,7 @@ resource "kubernetes_secret" "mlflow_postgres" {
 
   data = {
     username = "mlflow"
-    password = var.mlflow_db_password
+    password = random_password.mlflow_db.result
   }
 
   depends_on = [kubernetes_namespace.mlflow]
@@ -377,9 +469,10 @@ resource "helm_release" "minio" {
     value = "minio"
   }
 
+  # Use generated password from SSM
   set {
     name  = "rootPassword"
-    value = "minio123"
+    value = random_password.minio.result
   }
 
   set {
@@ -403,9 +496,10 @@ resource "helm_release" "mysql" {
   version    = "14.0.3"
   namespace  = kubernetes_namespace.kubeflow.metadata[0].name
 
+  # Use generated passwords
   set {
     name  = "auth.rootPassword"
-    value = var.pipeline_db_password
+    value = random_password.pipeline_db.result
   }
 
   set {
@@ -420,7 +514,7 @@ resource "helm_release" "mysql" {
 
   set {
     name  = "auth.password"
-    value = var.pipeline_db_password
+    value = random_password.pipeline_db.result
   }
 
   set {
@@ -757,4 +851,192 @@ resource "kubernetes_manifest" "karpenter_default_nodeclass" {
   }
 
   depends_on = [helm_release.karpenter]
+}
+
+# =============================================================================
+# External Secrets Operator - SSM to K8s Secret Sync
+# =============================================================================
+
+# IRSA for External Secrets Operator
+module "external_secrets_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.0"
+
+  role_name = "${var.cluster_name}-external-secrets"
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["external-secrets:external-secrets"]
+    }
+  }
+
+  role_policy_arns = {
+    ssm_read = aws_iam_policy.external_secrets_ssm.arn
+  }
+}
+
+# IAM policy for External Secrets to read from SSM
+resource "aws_iam_policy" "external_secrets_ssm" {
+  name        = "${var.cluster_name}-external-secrets-ssm"
+  description = "Allow External Secrets Operator to read from SSM Parameter Store"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath",
+          "ssm:DescribeParameters"
+        ]
+        Resource = "arn:aws:ssm:${var.aws_region}:*:parameter/${var.cluster_name}/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "ssm.${var.aws_region}.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+# External Secrets Operator Helm release
+resource "helm_release" "external_secrets" {
+  name             = "external-secrets"
+  repository       = "https://charts.external-secrets.io"
+  chart            = "external-secrets"
+  version          = "0.15.1"
+  namespace        = "external-secrets"
+  create_namespace = true
+
+  set {
+    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = module.external_secrets_irsa.iam_role_arn
+  }
+
+  set {
+    name  = "webhook.port"
+    value = "9443"
+  }
+
+  depends_on = [module.eks]
+}
+
+# ClusterSecretStore for AWS SSM Parameter Store
+resource "kubernetes_manifest" "cluster_secret_store" {
+  manifest = {
+    apiVersion = "external-secrets.io/v1beta1"
+    kind       = "ClusterSecretStore"
+    metadata = {
+      name = "aws-ssm"
+    }
+    spec = {
+      provider = {
+        aws = {
+          service = "ParameterStore"
+          region  = var.aws_region
+          auth = {
+            jwt = {
+              serviceAccountRef = {
+                name      = "external-secrets"
+                namespace = "external-secrets"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [helm_release.external_secrets]
+}
+
+# Example: External Secret for MLflow (syncs SSM to K8s Secret)
+resource "kubernetes_manifest" "mlflow_external_secret" {
+  manifest = {
+    apiVersion = "external-secrets.io/v1beta1"
+    kind       = "ExternalSecret"
+    metadata = {
+      name      = "mlflow-db-credentials"
+      namespace = "mlflow"
+    }
+    spec = {
+      refreshInterval = "1h"
+      secretStoreRef = {
+        name = "aws-ssm"
+        kind = "ClusterSecretStore"
+      }
+      target = {
+        name           = "mlflow-db-credentials"
+        creationPolicy = "Owner"
+      }
+      data = [
+        {
+          secretKey = "password"
+          remoteRef = {
+            key = "/${var.cluster_name}/mlflow/db-password"
+          }
+        }
+      ]
+    }
+  }
+
+  depends_on = [
+    kubernetes_manifest.cluster_secret_store,
+    kubernetes_namespace.mlflow
+  ]
+}
+
+# Example: External Secret for Kubeflow/MinIO
+resource "kubernetes_manifest" "kubeflow_external_secret" {
+  manifest = {
+    apiVersion = "external-secrets.io/v1beta1"
+    kind       = "ExternalSecret"
+    metadata = {
+      name      = "pipeline-credentials"
+      namespace = "kubeflow"
+    }
+    spec = {
+      refreshInterval = "1h"
+      secretStoreRef = {
+        name = "aws-ssm"
+        kind = "ClusterSecretStore"
+      }
+      target = {
+        name           = "pipeline-credentials"
+        creationPolicy = "Owner"
+      }
+      data = [
+        {
+          secretKey = "mysql-password"
+          remoteRef = {
+            key = "/${var.cluster_name}/kubeflow/db-password"
+          }
+        },
+        {
+          secretKey = "minio-password"
+          remoteRef = {
+            key = "/${var.cluster_name}/minio/root-password"
+          }
+        }
+      ]
+    }
+  }
+
+  depends_on = [
+    kubernetes_manifest.cluster_secret_store,
+    kubernetes_namespace.kubeflow
+  ]
 }

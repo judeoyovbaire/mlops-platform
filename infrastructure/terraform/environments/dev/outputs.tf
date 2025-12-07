@@ -36,6 +36,30 @@ output "vpc_id" {
 }
 
 # =============================================================================
+# SSM Parameter Store - Secret Locations
+# =============================================================================
+
+output "ssm_mlflow_db_password" {
+  description = "SSM parameter path for MLflow DB password"
+  value       = aws_ssm_parameter.mlflow_db_password.name
+}
+
+output "ssm_pipeline_db_password" {
+  description = "SSM parameter path for Pipeline DB password"
+  value       = aws_ssm_parameter.pipeline_db_password.name
+}
+
+output "ssm_minio_password" {
+  description = "SSM parameter path for MinIO root password"
+  value       = aws_ssm_parameter.minio_root_password.name
+}
+
+output "ssm_argocd_password" {
+  description = "SSM parameter path for ArgoCD admin password"
+  value       = aws_ssm_parameter.argocd_admin_password.name
+}
+
+# =============================================================================
 # Access Information
 # =============================================================================
 
@@ -53,16 +77,40 @@ output "access_info" {
   Services (get ALB URLs after deployment):
     kubectl get ingress -A
 
-  ArgoCD:
-    Username: admin
-    Password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+  ============================================================
+  Secrets (stored in AWS SSM Parameter Store)
+  ============================================================
+
+  All secrets are auto-generated and stored securely in SSM.
+  Retrieve with:
+
+    # MLflow DB password
+    aws ssm get-parameter --name "/${var.cluster_name}/mlflow/db-password" --with-decryption --query 'Parameter.Value' --output text
+
+    # Kubeflow Pipeline DB password
+    aws ssm get-parameter --name "/${var.cluster_name}/kubeflow/db-password" --with-decryption --query 'Parameter.Value' --output text
+
+    # MinIO root password
+    aws ssm get-parameter --name "/${var.cluster_name}/minio/root-password" --with-decryption --query 'Parameter.Value' --output text
+
+    # ArgoCD admin password
+    aws ssm get-parameter --name "/${var.cluster_name}/argocd/admin-password" --with-decryption --query 'Parameter.Value' --output text
+
+  ============================================================
+  Service Details
+  ============================================================
 
   MLflow:
     S3 Bucket: ${module.eks.mlflow_s3_bucket}
     RDS Endpoint: ${module.eks.mlflow_db_endpoint}
 
+  External Secrets:
+    ClusterSecretStore: aws-ssm
+    Secrets auto-sync from SSM to Kubernetes every 1h
+
   Verify deployment:
     kubectl get pods -A
+    kubectl get externalsecrets -A
 
   ============================================================
   EOT

@@ -36,18 +36,16 @@ variable "public_subnets" {
   default     = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
 }
 
-variable "mlflow_db_password" {
-  description = "Password for MLflow PostgreSQL database"
-  type        = string
-  sensitive   = true
-}
-
-variable "pipeline_db_password" {
-  description = "Password for Kubeflow Pipelines MySQL database"
-  type        = string
-  sensitive   = true
-  default     = "changeme-in-production"
-}
+# Note: Database passwords are now auto-generated and stored in AWS SSM Parameter Store
+# See main.tf for:
+#   - random_password resources (auto-generation)
+#   - aws_ssm_parameter resources (secure storage)
+#   - External Secrets Operator (K8s sync)
+#
+# To retrieve passwords after deployment:
+#   aws ssm get-parameter --name "/${cluster_name}/mlflow/db-password" --with-decryption
+#   aws ssm get-parameter --name "/${cluster_name}/kubeflow/db-password" --with-decryption
+#   aws ssm get-parameter --name "/${cluster_name}/minio/root-password" --with-decryption
 
 variable "tags" {
   description = "Additional tags for resources"
