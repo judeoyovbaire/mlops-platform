@@ -917,7 +917,7 @@ resource "helm_release" "external_secrets" {
   name             = "external-secrets"
   repository       = "https://charts.external-secrets.io"
   chart            = "external-secrets"
-  version          = "0.15.1"
+  version          = "1.1.1"  # Latest stable
   namespace        = "external-secrets"
   create_namespace = true
 
