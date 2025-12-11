@@ -3,11 +3,11 @@ Iris Classifier Model Server
 Flask-based inference server compatible with KServe v2 protocol
 """
 
-import os
-import json
 import logging
-from flask import Flask, request, jsonify
+import os
+
 import numpy as np
+from flask import Flask, jsonify, request
 from sklearn.datasets import load_iris
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split

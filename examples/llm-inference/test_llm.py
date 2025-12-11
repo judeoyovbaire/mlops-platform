@@ -17,7 +17,6 @@ Requirements:
 import argparse
 import json
 import time
-from typing import Optional
 
 import requests
 
@@ -132,7 +131,7 @@ def test_with_openai_client(base_url: str, model: str = "mistral-7b"):
     )
     elapsed = time.time() - start
 
-    print(f"Prompt: Write a haiku about Kubernetes.")
+    print("Prompt: Write a haiku about Kubernetes.")
     print(f"\nResponse: {response.choices[0].message.content}")
     print(f"\nTokens: {response.usage.completion_tokens}")
     print(f"Time: {elapsed:.2f}s")
