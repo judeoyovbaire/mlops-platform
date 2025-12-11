@@ -1,16 +1,14 @@
 # Model Build and Deploy Pipeline
 # Builds model container images and deploys to KServe via GitOps
 # Follows everything-as-code principle
+#
+# NOTE: This workflow requires infrastructure to be deployed first.
+# Run the Deploy Infrastructure workflow with "apply" action before using this.
 
 name: Model Deploy
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'examples/iris-classifier/**'
-      - 'components/kserve/**'
-      - '.github/workflows/model-deploy.yaml'
+  # Manual trigger only - infrastructure must exist first
   workflow_dispatch:
     inputs:
       model:
