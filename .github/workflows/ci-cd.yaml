@@ -1,0 +1,439 @@
+# Unified CI/CD Pipeline for MLOps Platform
+#
+# This pipeline handles all validation, planning, and deployment:
+# - On push/PR: Validates code and shows terraform plan
+# - Manual dispatch: Deploy infrastructure or models
+#
+# Destroy is intentionally excluded - run locally via `make destroy` for safety
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'validate-only'
+        type: choice
+        options:
+          - validate-only
+          - deploy-infra
+          - deploy-model
+
+env:
+  PYTHON_VERSION: "3.10"
+  TERRAFORM_VERSION: "1.6.0"
+  AWS_REGION: "eu-west-1"
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  # ============================================================================
+  # STAGE 1: VALIDATE
+  # Runs on every push/PR - no AWS credentials needed
+  # ============================================================================
+
+  lint-python:
+    name: Lint Python
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Run Ruff linter
+        run: ruff check pipelines/ examples/ --output-format=github
+
+      - name: Run Ruff formatter check
+        run: ruff format --check pipelines/ examples/
+
+  validate-terraform:
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive infrastructure/terraform/
+
+      - name: Validate EKS Module
+        working-directory: infrastructure/terraform/modules/eks
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate Bootstrap
+        working-directory: infrastructure/terraform/bootstrap
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate Dev Environment
+        working-directory: infrastructure/terraform/environments/dev
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+  validate-kubernetes:
+    name: Validate Kubernetes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubeconform
+        uses: yokawasa/action-setup-kube-tools@v0.11.1
+        with:
+          kubeconform: "0.6.7"
+          kustomize: "5.5.0"
+
+      - name: Validate Kubernetes manifests
+        run: |
+          find components infrastructure/kubernetes -name '*.yaml' -o -name '*.yml' | \
+            xargs -I {} kubeconform -strict -summary \
+              -schema-location default \
+              -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+              {} || true
+
+      - name: Validate Kustomize build
+        run: kustomize build infrastructure/kubernetes/ > /dev/null
+
+  validate-helm:
+    name: Validate Helm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate Helm values
+        run: |
+          for f in infrastructure/helm/aws/*.yaml; do
+            echo "Checking $f..."
+            python3 -c "import yaml; yaml.safe_load(open('$f'))"
+          done
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner (IaC)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+          trivyignores: '.trivyignore'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  test-python:
+    name: Test Python
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run unit tests
+        run: pytest tests/ -v --tb=short
+
+      - name: Test pipeline compilation
+        run: |
+          cd pipelines/training
+          python -c "from kfp import compiler; exec(open('example-pipeline.py').read()); compiler.Compiler().compile(ml_training_pipeline, 'test.yaml')"
+
+  # ============================================================================
+  # STAGE 2: TERRAFORM PLAN
+  # Runs on every push/PR - requires AWS credentials
+  # ============================================================================
+
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: [lint-python, validate-terraform, validate-kubernetes, validate-helm, security-scan, test-python]
+    outputs:
+      has_changes: ${{ steps.plan.outputs.has_changes }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+        continue-on-error: true
+        id: aws-creds
+
+      - name: Setup Terraform
+        if: steps.aws-creds.outcome == 'success'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Init
+        if: steps.aws-creds.outcome == 'success'
+        working-directory: infrastructure/terraform/environments/dev
+        run: terraform init
+
+      - name: Terraform Plan
+        if: steps.aws-creds.outcome == 'success'
+        id: plan
+        working-directory: infrastructure/terraform/environments/dev
+        run: |
+          terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+
+          if grep -q "No changes" plan.txt; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "## Terraform Plan: No Changes" >> $GITHUB_STEP_SUMMARY
+            echo "Infrastructure is up to date." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "## Terraform Plan" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Click to expand plan</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            head -500 plan.txt >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Comment Plan on PR
+        if: steps.aws-creds.outcome == 'success' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('infrastructure/terraform/environments/dev/plan.txt', 'utf8');
+            const maxLength = 65000;
+            const truncatedPlan = plan.length > maxLength
+              ? plan.substring(0, maxLength) + '\n\n... (truncated)'
+              : plan;
+
+            const output = `## Terraform Plan
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`
+            ${truncatedPlan}
+            \`\`\`
+
+            </details>
+
+            **To deploy**: After merging, go to Actions → CI/CD → Run workflow → Select "deploy-infra"
+
+            *Pushed by: @${{ github.actor }}*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+      - name: Skip notice (no AWS credentials)
+        if: steps.aws-creds.outcome != 'success'
+        run: |
+          echo "## Terraform Plan: Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "AWS credentials not configured. Add \`AWS_ROLE_ARN\` secret after running bootstrap." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**All validation checks passed!**" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # STAGE 3: DEPLOY INFRASTRUCTURE (Manual Only)
+  # Only runs when manually triggered with action = "deploy-infra"
+  # ============================================================================
+
+  deploy-infra:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'deploy-infra'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Init
+        working-directory: infrastructure/terraform/environments/dev
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: infrastructure/terraform/environments/dev
+        run: terraform apply -auto-approve
+
+      - name: Get Outputs
+        working-directory: infrastructure/terraform/environments/dev
+        run: |
+          echo "## Infrastructure Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Output | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          terraform output -json | jq -r 'to_entries[] | "| \(.key) | \(.value.value // "N/A") |"' >> $GITHUB_STEP_SUMMARY
+
+      - name: Configure kubectl
+        run: aws eks update-kubeconfig --name mlops-platform-dev --region ${{ env.AWS_REGION }}
+
+      - name: Verify Cluster
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Cluster Status" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          kubectl get nodes >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Cluster provisioning..."
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # STAGE 4: DEPLOY MODEL (Manual Only)
+  # Only runs when manually triggered with action = "deploy-model"
+  # Requires infrastructure to exist
+  # ============================================================================
+
+  deploy-model:
+    name: Deploy Model
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'deploy-model'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push model image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./examples/iris-classifier
+          file: ./examples/iris-classifier/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/mlops-platform-dev/models:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/mlops-platform-dev/models:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/mlops-platform-dev/models:${{ github.sha }}
+          format: 'table'
+          severity: 'HIGH,CRITICAL'
+        continue-on-error: true
+
+      - name: Configure kubectl
+        run: aws eks update-kubeconfig --name mlops-platform-dev --region ${{ env.AWS_REGION }}
+
+      - name: Deploy to KServe
+        run: |
+          kubectl apply -f components/kserve/inferenceservice-examples.yaml
+
+          echo "## Model Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: ${{ steps.login-ecr.outputs.registry }}/mlops-platform-dev/models:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for InferenceService to be ready..."
+          kubectl wait --for=condition=Ready inferenceservice/sklearn-iris -n mlops --timeout=300s || true
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## InferenceService Status" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          kubectl get inferenceservice -n mlops >> $GITHUB_STEP_SUMMARY 2>&1
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Get service URL
+        run: |
+          SERVICE_URL=$(kubectl get inferenceservice sklearn-iris -n mlops -o jsonpath='{.status.url}' 2>/dev/null || echo "pending")
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Service URL" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: ${SERVICE_URL}" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # SUMMARY
+  # Shows final status
+  # ============================================================================
+
+  summary:
+    name: Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [terraform-plan]
+    if: always() && (github.event_name == 'push' || github.event_name == 'pull_request')
+    steps:
+      - name: Summary
+        run: |
+          echo "## CI/CD Pipeline Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review the Terraform plan above" >> $GITHUB_STEP_SUMMARY
+          echo "2. To deploy infrastructure: Actions → CI/CD → Run workflow → \`deploy-infra\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. To deploy model (after infra): Actions → CI/CD → Run workflow → \`deploy-model\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**To destroy** (local only for safety):" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "make destroy" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

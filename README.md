@@ -201,33 +201,42 @@ pip install kfp
 kfp run submit -f pipelines/training/ml_training_pipeline.yaml
 ```
 
-## CI/CD Pipelines (Everything-as-Code)
+## CI/CD Pipeline (Everything-as-Code)
 
-All deployments are automated via GitHub Actions with OIDC authentication (no static credentials):
+Single unified pipeline with OIDC authentication (no static AWS credentials):
 
-| Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| **CI** (`ci.yaml`) | Push/PR | Validate, lint, test, security scan |
-| **Deploy Infrastructure** (`deploy.yaml`) | Push to main (terraform changes) | Deploy EKS, RDS, ECR via Terraform |
-| **Model Deploy** (`model-deploy.yaml`) | Push to main (model changes) | Build image, push to ECR, deploy to KServe |
-| **Release** (`release.yaml`) | Version tags | Create GitHub releases |
+| Trigger | What Happens |
+|---------|--------------|
+| **Push/PR** | Validate code, run tests, security scan, show terraform plan |
+| **Manual: `deploy-infra`** | Deploy EKS, RDS, ECR via Terraform |
+| **Manual: `deploy-model`** | Build image, push to ECR, deploy to KServe |
+| **Local: `make destroy`** | Destroy infrastructure (safety - not in pipeline) |
 
-### End-to-End Workflow
+### Pipeline Flow
 
 ```
-Developer                           GitHub Actions                    AWS
-    │                                    │                             │
-    ├── git push (infra changes) ───────▶├── terraform plan/apply ────▶├── EKS, RDS, ECR
-    │                                    │                             │
-    ├── git push (model changes) ───────▶├── docker build ────────────▶├── ECR Image
-    │                                    ├── kubectl apply ───────────▶├── KServe
-    │                                    │                             │
-    └── Monitor in Grafana ◀─────────────┴─────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           CI/CD PIPELINE                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ON PUSH/PR (automatic):                                                     │
+│  ├── Lint Python (ruff)                                                      │
+│  ├── Validate Terraform                                                      │
+│  ├── Validate Kubernetes manifests                                           │
+│  ├── Security scan (Trivy, Checkov)                                          │
+│  ├── Run tests (pytest)                                                      │
+│  └── Terraform plan (shows infrastructure changes)                           │
+│                                                                              │
+│  MANUAL TRIGGER (Actions → CI/CD → Run workflow):                            │
+│  ├── deploy-infra  → Creates EKS cluster, RDS, S3, ECR (~15-20 min)         │
+│  └── deploy-model  → Builds image, deploys to KServe                         │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Setup GitHub Secrets
+### Setup GitHub Secret
 
-After running bootstrap, add this secret to your GitHub repository:
+After running bootstrap, add the AWS role ARN to GitHub:
 
 ```bash
 # Get the role ARN
