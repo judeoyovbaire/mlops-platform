@@ -98,3 +98,14 @@ output "karpenter_node_instance_profile_name" {
   description = "Instance profile name for Karpenter nodes"
   value       = aws_iam_instance_profile.karpenter_node.name
 }
+
+# ECR outputs
+output "ecr_repository_url" {
+  description = "URL of the ECR repository for ML model images"
+  value       = aws_ecr_repository.models.repository_url
+}
+
+output "ecr_repository_arn" {
+  description = "ARN of the ECR repository for ML model images"
+  value       = aws_ecr_repository.models.arn
+}

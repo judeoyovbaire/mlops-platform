@@ -201,6 +201,43 @@ pip install kfp
 kfp run submit -f pipelines/training/ml_training_pipeline.yaml
 ```
 
+## CI/CD Pipelines (Everything-as-Code)
+
+All deployments are automated via GitHub Actions with OIDC authentication (no static credentials):
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| **CI** (`ci.yaml`) | Push/PR | Validate, lint, test, security scan |
+| **Deploy Infrastructure** (`deploy.yaml`) | Push to main (terraform changes) | Deploy EKS, RDS, ECR via Terraform |
+| **Model Deploy** (`model-deploy.yaml`) | Push to main (model changes) | Build image, push to ECR, deploy to KServe |
+| **Release** (`release.yaml`) | Version tags | Create GitHub releases |
+
+### End-to-End Workflow
+
+```
+Developer                           GitHub Actions                    AWS
+    │                                    │                             │
+    ├── git push (infra changes) ───────▶├── terraform plan/apply ────▶├── EKS, RDS, ECR
+    │                                    │                             │
+    ├── git push (model changes) ───────▶├── docker build ────────────▶├── ECR Image
+    │                                    ├── kubectl apply ───────────▶├── KServe
+    │                                    │                             │
+    └── Monitor in Grafana ◀─────────────┴─────────────────────────────┘
+```
+
+### Setup GitHub Secrets
+
+After running bootstrap, add this secret to your GitHub repository:
+
+```bash
+# Get the role ARN
+terraform -chdir=infrastructure/terraform/bootstrap output github_actions_role_arn
+
+# Add to GitHub: Settings > Secrets > Actions > New repository secret
+# Name: AWS_ROLE_ARN
+# Value: arn:aws:iam::<account-id>:role/mlops-platform-github-actions
+```
+
 ## AWS Resources Created
 
 | Resource | Purpose |
@@ -210,6 +247,7 @@ kfp run submit -f pipelines/training/ml_training_pipeline.yaml
 | Node Groups | General (t3.large), Training (SPOT), GPU (g4dn SPOT) |
 | S3 Bucket | MLflow artifact storage |
 | RDS PostgreSQL | MLflow metadata backend |
+| ECR Repository | Container images for ML models |
 | IAM Roles | IRSA for secure pod authentication |
 | ALB | External access to services |
 
