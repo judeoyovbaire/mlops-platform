@@ -273,106 +273,39 @@ resource "aws_iam_role_policy" "terraform_operations" {
         ]
         Resource = "*"
       },
-      # VPC and networking
+      # VPC and networking (full EC2 for VPC, routes, etc.)
       {
-        Sid    = "VPCFullAccess"
+        Sid    = "EC2FullAccess"
         Effect = "Allow"
         Action = [
-          "ec2:*Vpc*",
-          "ec2:*Subnet*",
-          "ec2:*RouteTable*",
-          "ec2:*InternetGateway*",
-          "ec2:*NatGateway*",
-          "ec2:*SecurityGroup*",
-          "ec2:*NetworkAcl*",
-          "ec2:*ElasticIp*",
-          "ec2:*Address*",
-          "ec2:CreateTags",
-          "ec2:DeleteTags",
-          "ec2:Describe*"
+          "ec2:*"
         ]
         Resource = "*"
       },
-      # IAM for IRSA and roles
+      # IAM for IRSA and roles (full IAM for EKS node roles, IRSA, policies)
       {
-        Sid    = "IAMAccess"
+        Sid    = "IAMFullAccess"
         Effect = "Allow"
         Action = [
-          "iam:CreateRole",
-          "iam:DeleteRole",
-          "iam:GetRole",
-          "iam:PassRole",
-          "iam:UpdateRole",
-          "iam:TagRole",
-          "iam:UntagRole",
-          "iam:ListRolePolicies",
-          "iam:ListAttachedRolePolicies",
-          "iam:AttachRolePolicy",
-          "iam:DetachRolePolicy",
-          "iam:PutRolePolicy",
-          "iam:DeleteRolePolicy",
-          "iam:GetRolePolicy",
-          "iam:CreatePolicy",
-          "iam:DeletePolicy",
-          "iam:GetPolicy",
-          "iam:GetPolicyVersion",
-          "iam:ListPolicyVersions",
-          "iam:CreatePolicyVersion",
-          "iam:DeletePolicyVersion",
-          "iam:CreateOpenIDConnectProvider",
-          "iam:DeleteOpenIDConnectProvider",
-          "iam:GetOpenIDConnectProvider",
-          "iam:TagOpenIDConnectProvider",
-          "iam:CreateInstanceProfile",
-          "iam:DeleteInstanceProfile",
-          "iam:GetInstanceProfile",
-          "iam:AddRoleToInstanceProfile",
-          "iam:RemoveRoleFromInstanceProfile",
-          "iam:ListInstanceProfilesForRole"
+          "iam:*"
         ]
         Resource = "*"
       },
-      # S3 for MLflow artifacts
+      # S3 for MLflow artifacts (full S3 for bucket management)
       {
-        Sid    = "S3Access"
+        Sid    = "S3FullAccess"
         Effect = "Allow"
         Action = [
-          "s3:CreateBucket",
-          "s3:DeleteBucket",
-          "s3:GetBucket*",
-          "s3:PutBucket*",
-          "s3:ListBucket",
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject"
+          "s3:*"
         ]
         Resource = "*"
       },
-      # ECR for container images
+      # ECR for container images (full ECR access)
       {
-        Sid    = "ECRAccess"
+        Sid    = "ECRFullAccess"
         Effect = "Allow"
         Action = [
-          "ecr:GetAuthorizationToken",
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:BatchGetImage",
-          "ecr:PutImage",
-          "ecr:InitiateLayerUpload",
-          "ecr:UploadLayerPart",
-          "ecr:CompleteLayerUpload",
-          "ecr:CreateRepository",
-          "ecr:DeleteRepository",
-          "ecr:DescribeRepositories",
-          "ecr:ListImages",
-          "ecr:DescribeImages",
-          "ecr:TagResource",
-          "ecr:UntagResource",
-          "ecr:GetLifecyclePolicy",
-          "ecr:PutLifecyclePolicy",
-          "ecr:DeleteLifecyclePolicy",
-          "ecr:SetRepositoryPolicy",
-          "ecr:GetRepositoryPolicy"
+          "ecr:*"
         ]
         Resource = "*"
       },
@@ -400,33 +333,21 @@ resource "aws_iam_role_policy" "terraform_operations" {
         ]
         Resource = "*"
       },
-      # KMS for encryption
+      # KMS for encryption (full KMS for EKS secrets encryption)
       {
-        Sid    = "KMSAccess"
+        Sid    = "KMSFullAccess"
         Effect = "Allow"
         Action = [
-          "kms:CreateKey",
-          "kms:DescribeKey",
-          "kms:GetKeyPolicy",
-          "kms:ListKeys",
-          "kms:Encrypt",
-          "kms:Decrypt",
-          "kms:CreateAlias",
-          "kms:DeleteAlias",
-          "kms:ListAliases"
+          "kms:*"
         ]
         Resource = "*"
       },
-      # CloudWatch for logging
+      # CloudWatch for logging (full logs access for EKS)
       {
-        Sid    = "CloudWatchAccess"
+        Sid    = "CloudWatchLogsFullAccess"
         Effect = "Allow"
         Action = [
-          "logs:CreateLogGroup",
-          "logs:DeleteLogGroup",
-          "logs:DescribeLogGroups",
-          "logs:PutRetentionPolicy",
-          "logs:TagLogGroup"
+          "logs:*"
         ]
         Resource = "*"
       },

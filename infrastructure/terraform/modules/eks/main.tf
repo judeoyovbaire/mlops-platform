@@ -138,7 +138,7 @@ module "eks" {
       name           = "gpu"
       instance_types = var.gpu_instance_types
       capacity_type  = var.gpu_capacity_type
-      ami_type       = "AL2_x86_64_GPU"
+      ami_type       = "AL2023_x86_64_NVIDIA"  # AL2023 required for EKS 1.33+
 
       min_size     = var.gpu_min_size
       max_size     = var.gpu_max_size
