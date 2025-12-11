@@ -22,13 +22,20 @@ terraform {
     }
   }
 
-  # Uncomment to use S3 backend for state management
+  # Remote state backend - requires bootstrap module to be applied first
+  # See: infrastructure/terraform/bootstrap/README.md
+  #
+  # To enable:
+  # 1. Run bootstrap: cd ../bootstrap && terraform apply
+  # 2. Uncomment the backend block below
+  # 3. Run: terraform init -migrate-state
+  #
   # backend "s3" {
-  #   bucket         = "your-terraform-state-bucket"
+  #   bucket         = "mlops-platform-tfstate-<ACCOUNT_ID>"  # From bootstrap output
   #   key            = "mlops-platform/dev/terraform.tfstate"
-  #   region         = "us-west-2"
+  #   region         = "eu-west-1"
   #   encrypt        = true
-  #   dynamodb_table = "terraform-locks"
+  #   dynamodb_table = "mlops-platform-terraform-locks"
   # }
 }
 
@@ -93,8 +100,8 @@ resource "random_password" "minio" {
 }
 
 resource "random_password" "argocd_admin" {
-  length           = 24
-  special          = false
+  length  = 24
+  special = false
 }
 
 # Store secrets in AWS SSM Parameter Store (SecureString)
@@ -626,7 +633,7 @@ resource "kubernetes_manifest" "karpenter_gpu_nodepool" {
       template = {
         metadata = {
           labels = {
-            "node-type" = "gpu"
+            "node-type"                  = "gpu"
             "karpenter.sh/capacity-type" = "spot"
           }
         }
@@ -668,8 +675,8 @@ resource "kubernetes_manifest" "karpenter_gpu_nodepool" {
         }
       }
       limits = {
-        cpu    = "100"
-        memory = "400Gi"
+        cpu              = "100"
+        memory           = "400Gi"
         "nvidia.com/gpu" = "8"
       }
       disruption = {
@@ -696,7 +703,7 @@ resource "kubernetes_manifest" "karpenter_training_nodepool" {
       template = {
         metadata = {
           labels = {
-            "node-type" = "training"
+            "node-type"                  = "training"
             "karpenter.sh/capacity-type" = "spot"
           }
         }
@@ -917,7 +924,7 @@ resource "helm_release" "external_secrets" {
   name             = "external-secrets"
   repository       = "https://charts.external-secrets.io"
   chart            = "external-secrets"
-  version          = "1.1.1"  # Latest stable
+  version          = "1.1.1" # Latest stable
   namespace        = "external-secrets"
   create_namespace = true
 
@@ -1039,4 +1046,56 @@ resource "kubernetes_manifest" "kubeflow_external_secret" {
     kubernetes_manifest.cluster_secret_store,
     kubernetes_namespace.kubeflow
   ]
+}
+
+# =============================================================================
+# Observability Stack - Prometheus & Grafana
+# =============================================================================
+
+# Monitoring namespace
+resource "kubernetes_namespace" "monitoring" {
+  metadata {
+    name = "monitoring"
+    labels = {
+      "app.kubernetes.io/name"    = "monitoring"
+      "app.kubernetes.io/part-of" = "mlops-platform"
+    }
+  }
+
+  depends_on = [module.eks]
+}
+
+# kube-prometheus-stack (Prometheus + Grafana + Alertmanager)
+resource "helm_release" "prometheus_stack" {
+  name       = "prometheus"
+  repository = "https://prometheus-community.github.io/helm-charts"
+  chart      = "kube-prometheus-stack"
+  version    = "72.6.2"
+  namespace  = kubernetes_namespace.monitoring.metadata[0].name
+
+  values = [file("${path.module}/../../../helm/aws/prometheus-stack-values.yaml")]
+
+  # Increase timeout for CRD installation
+  timeout = 900
+
+  set {
+    name  = "grafana.adminPassword"
+    value = random_password.argocd_admin.result # Reuse generated password
+  }
+
+  depends_on = [
+    kubernetes_namespace.monitoring,
+    helm_release.aws_load_balancer_controller
+  ]
+}
+
+# Store Grafana password in SSM
+resource "aws_ssm_parameter" "grafana_admin_password" {
+  name        = "/${var.cluster_name}/grafana/admin-password"
+  description = "Grafana admin password"
+  type        = "SecureString"
+  value       = random_password.argocd_admin.result
+  key_id      = "alias/aws/ssm"
+
+  tags = var.tags
 }

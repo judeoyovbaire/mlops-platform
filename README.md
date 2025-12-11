@@ -98,28 +98,22 @@ Data Scientist                    Platform (Automated)
 
 ```
 mlops-platform/
-├── .github/
-│   └── workflows/           # CI/CD pipelines
+├── .github/workflows/       # CI/CD pipeline (GitHub Actions)
 ├── components/
 │   └── kserve/              # KServe InferenceService examples
 ├── examples/
-│   ├── iris-classifier/     # sklearn model (beginner)
+│   ├── iris-classifier/     # sklearn model inference test
 │   └── llm-inference/       # LLM with vLLM (advanced)
 ├── infrastructure/
 │   ├── kubernetes/          # Network policies, monitoring
 │   ├── terraform/
-│   │   ├── modules/
-│   │   │   ├── eks/         # AWS EKS (production-ready)
-│   │   │   ├── gke/         # GCP GKE (coming soon)
-│   │   │   └── aks/         # Azure AKS (coming soon)
-│   │   └── environments/dev/
+│   │   ├── bootstrap/       # Bootstrap (S3, DynamoDB, GitHub OIDC)
+│   │   ├── modules/eks/     # AWS EKS module
+│   │   └── environments/dev/# Main deployment configuration
 │   └── helm/aws/            # AWS-specific Helm values
-├── pipelines/
-│   └── training/            # Kubeflow pipeline definitions
-├── scripts/
-│   └── deploy-aws.sh        # AWS deployment script
-├── docs/
-│   └── architecture.md      # Architecture documentation
+├── pipelines/training/      # Kubeflow pipeline definitions
+├── tests/                   # Unit tests
+├── docs/architecture.md     # Architecture documentation
 └── Makefile                 # Common operations
 ```
 
@@ -134,25 +128,27 @@ mlops-platform/
 - Helm 3.x
 - Python 3.10+
 
-### Quick Start - AWS EKS Deployment
+### Quick Start
 
 ```bash
 # 1. Clone the repository
 git clone https://github.com/judeoyovbaire/mlops-platform.git
 cd mlops-platform
 
-# 2. Deploy to AWS EKS (~15-20 minutes)
-make deploy
+# 2. Bootstrap AWS resources (S3 state bucket, GitHub OIDC)
+cd infrastructure/terraform/bootstrap
+terraform init && terraform apply
 
-# 3. Check deployment status
-make status
+# 3. Deploy the platform (~15-20 minutes)
+cd ../environments/dev
+terraform init && terraform apply
 
-# 4. Access the dashboards (after deployment)
+# 4. Configure kubectl
+aws eks update-kubeconfig --name mlops-platform-dev --region eu-west-1
+
+# 5. Access the dashboards
 make port-forward-mlflow   # MLflow at localhost:5000
 make port-forward-argocd   # ArgoCD at localhost:8080
-
-# 5. Destroy when done (to avoid costs)
-make destroy
 ```
 
 ### Using the Makefile
@@ -160,66 +156,58 @@ make destroy
 ```bash
 make help                  # Show all available commands
 
-# AWS Deployment
+# Deployment
 make deploy                # Deploy to AWS EKS
 make status                # Check deployment status
 make destroy               # Destroy AWS resources
 
-# Terraform (Advanced)
-make terraform-init        # Initialize Terraform
-make terraform-plan        # Plan infrastructure changes
-make terraform-apply       # Apply infrastructure changes
-
-# Validation
+# Validation & Testing
 make validate              # Validate Terraform and Python
 make lint                  # Lint Python and Terraform code
+make test                  # Run unit tests
 
 # Development (after deployment)
 make port-forward-mlflow   # Forward MLflow to localhost:5000
 make port-forward-argocd   # Forward ArgoCD to localhost:8080
-make deploy-example        # Deploy iris classifier example
+make port-forward-grafana  # Forward Grafana to localhost:3000
+make compile-pipeline      # Compile Kubeflow pipeline
+make deploy-example        # Deploy example inference service
 ```
 
 ### Deploy a Model with KServe
 
 ```bash
-# Deploy an sklearn model
+# Deploy example inference services
 kubectl apply -f components/kserve/inferenceservice-examples.yaml
 
 # Check status
 kubectl get inferenceservice -n mlops
 
-# Test inference (after port-forward or via ALB URL)
-curl -X POST "http://localhost:8082/v1/models/sklearn-iris:predict" \
+# Test inference
+curl -X POST "http://<SERVICE_URL>/v1/models/sklearn-iris:predict" \
   -H "Content-Type: application/json" \
   -d '{"instances": [[5.1, 3.5, 1.4, 0.2]]}'
 ```
 
-### Run the Example End-to-End
+### Run a Training Pipeline
 
 ```bash
-cd examples/iris-classifier
+# Compile the pipeline
+make compile-pipeline
 
-# Train locally (optional)
-pip install -r requirements.txt
-python train.py --register
-
-# Deploy to KServe
-kubectl apply -f kserve-deployment.yaml
-
-# Test inference
-python test_inference.py
+# Upload ml_training_pipeline.yaml to Kubeflow Pipelines UI
+# Or submit via CLI after installing kfp:
+pip install kfp
+kfp run submit -f pipelines/training/ml_training_pipeline.yaml
 ```
 
 ## AWS Resources Created
 
-The Terraform deployment creates:
-
 | Resource | Purpose |
 |----------|---------|
 | VPC | Networking with public/private subnets across 3 AZs |
-| EKS Cluster | Managed Kubernetes control plane |
-| Node Groups | General (t3.large), Training (c5.2xlarge SPOT), GPU (g4dn.xlarge SPOT) |
+| EKS Cluster | Managed Kubernetes control plane (v1.33) |
+| Node Groups | General (t3.large), Training (SPOT), GPU (g4dn SPOT) |
 | S3 Bucket | MLflow artifact storage |
 | RDS PostgreSQL | MLflow metadata backend |
 | IAM Roles | IRSA for secure pod authentication |
@@ -227,80 +215,49 @@ The Terraform deployment creates:
 
 ### Cost Estimation
 
-Estimated monthly costs for the dev environment (us-west-2):
+Estimated monthly costs (eu-west-1):
 
 | Resource | Configuration | Monthly Cost |
 |----------|---------------|--------------|
 | EKS Cluster | Control plane | $73 |
 | General Nodes | 2x t3.large (ON_DEMAND) | ~$120 |
-| Training Nodes | c5.2xlarge (SPOT, scale-to-zero) | ~$30-50 (usage-based) |
-| GPU Nodes | g4dn.xlarge (SPOT, scale-to-zero) | ~$50-100 (usage-based) |
-| NAT Gateway | Single (dev optimization) | ~$45 |
+| Training Nodes | c5.2xlarge (SPOT, scale-to-zero) | ~$30-50 |
+| GPU Nodes | g4dn.xlarge (SPOT, scale-to-zero) | ~$50-100 |
+| NAT Gateway | Single (cost optimization) | ~$45 |
 | RDS PostgreSQL | db.t3.small | ~$25 |
 | S3 + ALB | Minimal usage | ~$10-20 |
-| **Total (Dev)** | | **~$350-450/month** |
+| **Total** | | **~$350-450/month** |
 
-**Cost Optimization Strategies:**
-- **SPOT instances** for training/GPU: 60-70% savings vs ON_DEMAND
-- **Scale-to-zero**: Training and GPU nodes only run when jobs are active
-- **Single NAT Gateway**: Sufficient for dev; use 3 for production HA
-- **Right-sized RDS**: db.t3.small for dev; scale up for production load
+**Cost Optimization:**
+- SPOT instances for training/GPU: 60-70% savings
+- Scale-to-zero: Training and GPU nodes only run when needed
+- Single NAT Gateway: Sufficient for this deployment
 
 ## Roadmap
 
-### Phase 1: Foundation
+### Completed
 - [x] AWS EKS cluster with GPU support (Terraform)
 - [x] MLflow 3.x with RDS + S3 backend
 - [x] KServe for model serving
-- [x] ArgoCD 3.x for GitOps
-- [x] AWS ALB Ingress Controller
+- [x] ArgoCD for GitOps
+- [x] Kubeflow Pipelines integration
+- [x] Karpenter for GPU autoscaling
 - [x] CI/CD pipeline (GitHub Actions)
+- [x] Security hardening (NetworkPolicies, IRSA)
+- [x] Observability (Prometheus, Grafana, alerts)
 
-### Phase 2: Training Infrastructure
-- [x] GPU node groups in Terraform
-- [x] Argo Workflows for ML pipelines
-- [x] Karpenter for dynamic GPU autoscaling
+### Future Enhancements
+- [ ] Model monitoring and drift detection
 - [ ] Distributed training support
 - [ ] Data versioning with DVC
-
-### Phase 3: Model Serving
-- [x] KServe deployment
-- [x] Canary deployment examples
-- [x] Working end-to-end example
-- [ ] Model monitoring and drift detection
-
-### Phase 4: Production Hardening
 - [ ] Multi-tenancy support
-- [ ] Cost optimization and FinOps
-- [x] Security hardening (NetworkPolicies, IRSA)
-- [x] Observability (ServiceMonitors, alerts, dashboards)
-
-## Multi-Cloud Support
-
-The platform architecture is designed for portability across major cloud providers:
-
-| Cloud | Module | Status | Key Services |
-|-------|--------|--------|--------------|
-| AWS | `modules/eks` | **Production Ready** | EKS, S3, RDS, ALB, IRSA |
-| GCP | `modules/gke` | Coming Soon | GKE, GCS, Cloud SQL, Workload Identity |
-| Azure | `modules/aks` | Coming Soon | AKS, Blob Storage, PostgreSQL, Workload Identity |
-
-The Kubernetes layer (KServe, MLflow, ArgoCD) remains consistent across clouds—only the infrastructure provisioning differs. See individual module READMEs for cloud-specific architecture mappings.
 
 ## Examples
 
 | Example | Description | Complexity |
 |---------|-------------|------------|
-| [Iris Classifier](examples/iris-classifier/) | sklearn model with MLflow tracking | Beginner |
+| [Iris Classifier](examples/iris-classifier/) | Inference testing for sklearn models | Beginner |
 | [LLM Inference](examples/llm-inference/) | Mistral-7B with vLLM on GPU | Advanced |
-
-## Documentation
-
-- [Architecture Deep Dive](docs/architecture.md)
-- [Example: Iris Classifier](examples/iris-classifier/README.md)
-- [Example: LLM Inference](examples/llm-inference/README.md)
-- [GKE Module (Coming Soon)](infrastructure/terraform/modules/gke/README.md)
-- [AKS Module (Coming Soon)](infrastructure/terraform/modules/aks/README.md)
 
 ## Why These Tools?
 
@@ -315,17 +272,17 @@ The Kubernetes layer (KServe, MLflow, ArgoCD) remains consistent across clouds�
 - KServe is fully open source (Apache 2.0), CNCF Incubating project
 - Better PyTorch support out-of-the-box
 - Serverless inference with scale-to-zero
-- Native Kubeflow integration
 
 ### ArgoCD for GitOps
 - CNCF graduated project
 - Declarative, version-controlled deployments
 - Strong Kubernetes native support
-- Active community and enterprise adoption
 
-## Contributing
+## Documentation
 
-Contributions are welcome! Please read the contributing guidelines first.
+- [Architecture Deep Dive](docs/architecture.md)
+- [Iris Classifier Example](examples/iris-classifier/README.md)
+- [LLM Inference Example](examples/llm-inference/README.md)
 
 ## License
 
@@ -335,6 +292,5 @@ MIT License - see LICENSE for details.
 
 **Jude Oyovbaire** - Senior DevOps Engineer & Platform Architect
 
-- Website: [judaire.io](https://judaire.io)
 - LinkedIn: [linkedin.com/in/judeoyovbaire](https://linkedin.com/in/judeoyovbaire)
 - GitHub: [github.com/judeoyovbaire](https://github.com/judeoyovbaire)

@@ -1,9 +1,10 @@
 # MLOps Platform Makefile
 # AWS EKS Deployment
 
-.PHONY: help deploy status destroy validate lint test clean deps \
+.PHONY: help deploy status destroy validate lint test test-unit test-cov clean deps \
         terraform-init terraform-plan terraform-apply terraform-destroy \
-        port-forward-mlflow port-forward-argocd compile-pipeline deploy-example
+        port-forward-mlflow port-forward-argocd port-forward-grafana port-forward-prometheus \
+        compile-pipeline deploy-example bootstrap
 
 # Default target
 help:
@@ -98,7 +99,6 @@ validate-terraform:
 validate-python:
 	@echo "Validating Python code..."
 	@$(PYTHON) -m py_compile pipelines/training/example-pipeline.py
-	@$(PYTHON) -m py_compile examples/iris-classifier/train.py
 	@echo "Python validation passed"
 
 lint: lint-python lint-terraform
@@ -117,13 +117,17 @@ lint-terraform:
 	@echo "Linting Terraform code..."
 	$(TERRAFORM) fmt -check -recursive infrastructure/terraform/
 
-test:
-	@echo "Running tests..."
-	@$(PYTHON) -c "from pipelines.training import example_pipeline; print('Pipeline import OK')" 2>/dev/null || \
-		$(PYTHON) -c "exec(open('pipelines/training/example-pipeline.py').read()); print('Pipeline syntax OK')"
-	@$(PYTHON) -c "import examples.iris_classifier.train" 2>/dev/null || \
-		$(PYTHON) -c "exec(open('examples/iris-classifier/train.py').read()); print('Train script syntax OK')"
-	@echo "Tests passed"
+test: test-unit
+	@echo "All tests passed!"
+
+test-unit:
+	@echo "Running unit tests..."
+	pytest tests/ -v --tb=short
+
+test-cov:
+	@echo "Running tests with coverage..."
+	pytest tests/ -v --cov=examples --cov=pipelines --cov-report=term-missing --cov-report=html
+	@echo "Coverage report generated in htmlcov/"
 
 # =============================================================================
 # Development (post-deployment)
@@ -145,6 +149,18 @@ port-forward-kubeflow:
 	@echo "Access Kubeflow at http://localhost:8081"
 	$(KUBECTL) port-forward svc/ml-pipeline-ui 8081:80 -n kubeflow
 
+port-forward-grafana:
+	@echo "Forwarding Grafana to localhost:3000..."
+	@echo "Access Grafana at http://localhost:3000"
+	@echo "Username: admin"
+	@echo "Password: Retrieve with 'aws ssm get-parameter --name /mlops-platform-dev/grafana/admin-password --with-decryption'"
+	$(KUBECTL) port-forward svc/prometheus-grafana 3000:80 -n monitoring
+
+port-forward-prometheus:
+	@echo "Forwarding Prometheus to localhost:9090..."
+	@echo "Access Prometheus at http://localhost:9090"
+	$(KUBECTL) port-forward svc/prometheus-kube-prometheus-prometheus 9090:9090 -n monitoring
+
 compile-pipeline:
 	@echo "Compiling Kubeflow pipeline..."
 	cd $(PIPELINE_DIR) && $(PYTHON) example-pipeline.py
@@ -152,9 +168,9 @@ compile-pipeline:
 
 deploy-example:
 	@echo "Deploying example inference service..."
-	$(KUBECTL) apply -f examples/iris-classifier/kserve-deployment.yaml
+	$(KUBECTL) apply -f components/kserve/inferenceservice-examples.yaml
 	@echo "Waiting for inference service to be ready..."
-	$(KUBECTL) wait --for=condition=Ready inferenceservice/iris-classifier -n mlops --timeout=300s || true
+	$(KUBECTL) wait --for=condition=Ready inferenceservice/sklearn-iris -n mlops --timeout=300s || true
 	$(KUBECTL) get inferenceservice -n mlops
 
 # =============================================================================

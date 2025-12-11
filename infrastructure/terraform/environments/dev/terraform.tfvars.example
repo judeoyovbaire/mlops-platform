@@ -1,9 +1,9 @@
 # Example terraform.tfvars for development environment
 # Copy this file to terraform.tfvars and update values
 
-aws_region     = "us-west-2"
+aws_region     = "eu-west-1"
 cluster_name   = "mlops-platform-dev"
-cluster_version = "1.31"
+cluster_version = "1.33"
 
 # VPC configuration
 vpc_cidr        = "10.0.0.0/16"

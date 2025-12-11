@@ -16,7 +16,7 @@ TF_DIR="${PROJECT_ROOT}/infrastructure/terraform/environments/dev"
 
 # Default configuration
 DEFAULT_CLUSTER_NAME="mlops-platform-dev"
-DEFAULT_AWS_REGION="us-west-2"
+DEFAULT_AWS_REGION="eu-west-1"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}  MLOps Platform - AWS EKS Deployment  ${NC}"
@@ -291,7 +291,7 @@ main() {
             echo ""
             echo "Environment Variables:"
             echo "  CLUSTER_NAME  Override cluster name (default: mlops-platform-dev)"
-            echo "  AWS_REGION    Override AWS region (default: us-west-2)"
+            echo "  AWS_REGION    Override AWS region (default: eu-west-1)"
             echo ""
             echo "Examples:"
             echo "  $0 deploy                              # Deploy with defaults"

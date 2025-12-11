@@ -160,17 +160,15 @@ All platform configurations are managed through Git, enabling:
 - Rollback capabilities
 - Multi-environment promotion
 
-## Multi-Cloud Support
+## Cloud Provider
 
-The platform architecture is designed for portability across major cloud providers:
+The platform is deployed on AWS with production-ready Terraform modules:
 
 | Cloud | Module         | Status             | Key Services                            |
 |-------|----------------|--------------------|-----------------------------------------|
 | AWS   | `modules/eks`  | **Production Ready** | EKS, S3, RDS, ALB, IRSA               |
-| GCP   | `modules/gke`  | Coming Soon        | GKE, GCS, Cloud SQL, Workload Identity  |
-| Azure | `modules/aks`  | Coming Soon        | AKS, Blob Storage, PostgreSQL, Workload Identity |
 
-The Kubernetes layer (KServe, MLflow, ArgoCD) remains consistent across clouds—only the infrastructure provisioning differs.
+The Kubernetes layer (KServe, MLflow, ArgoCD) is cloud-agnostic and can be adapted to other providers.
 
 ## AWS Infrastructure
 
@@ -180,15 +178,13 @@ The platform includes a production-ready Terraform module for AWS EKS:
 
 ```
 infrastructure/terraform/
-├── modules/
-│   ├── eks/             # AWS EKS (production-ready)
-│   │   ├── main.tf      # VPC, EKS cluster, node groups, S3, RDS, IRSA
-│   │   ├── variables.tf # Configurable inputs
-│   │   └── outputs.tf   # Cluster endpoints, ARNs
-│   ├── gke/             # GCP GKE (coming soon)
-│   └── aks/             # Azure AKS (coming soon)
-└── environments/dev/
-    ├── main.tf          # Dev environment config with Helm releases
+├── bootstrap/           # AWS prerequisites (S3, DynamoDB, GitHub OIDC)
+├── modules/eks/         # AWS EKS module
+│   ├── main.tf          # VPC, EKS cluster, node groups, S3, RDS, IRSA
+│   ├── variables.tf     # Configurable inputs
+│   └── outputs.tf       # Cluster endpoints, ARNs
+└── environments/dev/    # Main deployment configuration
+    ├── main.tf          # EKS + Helm releases
     ├── outputs.tf       # Access information
     └── variables.tf     # Environment variables
 ```

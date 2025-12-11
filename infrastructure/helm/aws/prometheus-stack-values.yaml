@@ -1,0 +1,377 @@
+# kube-prometheus-stack Helm Values for MLOps Platform
+# Chart: https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
+
+# Global settings
+fullnameOverride: ""
+namespaceOverride: ""
+
+# Default rules for alerting
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    etcd: false  # Not applicable for EKS
+    configReloaders: true
+    general: true
+    k8sContainerCpuUsageSecondsTotal: true
+    k8sContainerMemoryCache: true
+    k8sContainerMemoryRss: true
+    k8sContainerMemorySwap: true
+    k8sContainerResource: true
+    k8sPodOwner: true
+    kubeApiserverAvailability: true
+    kubeApiserverBurnrate: true
+    kubeApiserverHistogram: true
+    kubeApiserverSlos: true
+    kubeControllerManager: false  # Not exposed in EKS
+    kubelet: true
+    kubeProxy: false  # Not exposed in EKS
+    kubePrometheusGeneral: true
+    kubePrometheusNodeRecording: true
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesStorage: true
+    kubernetesSystem: true
+    kubeSchedulerAlerting: false  # Not exposed in EKS
+    kubeSchedulerRecording: false
+    kubeStateMetrics: true
+    network: true
+    node: true
+    nodeExporterAlerting: true
+    nodeExporterRecording: true
+    prometheus: true
+    prometheusOperator: true
+
+# Alertmanager configuration
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    replicas: 1
+    retention: 120h
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 200m
+        memory: 512Mi
+
+  # Alertmanager config for notifications
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['alertname', 'namespace', 'severity']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: 'null'
+      routes:
+        - match:
+            alertname: Watchdog
+          receiver: 'null'
+        - match:
+            severity: critical
+          receiver: 'critical-alerts'
+        - match:
+            severity: warning
+          receiver: 'warning-alerts'
+    receivers:
+      - name: 'null'
+      - name: 'critical-alerts'
+        # Configure Slack, PagerDuty, etc. here
+        # slack_configs:
+        #   - api_url: 'https://hooks.slack.com/services/xxx'
+        #     channel: '#alerts-critical'
+      - name: 'warning-alerts'
+        # slack_configs:
+        #   - api_url: 'https://hooks.slack.com/services/xxx'
+        #     channel: '#alerts-warning'
+    inhibit_rules:
+      - source_match:
+          severity: 'critical'
+        target_match:
+          severity: 'warning'
+        equal: ['alertname', 'namespace']
+
+# Grafana configuration
+grafana:
+  enabled: true
+  replicas: 1
+  adminPassword: admin  # Change in production or use external secrets
+
+  persistence:
+    enabled: true
+    storageClassName: gp3
+    size: 10Gi
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  # Ingress for external access
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+      alb.ingress.kubernetes.io/healthcheck-path: /api/health
+    hosts:
+      - grafana.mlops.local
+    path: /
+
+  # Sidecar for dashboard discovery
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: true
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      labelValue: "1"
+
+  # Default datasources
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki:3100
+      access: proxy
+      isDefault: false
+
+  # Grafana plugins
+  plugins:
+    - grafana-piechart-panel
+    - grafana-clock-panel
+
+# Prometheus configuration
+prometheus:
+  enabled: true
+  prometheusSpec:
+    replicas: 1
+    retention: 15d
+    retentionSize: "45GB"
+
+    # Scrape configs for MLOps components
+    additionalScrapeConfigs:
+      # MLflow metrics
+      - job_name: 'mlflow'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - mlflow
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+
+      # KServe inference services
+      - job_name: 'kserve'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - mlops
+                - kserve
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_serving_kserve_io_inferenceservice]
+            action: keep
+            regex: .+
+          - source_labels: [__meta_kubernetes_pod_container_port_number]
+            action: keep
+            regex: "8080|9090"
+
+      # Kubeflow Pipelines
+      - job_name: 'kubeflow-pipelines'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - kubeflow
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+
+    # Storage configuration
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
+
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+
+    # Service monitors to discover
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+# Prometheus Operator
+prometheusOperator:
+  enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 200m
+      memory: 512Mi
+
+# Node Exporter
+nodeExporter:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Kube State Metrics
+kubeStateMetrics:
+  enabled: true
+
+# Disable components not needed for EKS
+kubeControllerManager:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeProxy:
+  enabled: false
+
+kubeEtcd:
+  enabled: false
+
+# Additional PrometheusRules for MLOps
+additionalPrometheusRulesMap:
+  mlops-alerts:
+    groups:
+      - name: mlops.inference
+        rules:
+          - alert: HighInferenceLatency
+            expr: histogram_quantile(0.95, sum(rate(inference_request_duration_seconds_bucket[5m])) by (le, model_name)) > 1
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High inference latency for model {{ $labels.model_name }}"
+              description: "P95 latency is {{ $value }}s (threshold: 1s)"
+
+          - alert: HighInferenceErrorRate
+            expr: sum(rate(inference_request_total{status="error"}[5m])) by (model_name) / sum(rate(inference_request_total[5m])) by (model_name) > 0.05
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High error rate for model {{ $labels.model_name }}"
+              description: "Error rate is {{ $value | humanizePercentage }}"
+
+          - alert: InferenceServiceDown
+            expr: up{job="kserve"} == 0
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Inference service {{ $labels.instance }} is down"
+              description: "KServe inference service has been unreachable for 2 minutes"
+
+      - name: mlops.mlflow
+        rules:
+          - alert: MLflowDown
+            expr: up{job="mlflow"} == 0
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "MLflow tracking server is down"
+              description: "MLflow has been unreachable for 2 minutes"
+
+          - alert: MLflowHighMemory
+            expr: container_memory_usage_bytes{namespace="mlflow"} / container_spec_memory_limit_bytes{namespace="mlflow"} > 0.9
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "MLflow high memory usage"
+              description: "Memory usage is above 90%"
+
+      - name: mlops.pipelines
+        rules:
+          - alert: PipelineFailureRate
+            expr: sum(rate(workflow_condition{status="Failed"}[1h])) / sum(rate(workflow_condition[1h])) > 0.1
+            for: 15m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High pipeline failure rate"
+              description: "More than 10% of pipelines are failing"
+
+          - alert: PipelineStuck
+            expr: sum(kube_pod_status_phase{namespace="kubeflow", phase="Pending"}) by (pod) > 0
+            for: 30m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pipeline pod stuck in Pending"
+              description: "Pod {{ $labels.pod }} has been pending for 30 minutes"
+
+      - name: mlops.gpu
+        rules:
+          - alert: GPUUtilizationLow
+            expr: avg(DCGM_FI_DEV_GPU_UTIL) by (kubernetes_node) < 20
+            for: 30m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Low GPU utilization on {{ $labels.kubernetes_node }}"
+              description: "GPU utilization is {{ $value }}% - consider scaling down"
+
+          - alert: GPUMemoryHigh
+            expr: DCGM_FI_DEV_FB_USED / DCGM_FI_DEV_FB_FREE > 0.95
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High GPU memory usage"
+              description: "GPU memory usage is above 95%"

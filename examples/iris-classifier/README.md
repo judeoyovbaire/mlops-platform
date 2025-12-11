@@ -1,7 +1,7 @@
 # Iris Classifier Example
 
 A complete end-to-end example demonstrating the MLOps platform capabilities:
-- Model training with experiment tracking
+- Model training with experiment tracking via Kubeflow Pipelines
 - Model registration with MLflow
 - Model serving with KServe
 - Inference testing
@@ -14,17 +14,7 @@ A complete end-to-end example demonstrating the MLOps platform capabilities:
 
 ## Quick Start
 
-### 1. Train the Model Locally (Optional)
-
-```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Train and register model
-python train.py
-```
-
-### 2. Run as Kubeflow Pipeline
+### 1. Run as Kubeflow Pipeline
 
 ```bash
 # Compile the pipeline
@@ -32,13 +22,31 @@ cd ../../pipelines/training
 python example-pipeline.py
 
 # Upload ml_training_pipeline.yaml to Kubeflow Pipelines UI
+# Or submit via CLI:
+kfp run submit -f ml_training_pipeline.yaml
 ```
 
-### 3. Deploy Model with KServe
+### 2. Deploy Model with KServe
 
 ```bash
-# Deploy the trained model
-kubectl apply -f kserve-deployment.yaml
+# Deploy using the example from components/
+kubectl apply -f ../../components/kserve/inferenceservice-examples.yaml
+
+# Or deploy specifically the MLflow model:
+cat <<EOF | kubectl apply -f -
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: iris-classifier
+  namespace: mlops
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: mlflow
+      protocolVersion: v2
+      storageUri: s3://mlops-platform-mlflow-artifacts/models/iris-classifier/1
+EOF
 
 # Wait for the service to be ready
 kubectl wait --for=condition=Ready inferenceservice/iris-classifier -n mlops --timeout=300s
@@ -47,7 +55,7 @@ kubectl wait --for=condition=Ready inferenceservice/iris-classifier -n mlops --t
 kubectl get inferenceservice iris-classifier -n mlops
 ```
 
-### 4. Test Inference
+### 3. Test Inference
 
 ```bash
 # Run inference test
@@ -65,20 +73,21 @@ curl -X POST "${SERVICE_URL}/v1/models/iris-classifier:predict" \
 ```
 iris-classifier/
 ├── README.md              # This file
-├── requirements.txt       # Python dependencies
-├── train.py              # Local training script
-├── test_inference.py     # Inference testing script
-└── kserve-deployment.yaml # KServe InferenceService manifest
+└── test_inference.py      # Inference testing script
+
+# Related files:
+# ../../pipelines/training/example-pipeline.py  - Training pipeline
+# ../../components/kserve/inferenceservice-examples.yaml - KServe examples
 ```
 
 ## Expected Output
 
-### Training Output
+### Training Output (from Kubeflow Pipeline)
 ```
-Training Iris Classifier...
-Accuracy: 0.9667
-F1 Score: 0.9665
-Model registered with alias 'champion'
+Training complete. Run ID: abc123
+Accuracy: 0.9667, F1: 0.9665
+Model registered as 'iris-classifier' version 1
+Alias 'champion' set for this version
 ```
 
 ### Inference Output
@@ -92,30 +101,26 @@ Model registered with alias 'champion'
 ## Customization
 
 ### Different Dataset
-Modify `train.py` to use a different dataset:
+Modify pipeline parameters when submitting:
 
-```python
-dataset_url = "https://your-data-source/data.csv"
-target_column = "your_target"
+```bash
+kfp run submit -f ml_training_pipeline.yaml \
+  --param dataset_url="https://your-data-source/data.csv" \
+  --param target_column="your_target"
 ```
 
 ### Hyperparameter Tuning
-Adjust hyperparameters in `train.py`:
+Adjust hyperparameters via pipeline parameters:
 
-```python
-params = {
-    "n_estimators": 200,
-    "max_depth": 15,
-    "min_samples_split": 5
-}
+```bash
+kfp run submit -f ml_training_pipeline.yaml \
+  --param n_estimators=200 \
+  --param max_depth=15
 ```
 
 ### Model Serving Configuration
-Update `kserve-deployment.yaml` for production:
-
-```yaml
-spec:
-  predictor:
-    minReplicas: 2
-    maxReplicas: 10
-```
+See `../../components/kserve/inferenceservice-examples.yaml` for various deployment patterns:
+- Basic deployment
+- Canary deployment (90/10 traffic split)
+- Autoscaling with HPA
+- GPU-enabled LLM serving
