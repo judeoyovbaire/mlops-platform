@@ -12,6 +12,10 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.23"
     }
+    kubectl = {
+      source  = "gavinbunney/kubectl"
+      version = "~> 1.14"
+    }
     helm = {
       source  = "hashicorp/helm"
       version = "~> 2.11"
@@ -66,6 +70,19 @@ provider "helm" {
       command     = "aws"
       args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
     }
+  }
+}
+
+# kubectl provider for CRD-based resources (handles cluster-not-exist scenario during plan)
+provider "kubectl" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  load_config_file       = false
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
   }
 }
 
@@ -615,240 +632,162 @@ resource "helm_release" "karpenter" {
 }
 
 # Karpenter NodePool for GPU workloads
-resource "kubernetes_manifest" "karpenter_gpu_nodepool" {
-  manifest = {
-    apiVersion = "karpenter.sh/v1"
-    kind       = "NodePool"
-    metadata = {
-      name = "gpu-workloads"
-    }
-    spec = {
-      template = {
-        metadata = {
-          labels = {
-            "node-type"                  = "gpu"
-            "karpenter.sh/capacity-type" = "spot"
-          }
-        }
-        spec = {
-          nodeClassRef = {
-            group = "karpenter.k8s.aws"
-            kind  = "EC2NodeClass"
-            name  = "gpu"
-          }
-          requirements = [
-            {
-              key      = "karpenter.k8s.aws/instance-category"
-              operator = "In"
-              values   = ["g", "p"]
-            },
-            {
-              key      = "karpenter.k8s.aws/instance-family"
-              operator = "In"
-              values   = ["g4dn", "g5", "p3", "p4d"]
-            },
-            {
-              key      = "karpenter.sh/capacity-type"
-              operator = "In"
-              values   = ["spot", "on-demand"]
-            },
-            {
-              key      = "kubernetes.io/arch"
-              operator = "In"
-              values   = ["amd64"]
-            }
-          ]
-          taints = [
-            {
-              key    = "nvidia.com/gpu"
-              value  = "true"
-              effect = "NoSchedule"
-            }
-          ]
-        }
-      }
-      limits = {
-        cpu              = "100"
-        memory           = "400Gi"
-        "nvidia.com/gpu" = "8"
-      }
-      disruption = {
-        consolidationPolicy = "WhenEmptyOrUnderutilized"
-        consolidateAfter    = "1m"
-      }
+resource "kubectl_manifest" "karpenter_gpu_nodepool" {
+  yaml_body = <<-YAML
+    apiVersion: karpenter.sh/v1
+    kind: NodePool
+    metadata:
+      name: gpu-workloads
+    spec:
+      template:
+        metadata:
+          labels:
+            node-type: gpu
+            karpenter.sh/capacity-type: spot
+        spec:
+          nodeClassRef:
+            group: karpenter.k8s.aws
+            kind: EC2NodeClass
+            name: gpu
+          requirements:
+            - key: karpenter.k8s.aws/instance-category
+              operator: In
+              values: ["g", "p"]
+            - key: karpenter.k8s.aws/instance-family
+              operator: In
+              values: ["g4dn", "g5", "p3", "p4d"]
+            - key: karpenter.sh/capacity-type
+              operator: In
+              values: ["spot", "on-demand"]
+            - key: kubernetes.io/arch
+              operator: In
+              values: ["amd64"]
+          taints:
+            - key: nvidia.com/gpu
+              value: "true"
+              effect: NoSchedule
+      limits:
+        cpu: "100"
+        memory: 400Gi
+        nvidia.com/gpu: "8"
+      disruption:
+        consolidationPolicy: WhenEmptyOrUnderutilized
+        consolidateAfter: 1m
       # Cost optimization: terminate GPU nodes after 4 hours to prevent runaway costs
-      expireAfter = "4h"
-    }
-  }
+      expireAfter: 4h
+  YAML
 
   depends_on = [helm_release.karpenter]
 }
 
 # Karpenter NodePool for training workloads (CPU)
-resource "kubernetes_manifest" "karpenter_training_nodepool" {
-  manifest = {
-    apiVersion = "karpenter.sh/v1"
-    kind       = "NodePool"
-    metadata = {
-      name = "training-workloads"
-    }
-    spec = {
-      template = {
-        metadata = {
-          labels = {
-            "node-type"                  = "training"
-            "karpenter.sh/capacity-type" = "spot"
-          }
-        }
-        spec = {
-          nodeClassRef = {
-            group = "karpenter.k8s.aws"
-            kind  = "EC2NodeClass"
-            name  = "default"
-          }
-          requirements = [
-            {
-              key      = "karpenter.k8s.aws/instance-category"
-              operator = "In"
-              values   = ["c", "m", "r"]
-            },
-            {
-              key      = "karpenter.k8s.aws/instance-size"
-              operator = "In"
-              values   = ["xlarge", "2xlarge", "4xlarge"]
-            },
-            {
-              key      = "karpenter.sh/capacity-type"
-              operator = "In"
-              values   = ["spot"]
-            },
-            {
-              key      = "kubernetes.io/arch"
-              operator = "In"
-              values   = ["amd64"]
-            }
-          ]
-          taints = [
-            {
-              key    = "workload"
-              value  = "training"
-              effect = "NoSchedule"
-            }
-          ]
-        }
-      }
-      limits = {
-        cpu    = "200"
-        memory = "800Gi"
-      }
-      disruption = {
-        consolidationPolicy = "WhenEmptyOrUnderutilized"
-        consolidateAfter    = "30s"
-      }
-    }
-  }
+resource "kubectl_manifest" "karpenter_training_nodepool" {
+  yaml_body = <<-YAML
+    apiVersion: karpenter.sh/v1
+    kind: NodePool
+    metadata:
+      name: training-workloads
+    spec:
+      template:
+        metadata:
+          labels:
+            node-type: training
+            karpenter.sh/capacity-type: spot
+        spec:
+          nodeClassRef:
+            group: karpenter.k8s.aws
+            kind: EC2NodeClass
+            name: default
+          requirements:
+            - key: karpenter.k8s.aws/instance-category
+              operator: In
+              values: ["c", "m", "r"]
+            - key: karpenter.k8s.aws/instance-size
+              operator: In
+              values: ["xlarge", "2xlarge", "4xlarge"]
+            - key: karpenter.sh/capacity-type
+              operator: In
+              values: ["spot"]
+            - key: kubernetes.io/arch
+              operator: In
+              values: ["amd64"]
+          taints:
+            - key: workload
+              value: training
+              effect: NoSchedule
+      limits:
+        cpu: "200"
+        memory: 800Gi
+      disruption:
+        consolidationPolicy: WhenEmptyOrUnderutilized
+        consolidateAfter: 30s
+  YAML
 
   depends_on = [helm_release.karpenter]
 }
 
 # Karpenter EC2NodeClass for GPU instances
-resource "kubernetes_manifest" "karpenter_gpu_nodeclass" {
-  manifest = {
-    apiVersion = "karpenter.k8s.aws/v1"
-    kind       = "EC2NodeClass"
-    metadata = {
-      name = "gpu"
-    }
-    spec = {
-      amiSelectorTerms = [
-        {
-          alias = "al2023@latest"
-        }
-      ]
-      role = module.eks.karpenter_node_role_name
-      subnetSelectorTerms = [
-        {
-          tags = {
-            "karpenter.sh/discovery" = module.eks.cluster_name
-          }
-        }
-      ]
-      securityGroupSelectorTerms = [
-        {
-          tags = {
-            "karpenter.sh/discovery" = module.eks.cluster_name
-          }
-        }
-      ]
-      blockDeviceMappings = [
-        {
-          deviceName = "/dev/xvda"
-          ebs = {
-            volumeSize          = "100Gi"
-            volumeType          = "gp3"
-            deleteOnTermination = true
-            encrypted           = true
-          }
-        }
-      ]
-      tags = {
-        Environment = "dev"
-        Project     = "mlops-platform"
-        NodeType    = "gpu"
-      }
-    }
-  }
+resource "kubectl_manifest" "karpenter_gpu_nodeclass" {
+  yaml_body = <<-YAML
+    apiVersion: karpenter.k8s.aws/v1
+    kind: EC2NodeClass
+    metadata:
+      name: gpu
+    spec:
+      amiSelectorTerms:
+        - alias: al2023@latest
+      role: ${module.eks.karpenter_node_role_name}
+      subnetSelectorTerms:
+        - tags:
+            karpenter.sh/discovery: ${module.eks.cluster_name}
+      securityGroupSelectorTerms:
+        - tags:
+            karpenter.sh/discovery: ${module.eks.cluster_name}
+      blockDeviceMappings:
+        - deviceName: /dev/xvda
+          ebs:
+            volumeSize: 100Gi
+            volumeType: gp3
+            deleteOnTermination: true
+            encrypted: true
+      tags:
+        Environment: dev
+        Project: mlops-platform
+        NodeType: gpu
+  YAML
 
   depends_on = [helm_release.karpenter]
 }
 
 # Karpenter EC2NodeClass for default/training instances
-resource "kubernetes_manifest" "karpenter_default_nodeclass" {
-  manifest = {
-    apiVersion = "karpenter.k8s.aws/v1"
-    kind       = "EC2NodeClass"
-    metadata = {
-      name = "default"
-    }
-    spec = {
-      amiSelectorTerms = [
-        {
-          alias = "al2023@latest"
-        }
-      ]
-      role = module.eks.karpenter_node_role_name
-      subnetSelectorTerms = [
-        {
-          tags = {
-            "karpenter.sh/discovery" = module.eks.cluster_name
-          }
-        }
-      ]
-      securityGroupSelectorTerms = [
-        {
-          tags = {
-            "karpenter.sh/discovery" = module.eks.cluster_name
-          }
-        }
-      ]
-      blockDeviceMappings = [
-        {
-          deviceName = "/dev/xvda"
-          ebs = {
-            volumeSize          = "50Gi"
-            volumeType          = "gp3"
-            deleteOnTermination = true
-            encrypted           = true
-          }
-        }
-      ]
-      tags = {
-        Environment = "dev"
-        Project     = "mlops-platform"
-        NodeType    = "training"
-      }
-    }
-  }
+resource "kubectl_manifest" "karpenter_default_nodeclass" {
+  yaml_body = <<-YAML
+    apiVersion: karpenter.k8s.aws/v1
+    kind: EC2NodeClass
+    metadata:
+      name: default
+    spec:
+      amiSelectorTerms:
+        - alias: al2023@latest
+      role: ${module.eks.karpenter_node_role_name}
+      subnetSelectorTerms:
+        - tags:
+            karpenter.sh/discovery: ${module.eks.cluster_name}
+      securityGroupSelectorTerms:
+        - tags:
+            karpenter.sh/discovery: ${module.eks.cluster_name}
+      blockDeviceMappings:
+        - deviceName: /dev/xvda
+          ebs:
+            volumeSize: 50Gi
+            volumeType: gp3
+            deleteOnTermination: true
+            encrypted: true
+      tags:
+        Environment: dev
+        Project: mlops-platform
+        NodeType: training
+  YAML
 
   depends_on = [helm_release.karpenter]
 }
@@ -935,108 +874,82 @@ resource "helm_release" "external_secrets" {
 }
 
 # ClusterSecretStore for AWS SSM Parameter Store
-resource "kubernetes_manifest" "cluster_secret_store" {
-  manifest = {
-    apiVersion = "external-secrets.io/v1beta1"
-    kind       = "ClusterSecretStore"
-    metadata = {
-      name = "aws-ssm"
-    }
-    spec = {
-      provider = {
-        aws = {
-          service = "ParameterStore"
-          region  = var.aws_region
-          auth = {
-            jwt = {
-              serviceAccountRef = {
-                name      = "external-secrets"
-                namespace = "external-secrets"
-              }
-            }
-          }
-        }
-      }
-    }
-  }
+resource "kubectl_manifest" "cluster_secret_store" {
+  yaml_body = <<-YAML
+    apiVersion: external-secrets.io/v1beta1
+    kind: ClusterSecretStore
+    metadata:
+      name: aws-ssm
+    spec:
+      provider:
+        aws:
+          service: ParameterStore
+          region: ${var.aws_region}
+          auth:
+            jwt:
+              serviceAccountRef:
+                name: external-secrets
+                namespace: external-secrets
+  YAML
 
   depends_on = [helm_release.external_secrets]
 }
 
-# Example: External Secret for MLflow (syncs SSM to K8s Secret)
-resource "kubernetes_manifest" "mlflow_external_secret" {
-  manifest = {
-    apiVersion = "external-secrets.io/v1beta1"
-    kind       = "ExternalSecret"
-    metadata = {
-      name      = "mlflow-db-credentials"
-      namespace = "mlflow"
-    }
-    spec = {
-      refreshInterval = "1h"
-      secretStoreRef = {
-        name = "aws-ssm"
-        kind = "ClusterSecretStore"
-      }
-      target = {
-        name           = "mlflow-db-credentials"
-        creationPolicy = "Owner"
-      }
-      data = [
-        {
-          secretKey = "password"
-          remoteRef = {
-            key = "/${var.cluster_name}/mlflow/db-password"
-          }
-        }
-      ]
-    }
-  }
+# External Secret for MLflow (syncs SSM to K8s Secret)
+resource "kubectl_manifest" "mlflow_external_secret" {
+  yaml_body = <<-YAML
+    apiVersion: external-secrets.io/v1beta1
+    kind: ExternalSecret
+    metadata:
+      name: mlflow-db-credentials
+      namespace: mlflow
+    spec:
+      refreshInterval: 1h
+      secretStoreRef:
+        name: aws-ssm
+        kind: ClusterSecretStore
+      target:
+        name: mlflow-db-credentials
+        creationPolicy: Owner
+      data:
+        - secretKey: password
+          remoteRef:
+            key: /${var.cluster_name}/mlflow/db-password
+  YAML
 
   depends_on = [
-    kubernetes_manifest.cluster_secret_store,
+    kubectl_manifest.cluster_secret_store,
     kubernetes_namespace.mlflow
   ]
 }
 
-# Example: External Secret for Kubeflow/MinIO
-resource "kubernetes_manifest" "kubeflow_external_secret" {
-  manifest = {
-    apiVersion = "external-secrets.io/v1beta1"
-    kind       = "ExternalSecret"
-    metadata = {
-      name      = "pipeline-credentials"
-      namespace = "kubeflow"
-    }
-    spec = {
-      refreshInterval = "1h"
-      secretStoreRef = {
-        name = "aws-ssm"
-        kind = "ClusterSecretStore"
-      }
-      target = {
-        name           = "pipeline-credentials"
-        creationPolicy = "Owner"
-      }
-      data = [
-        {
-          secretKey = "mysql-password"
-          remoteRef = {
-            key = "/${var.cluster_name}/kubeflow/db-password"
-          }
-        },
-        {
-          secretKey = "minio-password"
-          remoteRef = {
-            key = "/${var.cluster_name}/minio/root-password"
-          }
-        }
-      ]
-    }
-  }
+# External Secret for Kubeflow/MinIO
+resource "kubectl_manifest" "kubeflow_external_secret" {
+  yaml_body = <<-YAML
+    apiVersion: external-secrets.io/v1beta1
+    kind: ExternalSecret
+    metadata:
+      name: pipeline-credentials
+      namespace: kubeflow
+    spec:
+      refreshInterval: 1h
+      secretStoreRef:
+        name: aws-ssm
+        kind: ClusterSecretStore
+      target:
+        name: pipeline-credentials
+        creationPolicy: Owner
+      data:
+        - secretKey: mysql-password
+          remoteRef:
+            key: /${var.cluster_name}/kubeflow/db-password
+        - secretKey: minio-password
+          remoteRef:
+            key: /${var.cluster_name}/minio/root-password
+  YAML
 
   depends_on = [
-    kubernetes_manifest.cluster_secret_store,
+    kubectl_manifest.cluster_secret_store,
     kubernetes_namespace.kubeflow
   ]
 }
