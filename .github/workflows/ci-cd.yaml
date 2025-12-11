@@ -178,9 +178,7 @@ jobs:
         run: pytest tests/ -v --tb=short
 
       - name: Test pipeline compilation
-        run: |
-          cd pipelines/training
-          python -c "from kfp import compiler; exec(open('example-pipeline.py').read()); compiler.Compiler().compile(ml_training_pipeline, 'test.yaml')"
+        run: python pipelines/training/example-pipeline.py
 
   # ============================================================================
   # STAGE 2: TERRAFORM PLAN

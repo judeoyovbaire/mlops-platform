@@ -1,0 +1,18 @@
+# Trivy ignore file for MLOps Platform
+# https://aquasecurity.github.io/trivy/v0.28.0/docs/configuration/filtering/
+
+# Ignore false positives and accepted risks for IaC scanning
+
+# AWS Provider warnings that are handled by organizational policies
+# AVD-AWS-0057: VPC Flow Logs - enabled via organizational CloudTrail
+# AVD-AWS-0178: EBS encryption - using default KMS key is acceptable for dev
+
+# Kubernetes manifest warnings that are intentional for ML workloads
+# KSV001: Process can elevate privileges - needed for GPU workloads
+# KSV003: Default capabilities not dropped - handled by PodSecurityPolicy
+# KSV012: Runs as root - some ML frameworks require this
+# KSV014: Root filesystem not read-only - ML models need write access
+# KSV021: Low user/group ID - acceptable for internal services
+
+# Terraform state file warnings
+# Generic secrets detected - these are Terraform state references, not actual secrets
