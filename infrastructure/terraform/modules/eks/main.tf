@@ -414,9 +414,10 @@ resource "aws_eks_access_entry" "karpenter_node" {
 }
 
 # Tag subnets for Karpenter discovery
+# Using count instead of for_each because subnet IDs are not known until apply
 resource "aws_ec2_tag" "private_subnet_karpenter" {
-  for_each    = toset(module.vpc.private_subnets)
-  resource_id = each.value
+  count       = length(var.private_subnets)
+  resource_id = module.vpc.private_subnets[count.index]
   key         = "karpenter.sh/discovery"
   value       = var.cluster_name
 }
