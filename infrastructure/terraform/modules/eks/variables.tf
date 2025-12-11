@@ -151,6 +151,13 @@ variable "mlflow_db_password" {
   sensitive   = true
 }
 
+# Cluster access
+variable "cluster_admin_arns" {
+  description = "List of IAM ARNs to grant cluster admin access"
+  type        = list(string)
+  default     = []
+}
+
 # Tags
 variable "tags" {
   description = "Tags to apply to all resources"
