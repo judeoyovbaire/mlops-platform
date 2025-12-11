@@ -1,6 +1,6 @@
 # Infrastructure Deployment Pipeline
-# Deploys infrastructure via Terraform when changes are merged to main
-# Follows everything-as-code principle with GitOps
+# Plan on push/PR, apply only with manual approval
+# Follows GitOps principle: plan first, review, then apply
 
 name: Deploy Infrastructure
 
@@ -10,12 +10,16 @@ on:
     paths:
       - 'infrastructure/terraform/**'
       - '.github/workflows/deploy.yaml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infrastructure/terraform/**'
   workflow_dispatch:
     inputs:
       action:
         description: 'Terraform action to perform'
         required: true
-        default: 'apply'
+        default: 'plan'
         type: choice
         options:
           - plan
@@ -34,7 +38,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  # Validate before deploy
+  # Validate Terraform code
   validate:
     name: Validate
     runs-on: ubuntu-latest
@@ -58,12 +62,13 @@ jobs:
         working-directory: infrastructure/terraform/modules/eks
         run: terraform validate
 
-  # Deploy infrastructure
-  deploy:
-    name: Deploy Infrastructure
+  # Plan infrastructure changes
+  plan:
+    name: Terraform Plan
     runs-on: ubuntu-latest
     needs: validate
-    environment: production
+    outputs:
+      has_changes: ${{ steps.plan.outputs.has_changes }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -88,25 +93,98 @@ jobs:
         working-directory: infrastructure/terraform/environments/dev
         run: |
           terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+
           # Check if there are changes
-          if terraform show -no-color tfplan | grep -q "No changes"; then
-            echo "changes=false" >> $GITHUB_OUTPUT
+          if grep -q "No changes" plan.txt; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "## No Changes" >> $GITHUB_STEP_SUMMARY
+            echo "Infrastructure is up to date." >> $GITHUB_STEP_SUMMARY
           else
-            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "## Terraform Plan" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Click to expand plan</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            cat plan.txt >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
           fi
 
-      - name: Terraform Apply
-        if: (github.event_name == 'push' || github.event.inputs.action == 'apply') && steps.plan.outputs.changes == 'true'
-        working-directory: infrastructure/terraform/environments/dev
-        run: terraform apply -auto-approve tfplan
+      - name: Comment Plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('infrastructure/terraform/environments/dev/plan.txt', 'utf8');
+            const maxLength = 65000;
+            const truncatedPlan = plan.length > maxLength
+              ? plan.substring(0, maxLength) + '\n\n... (truncated)'
+              : plan;
 
-      - name: Terraform Destroy
-        if: github.event.inputs.action == 'destroy'
+            const output = `## Terraform Plan
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`
+            ${truncatedPlan}
+            \`\`\`
+
+            </details>
+
+            **Action Required**: Review the plan above. To apply these changes:
+            1. Merge this PR
+            2. Go to Actions → Deploy Infrastructure → Run workflow
+            3. Select "apply" action
+
+            *Pushed by: @${{ github.actor }}*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: infrastructure/terraform/environments/dev/tfplan
+          retention-days: 7
+
+  # Apply infrastructure (manual trigger only)
+  apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: plan
+    if: github.event.inputs.action == 'apply'
+    environment: production  # Requires manual approval if configured
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Init
         working-directory: infrastructure/terraform/environments/dev
-        run: terraform destroy -auto-approve
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: infrastructure/terraform/environments/dev
+        run: terraform apply -auto-approve
 
       - name: Get Outputs
-        if: github.event_name == 'push' || github.event.inputs.action == 'apply'
         working-directory: infrastructure/terraform/environments/dev
         run: |
           echo "## Deployment Outputs" >> $GITHUB_STEP_SUMMARY
@@ -116,15 +194,44 @@ jobs:
           terraform output -json | jq -r 'to_entries[] | "| \(.key) | \(.value.value // "N/A") |"' >> $GITHUB_STEP_SUMMARY
 
       - name: Configure kubectl
-        if: github.event_name == 'push' || github.event.inputs.action == 'apply'
         run: |
           aws eks update-kubeconfig --name mlops-platform-dev --region ${{ env.AWS_REGION }}
 
       - name: Verify Deployment
-        if: github.event_name == 'push' || github.event.inputs.action == 'apply'
         run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Cluster Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          kubectl get nodes >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Cluster not yet ready"
+          kubectl get nodes >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Cluster provisioning..."
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  # Destroy infrastructure (manual trigger only)
+  destroy:
+    name: Terraform Destroy
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event.inputs.action == 'destroy'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Init
+        working-directory: infrastructure/terraform/environments/dev
+        run: terraform init
+
+      - name: Terraform Destroy
+        working-directory: infrastructure/terraform/environments/dev
+        run: terraform destroy -auto-approve

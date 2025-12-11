@@ -22,21 +22,14 @@ terraform {
     }
   }
 
-  # Remote state backend - requires bootstrap module to be applied first
-  # See: infrastructure/terraform/bootstrap/README.md
-  #
-  # To enable:
-  # 1. Run bootstrap: cd ../bootstrap && terraform apply
-  # 2. Uncomment the backend block below
-  # 3. Run: terraform init -migrate-state
-  #
-  # backend "s3" {
-  #   bucket         = "mlops-platform-tfstate-<ACCOUNT_ID>"  # From bootstrap output
-  #   key            = "mlops-platform/dev/terraform.tfstate"
-  #   region         = "eu-west-1"
-  #   encrypt        = true
-  #   dynamodb_table = "mlops-platform-terraform-locks"
-  # }
+  # Remote state backend - created by bootstrap module
+  backend "s3" {
+    bucket         = "mlops-platform-tfstate-183590992229"
+    key            = "mlops-platform/dev/terraform.tfstate"
+    region         = "eu-west-1"
+    encrypt        = true
+    dynamodb_table = "mlops-platform-terraform-locks"
+  }
 }
 
 provider "aws" {
