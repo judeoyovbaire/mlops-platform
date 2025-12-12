@@ -208,10 +208,11 @@ module "eks" {
   mlflow_db_instance_class = "db.t3.small"
   mlflow_db_password       = random_password.mlflow_db.result
 
-  # Grant cluster admin access to GitHub Actions role only
-  # All deployments should go through the CI/CD pipeline
+  # Grant cluster admin access to GitHub Actions role and root account
+  # GitHub Actions for CI/CD deployments, root for local access
   cluster_admin_arns = [
-    "arn:aws:iam::183590992229:role/mlops-platform-github-actions"
+    "arn:aws:iam::183590992229:role/mlops-platform-github-actions",
+    "arn:aws:iam::183590992229:root"
   ]
 
   # Disable dynamic cluster creator permissions - use explicit ARNs only
