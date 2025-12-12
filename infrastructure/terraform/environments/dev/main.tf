@@ -458,7 +458,7 @@ resource "helm_release" "mlflow" {
   name       = "mlflow"
   repository = "https://community-charts.github.io/helm-charts"
   chart      = "mlflow"
-  version    = "0.7.19"
+  version    = "1.8.1" # Upgraded: supports existingDatabaseSecret
   namespace  = kubernetes_namespace.mlflow.metadata[0].name
 
   values = [
@@ -591,6 +591,12 @@ resource "helm_release" "karpenter" {
   set {
     name  = "settings.clusterEndpoint"
     value = module.eks.cluster_endpoint
+  }
+
+  # Fix feature gates - must be explicitly set for Karpenter 1.8+
+  set {
+    name  = "settings.featureGates.spotToSpotConsolidation"
+    value = "false"
   }
 
   set {
