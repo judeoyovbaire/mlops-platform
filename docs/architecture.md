@@ -6,25 +6,38 @@ The MLOps Platform is designed to provide a complete ML lifecycle management sol
 
 ## Core Components
 
-### 1. Kubeflow Pipelines
+### 1. Argo Workflows
 
-Kubeflow Pipelines orchestrates ML workflows as directed acyclic graphs (DAGs). Each step in a pipeline runs as a container, enabling reproducibility and scalability.
+Argo Workflows orchestrates ML workflows as directed acyclic graphs (DAGs). Each step in a pipeline runs as a container, enabling reproducibility and scalability.
 
 **Key Features:**
-- Pipeline versioning and lineage tracking
-- Parallel execution of pipeline steps
-- Caching for faster iteration
+- Kubernetes-native workflow engine
+- DAG and step-based workflow definitions
+- Artifact passing between steps
+- Caching and memoization for faster iteration
 - Integration with MLflow for experiment tracking
 
 ```yaml
-# Example pipeline structure
-pipeline:
-  - data-ingestion
-  - data-validation
-  - feature-engineering
-  - model-training (GPU)
-  - model-evaluation
-  - model-registration
+# Example workflow structure
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: ml-training-pipeline
+spec:
+  entrypoint: ml-pipeline
+  templates:
+    - name: ml-pipeline
+      dag:
+        tasks:
+          - name: data-ingestion
+          - name: data-validation
+            dependencies: [data-ingestion]
+          - name: feature-engineering
+            dependencies: [data-validation]
+          - name: model-training
+            dependencies: [feature-engineering]
+          - name: model-evaluation
+            dependencies: [model-training]
 ```
 
 ### 2. MLflow 3.x
@@ -262,7 +275,7 @@ jobs:
 - External-dns for DNS management (optional)
 
 ### Layer 3: ML Platform
-- Kubeflow Pipelines
+- Argo Workflows
 - MLflow 3.x
 - KServe (RawDeployment mode)
 - ArgoCD for GitOps
@@ -351,7 +364,7 @@ A pre-built dashboard is included as a ConfigMap:
 ## Scalability Considerations
 
 ### Horizontal Scaling
-- Kubeflow Pipelines: Multiple workflow controllers
+- Argo Workflows: Multiple workflow controllers
 - MLflow: Stateless tracking server behind ALB
 - KServe: HPA based on inference latency/throughput
 
@@ -457,12 +470,12 @@ Current versions deployed by the platform:
 
 | Component | Version | Notes |
 |-----------|---------|-------|
-| MLflow | 3.5.1 | With model aliases and GenAI support |
+| MLflow | 1.8.1 | Helm chart with S3/RDS backend |
 | KServe | 0.16.0 | CNCF Incubating, RawDeployment mode |
 | Argo Workflows | 0.46.1 | ML pipeline execution engine |
-| Karpenter | 1.5.6 | GPU autoscaling with SPOT support |
+| Karpenter | 1.8.0 | GPU autoscaling with SPOT support |
 | ArgoCD | 7.9.0 | Chart deploys ArgoCD v2.x |
-| AWS ALB Controller | 1.16.0 | With Gateway API support |
+| AWS ALB Controller | 1.16.0 | Kubernetes Ingress with ALB |
 | cert-manager | 1.19.1 | TLS certificate management |
 | vLLM | 0.8.0 | High-throughput LLM inference |
 | Terraform EKS Module | 20.x | Compatible with AWS provider 5.x |

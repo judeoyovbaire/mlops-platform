@@ -138,17 +138,24 @@ cd mlops-platform
 cd infrastructure/terraform/bootstrap
 terraform init && terraform apply
 
-# 3. Deploy the platform (~15-20 minutes)
+# 3. Update backend configuration with your account ID
+# Edit infrastructure/terraform/environments/dev/main.tf
+# Update the S3 bucket name in the backend block:
+#   bucket = "mlops-platform-tfstate-<YOUR_AWS_ACCOUNT_ID>"
+
+# 4. Deploy the platform (~15-20 minutes)
 cd ../environments/dev
 terraform init && terraform apply
 
-# 4. Configure kubectl
+# 5. Configure kubectl
 aws eks update-kubeconfig --name mlops-platform-dev --region eu-west-1
 
-# 5. Access the dashboards
+# 6. Access the dashboards
 make port-forward-mlflow   # MLflow at localhost:5000
 make port-forward-argocd   # ArgoCD at localhost:8080
 ```
+
+> **Note**: The S3 backend bucket name in `environments/dev/main.tf` must match the bucket created by bootstrap (which includes your AWS account ID). This is a one-time configuration step.
 
 ### Using the Makefile
 
