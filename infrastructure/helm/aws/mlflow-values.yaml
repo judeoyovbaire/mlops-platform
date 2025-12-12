@@ -45,6 +45,10 @@ artifactRoot:
 extraEnvVars:
   AWS_DEFAULT_REGION: "${aws_region}"
 
+# MLflow 3.x security: must explicitly allow non-localhost connections
+extraArgs:
+  host: "0.0.0.0"
+
 # Resource configuration
 resources:
   requests:
