@@ -354,7 +354,19 @@ resource "kubernetes_service_account" "mlflow" {
 # Helm Releases
 # =============================================================================
 
-# AWS Load Balancer Controller
+# Gateway API CRDs (required for modern Kubernetes traffic management)
+# Replaces deprecated Ingress API - see https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/
+resource "helm_release" "gateway_api_crds" {
+  name       = "gateway-api"
+  repository = "https://kubernetes-sigs.github.io/gateway-api"
+  chart      = "gateway-api"
+  version    = "1.2.1"
+  namespace  = "kube-system"
+
+  depends_on = [module.eks]
+}
+
+# AWS Load Balancer Controller with Gateway API support
 resource "helm_release" "aws_load_balancer_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
@@ -392,7 +404,13 @@ resource "helm_release" "aws_load_balancer_controller" {
     value = module.eks.vpc_id
   }
 
-  depends_on = [module.eks]
+  # Enable Gateway API support (L7 with ALB)
+  set {
+    name  = "enableGatewayAPI"
+    value = "true"
+  }
+
+  depends_on = [module.eks, helm_release.gateway_api_crds]
 }
 
 # cert-manager (required by KServe)
@@ -450,7 +468,18 @@ resource "helm_release" "kserve_controller" {
     value = "RawDeployment"
   }
 
-  depends_on = [helm_release.kserve]
+  # Disable KServe's built-in ingress creation - we use Gateway API instead
+  set {
+    name  = "kserve.controller.ingress.disableIngressCreation"
+    value = "true"
+  }
+
+  set {
+    name  = "kserve.controller.ingress.disableIstioVirtualHost"
+    value = "true"
+  }
+
+  depends_on = [helm_release.kserve, helm_release.gateway_api_crds]
 }
 
 # MLflow
