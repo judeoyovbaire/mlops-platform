@@ -45,11 +45,18 @@ artifactRoot:
 extraEnvVars:
   AWS_DEFAULT_REGION: "${aws_region}"
 
-# MLflow 3.x security: must explicitly allow non-localhost connections
-# allowed-hosts=* permits health checks from kubelet (non-localhost)
+# MLflow 3.x security: allow connections from kubelet for health checks
+# Setting log.enabled=false prevents chart from adding --gunicorn-opts,
+# which allows uvicorn (default) to be used with security middleware flags
 extraArgs:
   host: "0.0.0.0"
   allowed-hosts: "*"
+  workers: "1"
+
+# Disable chart's gunicorn logging (uses --gunicorn-opts which breaks security middleware)
+# MLflow 3.x uses uvicorn by default which supports --allowed-hosts
+log:
+  enabled: false
 
 # Resource configuration
 resources:
@@ -60,15 +67,18 @@ resources:
     cpu: 500m
     memory: 512Mi
 
-# Pod security
+# Pod security (match chart defaults: user 1001)
 podSecurityContext:
   runAsNonRoot: true
-  runAsUser: 1000
-  fsGroup: 1000
+  fsGroup: 1001
+  fsGroupChangePolicy: "OnRootMismatch"
 
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
   capabilities:
     drop:
       - ALL
