@@ -50,6 +50,7 @@ module "vpc" {
   private_subnet_tags = {
     "kubernetes.io/role/internal-elb"           = 1
     "kubernetes.io/cluster/${var.cluster_name}" = "owned"
+    "karpenter.sh/discovery"                    = var.cluster_name
   }
 
   tags = var.tags
@@ -84,6 +85,11 @@ module "eks" {
         }
       }
     }
+  }
+
+  # Tag node security group for Karpenter discovery
+  node_security_group_tags = {
+    "karpenter.sh/discovery" = var.cluster_name
   }
 
   # Cluster addons
@@ -425,22 +431,6 @@ resource "aws_eks_access_entry" "karpenter_node" {
   cluster_name  = module.eks.cluster_name
   principal_arn = aws_iam_role.karpenter_node.arn
   type          = "EC2_LINUX"
-}
-
-# Tag subnets for Karpenter discovery
-# Using count instead of for_each because subnet IDs are not known until apply
-resource "aws_ec2_tag" "private_subnet_karpenter" {
-  count       = length(var.private_subnets)
-  resource_id = module.vpc.private_subnets[count.index]
-  key         = "karpenter.sh/discovery"
-  value       = var.cluster_name
-}
-
-# Tag security group for Karpenter discovery
-resource "aws_ec2_tag" "node_sg_karpenter" {
-  resource_id = module.eks.node_security_group_id
-  key         = "karpenter.sh/discovery"
-  value       = var.cluster_name
 }
 
 # =============================================================================
