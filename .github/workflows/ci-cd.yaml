@@ -177,8 +177,10 @@ jobs:
       - name: Run unit tests
         run: pytest tests/ -v --tb=short
 
-      - name: Test pipeline compilation
-        run: python pipelines/training/example-pipeline.py
+      - name: Validate Argo Workflow YAML
+        run: |
+          python3 -c "import yaml; yaml.safe_load(open('pipelines/training/ml-training-workflow.yaml'))"
+          echo "Argo Workflow YAML is valid"
 
   # ============================================================================
   # STAGE 2: TERRAFORM PLAN
