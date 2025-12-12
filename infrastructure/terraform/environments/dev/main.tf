@@ -282,11 +282,11 @@ resource "kubernetes_namespace" "mlflow" {
   depends_on = [module.eks]
 }
 
-resource "kubernetes_namespace" "kubeflow" {
+resource "kubernetes_namespace" "argo" {
   metadata {
-    name = "kubeflow"
+    name = "argo"
     labels = {
-      "app.kubernetes.io/name"    = "mlops-platform"
+      "app.kubernetes.io/name"    = "argo-workflows"
       "app.kubernetes.io/part-of" = "mlops-platform"
     }
   }
@@ -478,7 +478,7 @@ resource "helm_release" "mlflow" {
 }
 
 # =============================================================================
-# Kubeflow Pipelines
+# Argo Workflows - ML Pipeline Orchestration
 # =============================================================================
 
 # Argo Workflows for ML pipeline orchestration
@@ -487,7 +487,7 @@ resource "helm_release" "argo_workflows" {
   repository = "https://argoproj.github.io/argo-helm"
   chart      = "argo-workflows"
   version    = "0.46.1"
-  namespace  = kubernetes_namespace.kubeflow.metadata[0].name
+  namespace  = kubernetes_namespace.argo.metadata[0].name
 
   # Increase timeout for CRD installation
   timeout = 600
@@ -503,7 +503,7 @@ resource "helm_release" "minio" {
   repository = "https://charts.min.io/"
   chart      = "minio"
   version    = "5.4.0"
-  namespace  = kubernetes_namespace.kubeflow.metadata[0].name
+  namespace  = kubernetes_namespace.argo.metadata[0].name
 
   set {
     name  = "mode"
@@ -936,13 +936,13 @@ resource "kubectl_manifest" "mlflow_external_secret" {
 }
 
 # External Secret for MinIO (Argo Workflows artifact storage)
-resource "kubectl_manifest" "kubeflow_external_secret" {
+resource "kubectl_manifest" "argo_minio_external_secret" {
   yaml_body = <<-YAML
     apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       name: minio-credentials
-      namespace: kubeflow
+      namespace: argo
     spec:
       refreshInterval: 1h
       secretStoreRef:
@@ -959,7 +959,7 @@ resource "kubectl_manifest" "kubeflow_external_secret" {
 
   depends_on = [
     kubectl_manifest.cluster_secret_store,
-    kubernetes_namespace.kubeflow
+    kubernetes_namespace.argo
   ]
 }
 

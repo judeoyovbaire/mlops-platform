@@ -1,7 +1,7 @@
 """
-Unit tests for Kubeflow Pipeline components.
+Unit tests for Argo Workflow pipeline components.
 
-Tests the individual component functions without requiring KFP runtime.
+Tests the individual component logic without requiring a Kubernetes runtime.
 """
 
 import pytest
@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 class MockDataset:
-    """Mock KFP Dataset artifact for testing."""
+    """Mock Dataset artifact for testing pipeline components."""
     def __init__(self, path: str = None):
         if path is None:
             self._temp = tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False)
@@ -22,14 +22,14 @@ class MockDataset:
 
 
 class MockModel:
-    """Mock KFP Model artifact for testing."""
+    """Mock Model artifact for testing pipeline components."""
     def __init__(self):
         self._temp = tempfile.NamedTemporaryFile(mode='wb', suffix='.joblib', delete=False)
         self.path = self._temp.name
 
 
 class MockMetrics:
-    """Mock KFP Metrics for testing."""
+    """Mock Metrics for testing pipeline components."""
     def __init__(self):
         self.metrics = {}
 

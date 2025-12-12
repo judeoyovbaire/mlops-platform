@@ -46,26 +46,26 @@ spec:
       - mlops
 
 ---
-# PodMonitor for Kubeflow Pipeline runs
+# PodMonitor for Argo Workflow runs
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: kubeflow-pipelines
-  namespace: kubeflow
+  name: argo-workflows
+  namespace: argo
   labels:
-    app: kubeflow
+    app: argo-workflows
     release: prometheus
 spec:
   selector:
     matchLabels:
-      pipelines.kubeflow.org/enabled: "true"
+      workflows.argoproj.io/workflow: ""
   podMetricsEndpoints:
     - port: metrics
       path: /metrics
       interval: 30s
   namespaceSelector:
     matchNames:
-      - kubeflow
+      - argo
 
 ---
 # PrometheusRule for MLOps alerts
@@ -129,19 +129,19 @@ spec:
             summary: "MLflow tracking server is down"
             description: "MLflow tracking server has been down for more than 2 minutes"
 
-        # Pipeline failure rate
-        - alert: HighPipelineFailureRate
+        # Argo Workflow failure rate
+        - alert: HighWorkflowFailureRate
           expr: |
-            sum(rate(pipeline_run_status{status="failed"}[1h]))
+            sum(rate(argo_workflows_count{status="Failed"}[1h]))
             /
-            sum(rate(pipeline_run_status[1h]))
+            sum(rate(argo_workflows_count[1h]))
             > 0.1
           for: 15m
           labels:
             severity: warning
           annotations:
-            summary: "High pipeline failure rate"
-            description: "More than 10% of pipeline runs are failing in the last hour"
+            summary: "High Argo Workflow failure rate"
+            description: "More than 10% of workflows are failing in the last hour"
 
         # GPU utilization low (cost optimization)
         - alert: LowGPUUtilization

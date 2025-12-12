@@ -1,0 +1,401 @@
+# Argo Workflow Template for ML Training Pipeline
+# Demonstrates: data loading, validation, feature engineering, training, and model registration
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: ml-training-pipeline
+  namespace: argo
+  labels:
+    app: mlops
+    pipeline: training
+spec:
+  entrypoint: ml-pipeline
+  serviceAccountName: argo-workflows-server
+
+  # Pipeline parameters with defaults
+  arguments:
+    parameters:
+      - name: dataset-url
+        value: "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv"
+      - name: target-column
+        value: "species"
+      - name: model-name
+        value: "iris-classifier"
+      - name: mlflow-tracking-uri
+        value: "http://mlflow.mlflow.svc.cluster.local:5000"
+      - name: accuracy-threshold
+        value: "0.9"
+      - name: n-estimators
+        value: "100"
+      - name: max-depth
+        value: "10"
+      - name: test-size
+        value: "0.2"
+      - name: model-alias
+        value: "champion"
+
+  # Artifact storage using MinIO
+  artifactRepositoryRef:
+    configMap: artifact-repositories
+    key: default-artifact-repository
+
+  templates:
+    # Main pipeline DAG
+    - name: ml-pipeline
+      dag:
+        tasks:
+          - name: load-data
+            template: load-data
+            arguments:
+              parameters:
+                - name: dataset-url
+                  value: "{{workflow.parameters.dataset-url}}"
+
+          - name: validate-data
+            template: validate-data
+            dependencies: [load-data]
+            arguments:
+              artifacts:
+                - name: input-data
+                  from: "{{tasks.load-data.outputs.artifacts.output-data}}"
+
+          - name: feature-engineering
+            template: feature-engineering
+            dependencies: [validate-data]
+            arguments:
+              parameters:
+                - name: target-column
+                  value: "{{workflow.parameters.target-column}}"
+              artifacts:
+                - name: input-data
+                  from: "{{tasks.validate-data.outputs.artifacts.output-data}}"
+
+          - name: train-model
+            template: train-model
+            dependencies: [feature-engineering]
+            arguments:
+              parameters:
+                - name: target-column
+                  value: "{{workflow.parameters.target-column}}"
+                - name: model-name
+                  value: "{{workflow.parameters.model-name}}"
+                - name: mlflow-tracking-uri
+                  value: "{{workflow.parameters.mlflow-tracking-uri}}"
+                - name: n-estimators
+                  value: "{{workflow.parameters.n-estimators}}"
+                - name: max-depth
+                  value: "{{workflow.parameters.max-depth}}"
+                - name: test-size
+                  value: "{{workflow.parameters.test-size}}"
+              artifacts:
+                - name: input-data
+                  from: "{{tasks.feature-engineering.outputs.artifacts.output-data}}"
+
+          - name: register-model
+            template: register-model
+            dependencies: [train-model]
+            arguments:
+              parameters:
+                - name: model-name
+                  value: "{{workflow.parameters.model-name}}"
+                - name: mlflow-tracking-uri
+                  value: "{{workflow.parameters.mlflow-tracking-uri}}"
+                - name: accuracy-threshold
+                  value: "{{workflow.parameters.accuracy-threshold}}"
+                - name: model-alias
+                  value: "{{workflow.parameters.model-alias}}"
+                - name: run-id
+                  value: "{{tasks.train-model.outputs.parameters.run-id}}"
+
+    # Step 1: Load data from URL
+    - name: load-data
+      inputs:
+        parameters:
+          - name: dataset-url
+      outputs:
+        artifacts:
+          - name: output-data
+            path: /tmp/data.csv
+      container:
+        image: python:3.10-slim
+        command: [python, -c]
+        args:
+          - |
+            import urllib.request
+            import sys
+
+            url = "{{inputs.parameters.dataset-url}}"
+            output_path = "/tmp/data.csv"
+
+            try:
+                print(f"Downloading data from {url}")
+                urllib.request.urlretrieve(url, output_path)
+
+                # Verify download
+                with open(output_path, 'r') as f:
+                    lines = f.readlines()
+                    print(f"Downloaded {len(lines)} lines")
+                    if len(lines) < 2:
+                        print("Error: Downloaded file appears empty", file=sys.stderr)
+                        sys.exit(1)
+            except Exception as e:
+                print(f"Error downloading data: {e}", file=sys.stderr)
+                sys.exit(1)
+
+    # Step 2: Validate data quality
+    - name: validate-data
+      inputs:
+        artifacts:
+          - name: input-data
+            path: /tmp/input.csv
+      outputs:
+        artifacts:
+          - name: output-data
+            path: /tmp/validated.csv
+      container:
+        image: python:3.10-slim
+        command: [sh, -c]
+        args:
+          - |
+            pip install -q pandas && python -c "
+            import pandas as pd
+            import sys
+
+            try:
+                df = pd.read_csv('/tmp/input.csv')
+                print(f'Loaded {len(df)} rows, {len(df.columns)} columns')
+
+                # Check for nulls
+                null_count = df.isnull().sum().sum()
+                print(f'Null values: {null_count}')
+
+                # Remove nulls
+                df_clean = df.dropna()
+                rows_removed = len(df) - len(df_clean)
+                print(f'Removed {rows_removed} rows with nulls')
+
+                if len(df_clean) < 10:
+                    print('Error: Less than 10 rows after cleaning', file=sys.stderr)
+                    sys.exit(1)
+
+                df_clean.to_csv('/tmp/validated.csv', index=False)
+                print(f'Validation complete: {len(df_clean)} clean rows')
+            except Exception as e:
+                print(f'Validation error: {e}', file=sys.stderr)
+                sys.exit(1)
+            "
+
+    # Step 3: Feature engineering
+    - name: feature-engineering
+      inputs:
+        parameters:
+          - name: target-column
+        artifacts:
+          - name: input-data
+            path: /tmp/input.csv
+      outputs:
+        artifacts:
+          - name: output-data
+            path: /tmp/features.csv
+      container:
+        image: python:3.10-slim
+        command: [sh, -c]
+        args:
+          - |
+            pip install -q pandas scikit-learn && python -c "
+            import pandas as pd
+            from sklearn.preprocessing import StandardScaler
+            import sys
+
+            target = '{{inputs.parameters.target-column}}'
+
+            try:
+                df = pd.read_csv('/tmp/input.csv')
+
+                if target not in df.columns:
+                    print(f'Error: Target column {target} not found', file=sys.stderr)
+                    print(f'Available columns: {list(df.columns)}', file=sys.stderr)
+                    sys.exit(1)
+
+                X = df.drop(columns=[target])
+                y = df[target]
+
+                # Scale numeric columns
+                numeric_cols = X.select_dtypes(include=['float64', 'int64']).columns
+                if len(numeric_cols) > 0:
+                    scaler = StandardScaler()
+                    X[numeric_cols] = scaler.fit_transform(X[numeric_cols])
+
+                df_out = X.copy()
+                df_out[target] = y.values
+                df_out.to_csv('/tmp/features.csv', index=False)
+                print(f'Feature engineering complete: {df_out.shape}')
+            except Exception as e:
+                print(f'Feature engineering error: {e}', file=sys.stderr)
+                sys.exit(1)
+            "
+
+    # Step 4: Train model with MLflow tracking
+    - name: train-model
+      inputs:
+        parameters:
+          - name: target-column
+          - name: model-name
+          - name: mlflow-tracking-uri
+          - name: n-estimators
+          - name: max-depth
+          - name: test-size
+        artifacts:
+          - name: input-data
+            path: /tmp/input.csv
+      outputs:
+        parameters:
+          - name: run-id
+            valueFrom:
+              path: /tmp/run_id.txt
+          - name: accuracy
+            valueFrom:
+              path: /tmp/accuracy.txt
+        artifacts:
+          - name: model
+            path: /tmp/model.joblib
+      container:
+        image: python:3.10-slim
+        command: [sh, -c]
+        args:
+          - |
+            pip install -q pandas scikit-learn mlflow boto3 && python -c "
+            import pandas as pd
+            import mlflow
+            from sklearn.model_selection import train_test_split
+            from sklearn.ensemble import RandomForestClassifier
+            from sklearn.metrics import accuracy_score, f1_score
+            import joblib
+            import sys
+
+            # Parameters
+            target = '{{inputs.parameters.target-column}}'
+            model_name = '{{inputs.parameters.model-name}}'
+            mlflow_uri = '{{inputs.parameters.mlflow-tracking-uri}}'
+            n_estimators = int('{{inputs.parameters.n-estimators}}')
+            max_depth = int('{{inputs.parameters.max-depth}}')
+            test_size = float('{{inputs.parameters.test-size}}')
+
+            try:
+                # Setup MLflow
+                mlflow.set_tracking_uri(mlflow_uri)
+                mlflow.set_experiment(model_name)
+
+                # Load data
+                df = pd.read_csv('/tmp/input.csv')
+                X = df.drop(columns=[target])
+                y = df[target]
+
+                # Split
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X, y, test_size=test_size, random_state=42
+                )
+
+                with mlflow.start_run() as run:
+                    # Log params
+                    mlflow.log_params({
+                        'n_estimators': n_estimators,
+                        'max_depth': max_depth,
+                        'test_size': test_size
+                    })
+
+                    # Train
+                    model = RandomForestClassifier(
+                        n_estimators=n_estimators,
+                        max_depth=max_depth,
+                        random_state=42,
+                        n_jobs=-1
+                    )
+                    model.fit(X_train, y_train)
+
+                    # Evaluate
+                    y_pred = model.predict(X_test)
+                    accuracy = accuracy_score(y_test, y_pred)
+                    f1 = f1_score(y_test, y_pred, average='weighted')
+
+                    mlflow.log_metrics({'accuracy': accuracy, 'f1_score': f1})
+                    mlflow.sklearn.log_model(model, 'model', input_example=X_train.head(1))
+
+                    # Save outputs
+                    joblib.dump(model, '/tmp/model.joblib')
+                    with open('/tmp/run_id.txt', 'w') as f:
+                        f.write(run.info.run_id)
+                    with open('/tmp/accuracy.txt', 'w') as f:
+                        f.write(str(accuracy))
+
+                    print(f'Training complete. Run ID: {run.info.run_id}')
+                    print(f'Accuracy: {accuracy:.4f}, F1: {f1:.4f}')
+            except Exception as e:
+                print(f'Training error: {e}', file=sys.stderr)
+                sys.exit(1)
+            "
+
+    # Step 5: Register model with MLflow alias
+    - name: register-model
+      inputs:
+        parameters:
+          - name: model-name
+          - name: mlflow-tracking-uri
+          - name: accuracy-threshold
+          - name: model-alias
+          - name: run-id
+      container:
+        image: python:3.10-slim
+        command: [sh, -c]
+        args:
+          - |
+            pip install -q mlflow boto3 && python -c "
+            import mlflow
+            from mlflow.tracking import MlflowClient
+            import sys
+
+            model_name = '{{inputs.parameters.model-name}}'
+            mlflow_uri = '{{inputs.parameters.mlflow-tracking-uri}}'
+            threshold = float('{{inputs.parameters.accuracy-threshold}}')
+            alias = '{{inputs.parameters.model-alias}}'
+            run_id = '{{inputs.parameters.run-id}}'
+
+            try:
+                mlflow.set_tracking_uri(mlflow_uri)
+                client = MlflowClient()
+
+                # Get run metrics
+                run = client.get_run(run_id)
+                accuracy = run.data.metrics.get('accuracy', 0)
+
+                print(f'Model accuracy: {accuracy:.4f}, threshold: {threshold}')
+
+                if accuracy >= threshold:
+                    # Register model
+                    model_uri = f'runs:/{run_id}/model'
+                    mv = mlflow.register_model(model_uri, model_name)
+                    print(f'Registered {model_name} version {mv.version}')
+
+                    # Set alias (MLflow 3.x)
+                    client.set_registered_model_alias(model_name, alias, mv.version)
+                    print(f'Set alias {alias} -> version {mv.version}')
+                else:
+                    print(f'Accuracy {accuracy:.4f} below threshold {threshold}, not registering')
+            except Exception as e:
+                print(f'Registration error: {e}', file=sys.stderr)
+                sys.exit(1)
+            "
+
+---
+# Workflow to run the training pipeline
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: ml-training-
+  namespace: argo
+  labels:
+    app: mlops
+    pipeline: training
+spec:
+  workflowTemplateRef:
+    name: ml-training-pipeline

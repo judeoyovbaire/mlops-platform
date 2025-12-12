@@ -50,8 +50,8 @@ Data Scientist                    Platform (Automated)
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                   │
-│  │   Kubeflow   │    │   MLflow 3   │    │   KServe     │                   │
-│  │  Pipelines   │───▶│  Tracking &  │───▶│   Model      │                   │
+│  │     Argo     │    │   MLflow 3   │    │   KServe     │                   │
+│  │  Workflows   │───▶│  Tracking &  │───▶│   Model      │                   │
 │  │              │    │  Registry    │    │   Serving    │                   │
 │  └──────────────┘    └──────────────┘    └──────────────┘                   │
 │         │                   │                   │                            │
@@ -69,7 +69,7 @@ Data Scientist                    Platform (Automated)
 
 ## Features
 
-- **Kubeflow Pipelines**: Orchestrate ML workflows with reproducible pipelines
+- **Argo Workflows**: Kubernetes-native ML pipeline orchestration
 - **MLflow 3.x**: Experiment tracking, model registry with aliases, and GenAI support
 - **KServe**: Production model serving with canary deployments and autoscaling (CNCF Incubating)
 - **ArgoCD 3.x**: GitOps-based deployment automation
@@ -111,7 +111,7 @@ mlops-platform/
 │   │   ├── modules/eks/     # AWS EKS module
 │   │   └── environments/dev/# Main deployment configuration
 │   └── helm/aws/            # AWS-specific Helm values
-├── pipelines/training/      # Kubeflow pipeline definitions
+├── pipelines/training/      # Argo Workflow pipeline definitions
 ├── tests/                   # Unit tests
 ├── docs/architecture.md     # Architecture documentation
 └── Makefile                 # Common operations
@@ -170,7 +170,7 @@ make test                  # Run unit tests
 make port-forward-mlflow   # Forward MLflow to localhost:5000
 make port-forward-argocd   # Forward ArgoCD to localhost:8080
 make port-forward-grafana  # Forward Grafana to localhost:3000
-make compile-pipeline      # Compile Kubeflow pipeline
+make run-pipeline          # Run Argo Workflow training pipeline
 make deploy-example        # Deploy example inference service
 ```
 
@@ -192,13 +192,17 @@ curl -X POST "http://<SERVICE_URL>/v1/models/sklearn-iris:predict" \
 ### Run a Training Pipeline
 
 ```bash
-# Compile the pipeline
-make compile-pipeline
+# Apply the workflow template
+kubectl apply -f pipelines/training/ml-training-workflow.yaml
 
-# Upload ml_training_pipeline.yaml to Kubeflow Pipelines UI
-# Or submit via CLI after installing kfp:
-pip install kfp
-kfp run submit -f pipelines/training/ml_training_pipeline.yaml
+# Run the training pipeline
+kubectl create -f pipelines/training/ml-training-workflow.yaml -n argo
+
+# Check workflow status
+kubectl get workflows -n argo
+
+# View logs
+argo logs -n argo <workflow-name>
 ```
 
 ## CI/CD Pipeline (Everything-as-Code)
@@ -287,7 +291,7 @@ Estimated monthly costs (eu-west-1):
 - [x] MLflow 3.x with RDS + S3 backend
 - [x] KServe for model serving
 - [x] ArgoCD for GitOps
-- [x] Kubeflow Pipelines integration
+- [x] Argo Workflows for ML pipelines
 - [x] Karpenter for GPU autoscaling
 - [x] CI/CD pipeline (GitHub Actions)
 - [x] Security hardening (NetworkPolicies, IRSA)

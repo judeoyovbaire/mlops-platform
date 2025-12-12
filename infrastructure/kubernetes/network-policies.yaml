@@ -93,7 +93,7 @@ spec:
           port: 5000
 
 ---
-# Allow MLflow access from mlops namespace (training jobs)
+# Allow MLflow access from mlops and argo namespaces (training jobs)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -112,7 +112,7 @@ spec:
               kubernetes.io/metadata.name: mlops
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kubeflow
+              kubernetes.io/metadata.name: argo
       ports:
         - protocol: TCP
           port: 5000
@@ -170,48 +170,48 @@ spec:
           port: 53
 
 ---
-# Kubeflow namespace policies
+# Argo Workflows namespace policies
 ---
-# Default deny ingress in kubeflow namespace
+# Default deny ingress in argo namespace
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: default-deny-ingress
-  namespace: kubeflow
+  namespace: argo
 spec:
   podSelector: {}
   policyTypes:
     - Ingress
 
 ---
-# Allow Kubeflow UI access from istio-system
+# Allow Argo Workflows UI access from ALB
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-kubeflow-ui
-  namespace: kubeflow
+  name: allow-argo-ui
+  namespace: argo
 spec:
   podSelector:
     matchLabels:
-      app: ml-pipeline-ui
+      app.kubernetes.io/name: argo-workflows-server
   policyTypes:
     - Ingress
   ingress:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: istio-system
+              kubernetes.io/metadata.name: kube-system
       ports:
         - protocol: TCP
-          port: 3000
+          port: 2746
 
 ---
-# Allow Kubeflow components to communicate internally
+# Allow Argo Workflows components to communicate internally
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-kubeflow-internal
-  namespace: kubeflow
+  name: allow-argo-internal
+  namespace: argo
 spec:
   podSelector: {}
   policyTypes:
@@ -220,15 +220,15 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kubeflow
+              kubernetes.io/metadata.name: argo
 
 ---
-# Allow Kubeflow to access MLflow for experiment tracking
+# Allow Argo Workflows to access MLflow for experiment tracking
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-kubeflow-mlflow-egress
-  namespace: kubeflow
+  name: allow-argo-mlflow-egress
+  namespace: argo
 spec:
   podSelector: {}
   policyTypes:
@@ -247,6 +247,14 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kserve
+    # MinIO (internal)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: argo
+      ports:
+        - protocol: TCP
+          port: 9000
     # DNS
     - to: []
       ports:
