@@ -27,10 +27,9 @@ controller:
       podGC:
         strategy: OnPodCompletion
 
-  # Disable database persistence (use Kubernetes CRDs only)
-  # This is sufficient for dev/small workloads
-  persistence:
-    archive: false
+  # Disable database persistence completely (use Kubernetes CRDs only)
+  # Empty object = no persistence config = no database required
+  persistence: {}
 
   # Metrics for Prometheus
   metricsConfig:
