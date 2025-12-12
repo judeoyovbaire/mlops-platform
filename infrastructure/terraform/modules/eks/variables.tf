@@ -158,6 +158,12 @@ variable "cluster_admin_arns" {
   default     = []
 }
 
+variable "enable_cluster_creator_admin_permissions" {
+  description = "Enable cluster admin permissions for the identity that creates the cluster"
+  type        = bool
+  default     = true
+}
+
 # Tags
 variable "tags" {
   description = "Tags to apply to all resources"
