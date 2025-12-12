@@ -593,9 +593,20 @@ resource "helm_release" "karpenter" {
     value = module.eks.cluster_endpoint
   }
 
-  # Fix feature gates - must be explicitly set for Karpenter 1.8+
+  # Fix feature gates - all must be explicitly set for Karpenter 1.8+
+  # Empty values cause panic: strconv.ParseBool parsing ""
   set {
     name  = "settings.featureGates.spotToSpotConsolidation"
+    value = "false"
+  }
+
+  set {
+    name  = "settings.featureGates.nodeRepair"
+    value = "false"
+  }
+
+  set {
+    name  = "settings.featureGates.staticCapacity"
     value = "false"
   }
 

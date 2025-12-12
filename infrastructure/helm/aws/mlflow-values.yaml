@@ -1,11 +1,11 @@
-# MLflow Helm Chart Values for AWS EKS
+# MLflow Helm Chart Values for AWS EKS (chart version 1.8.1)
 # Uses RDS PostgreSQL and S3 for artifacts
 
 replicaCount: 1
 
 image:
   repository: ghcr.io/mlflow/mlflow
-  tag: "v3.5.1"
+  tag: "v3.7.0"
   pullPolicy: IfNotPresent
 
 serviceAccount:
@@ -39,12 +39,9 @@ artifactRoot:
     awsAccessKeyId: ""
     awsSecretAccessKey: ""
 
-# Environment variables for AWS SDK
+# Environment variables for AWS SDK (chart 1.8.1 expects object, not array)
 extraEnvVars:
-  - name: AWS_DEFAULT_REGION
-    value: "${aws_region}"
-  - name: MLFLOW_S3_ENDPOINT_URL
-    value: ""
+  AWS_DEFAULT_REGION: "${aws_region}"
 
 # Resource configuration
 resources:
@@ -83,7 +80,7 @@ readinessProbe:
   initialDelaySeconds: 5
   periodSeconds: 5
 
-# ALB Ingress
+# ALB Ingress (chart 1.8.1 requires host field)
 ingress:
   enabled: true
   className: "alb"
@@ -93,6 +90,7 @@ ingress:
     alb.ingress.kubernetes.io/healthcheck-path: /health
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
   hosts:
-    - paths:
+    - host: mlflow.local
+      paths:
         - path: /
           pathType: Prefix
