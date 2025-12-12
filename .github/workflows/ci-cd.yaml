@@ -179,7 +179,7 @@ jobs:
 
       - name: Validate Argo Workflow YAML
         run: |
-          python3 -c "import yaml; yaml.safe_load(open('pipelines/training/ml-training-workflow.yaml'))"
+          python3 -c "import yaml; list(yaml.safe_load_all(open('pipelines/training/ml-training-workflow.yaml')))"
           echo "Argo Workflow YAML is valid"
 
   # ============================================================================
