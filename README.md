@@ -102,7 +102,6 @@ mlops-platform/
 ├── components/
 │   └── kserve/              # KServe InferenceService examples
 ├── examples/
-│   ├── iris-classifier/     # sklearn model inference test
 │   └── llm-inference/       # LLM with vLLM (advanced)
 ├── infrastructure/
 │   ├── kubernetes/          # Network policies, monitoring
@@ -213,7 +212,7 @@ Single unified pipeline with OIDC authentication (no static AWS credentials):
 |---------|--------------|
 | **Push/PR** | Validate code, run tests, security scan, show terraform plan |
 | **Manual: `deploy-infra`** | Deploy EKS, RDS, ECR via Terraform |
-| **Manual: `deploy-model`** | Build image, push to ECR, deploy to KServe |
+| **Manual: `deploy-model`** | Deploy example InferenceServices to KServe |
 | **Local: `make destroy`** | Destroy infrastructure (safety - not in pipeline) |
 
 ### Pipeline Flow
@@ -233,7 +232,7 @@ Single unified pipeline with OIDC authentication (no static AWS credentials):
 │                                                                              │
 │  MANUAL TRIGGER (Actions → CI/CD → Run workflow):                            │
 │  ├── deploy-infra  → Creates EKS cluster, RDS, S3, ECR (~15-20 min)         │
-│  └── deploy-model  → Builds image, deploys to KServe                         │
+│  └── deploy-model  → Deploys example InferenceServices to KServe            │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -307,7 +306,6 @@ Estimated monthly costs (eu-west-1):
 
 | Example | Description | Complexity |
 |---------|-------------|------------|
-| [Iris Classifier](examples/iris-classifier/) | Inference testing for sklearn models | Beginner |
 | [LLM Inference](examples/llm-inference/) | Mistral-7B with vLLM on GPU | Advanced |
 
 ## Why These Tools?
@@ -332,7 +330,6 @@ Estimated monthly costs (eu-west-1):
 ## Documentation
 
 - [Architecture Deep Dive](docs/architecture.md)
-- [Iris Classifier Example](examples/iris-classifier/README.md)
 - [LLM Inference Example](examples/llm-inference/README.md)
 
 ## License

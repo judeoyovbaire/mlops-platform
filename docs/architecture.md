@@ -449,7 +449,6 @@ The platform includes working examples to help you get started:
 
 | Example | Description | Complexity |
 |---------|-------------|------------|
-| [Iris Classifier](../examples/iris-classifier/) | sklearn model with MLflow tracking and KServe deployment | Beginner |
 | [LLM Inference](../examples/llm-inference/) | Mistral-7B, TinyLlama, CodeLlama with vLLM on GPU | Advanced |
 
 ## Component Versions
