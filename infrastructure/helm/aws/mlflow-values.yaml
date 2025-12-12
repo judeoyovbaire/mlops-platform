@@ -67,20 +67,18 @@ securityContext:
     drop:
       - ALL
 
-# Probes
+# Probes (chart handles httpGet internally, just set timing)
 livenessProbe:
-  httpGet:
-    path: /health
-    port: http
   initialDelaySeconds: 30
   periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
 
 readinessProbe:
-  httpGet:
-    path: /health
-    port: http
-  initialDelaySeconds: 5
-  periodSeconds: 5
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
 
 # ALB Ingress (chart 1.8.1 requires host field)
 ingress:
