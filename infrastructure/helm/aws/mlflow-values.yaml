@@ -46,8 +46,10 @@ extraEnvVars:
   AWS_DEFAULT_REGION: "${aws_region}"
 
 # MLflow 3.x security: must explicitly allow non-localhost connections
+# allowed-hosts=* permits health checks from kubelet (non-localhost)
 extraArgs:
   host: "0.0.0.0"
+  allowed-hosts: "*"
 
 # Resource configuration
 resources:
