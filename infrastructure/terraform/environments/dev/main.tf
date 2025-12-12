@@ -24,6 +24,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.4"
+    }
   }
 
   # Remote state backend - created by bootstrap module
@@ -354,19 +358,7 @@ resource "kubernetes_service_account" "mlflow" {
 # Helm Releases
 # =============================================================================
 
-# Gateway API CRDs (required for modern Kubernetes traffic management)
-# Replaces deprecated Ingress API - see https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/
-resource "helm_release" "gateway_api_crds" {
-  name       = "gateway-api"
-  repository = "https://kubernetes-sigs.github.io/gateway-api"
-  chart      = "gateway-api"
-  version    = "1.2.1"
-  namespace  = "kube-system"
-
-  depends_on = [module.eks]
-}
-
-# AWS Load Balancer Controller with Gateway API support
+# AWS Load Balancer Controller for ALB Ingress
 resource "helm_release" "aws_load_balancer_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
@@ -404,13 +396,7 @@ resource "helm_release" "aws_load_balancer_controller" {
     value = module.eks.vpc_id
   }
 
-  # Enable Gateway API support (L7 with ALB)
-  set {
-    name  = "enableGatewayAPI"
-    value = "true"
-  }
-
-  depends_on = [module.eks, helm_release.gateway_api_crds]
+  depends_on = [module.eks]
 }
 
 # cert-manager (required by KServe)
@@ -468,7 +454,7 @@ resource "helm_release" "kserve_controller" {
     value = "RawDeployment"
   }
 
-  # Disable KServe's built-in ingress creation - we use Gateway API instead
+  # Disable KServe's built-in ingress creation - we manage Ingress separately
   set {
     name  = "kserve.controller.ingress.disableIngressCreation"
     value = "true"
@@ -479,7 +465,7 @@ resource "helm_release" "kserve_controller" {
     value = "true"
   }
 
-  depends_on = [helm_release.kserve, helm_release.gateway_api_crds]
+  depends_on = [helm_release.kserve]
 }
 
 # MLflow
