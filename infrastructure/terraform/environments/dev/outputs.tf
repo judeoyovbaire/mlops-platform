@@ -44,11 +44,6 @@ output "ssm_mlflow_db_password" {
   value       = aws_ssm_parameter.mlflow_db_password.name
 }
 
-output "ssm_pipeline_db_password" {
-  description = "SSM parameter path for Pipeline DB password"
-  value       = aws_ssm_parameter.pipeline_db_password.name
-}
-
 output "ssm_minio_password" {
   description = "SSM parameter path for MinIO root password"
   value       = aws_ssm_parameter.minio_root_password.name
@@ -86,9 +81,6 @@ output "access_info" {
 
     # MLflow DB password
     aws ssm get-parameter --name "/${var.cluster_name}/mlflow/db-password" --with-decryption --query 'Parameter.Value' --output text
-
-    # Kubeflow Pipeline DB password
-    aws ssm get-parameter --name "/${var.cluster_name}/kubeflow/db-password" --with-decryption --query 'Parameter.Value' --output text
 
     # MinIO root password
     aws ssm get-parameter --name "/${var.cluster_name}/minio/root-password" --with-decryption --query 'Parameter.Value' --output text

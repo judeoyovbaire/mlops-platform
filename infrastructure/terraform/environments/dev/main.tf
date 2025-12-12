@@ -103,11 +103,6 @@ resource "random_password" "mlflow_db" {
   override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
-resource "random_password" "pipeline_db" {
-  length           = 32
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
 
 resource "random_password" "minio" {
   length           = 32
@@ -131,15 +126,6 @@ resource "aws_ssm_parameter" "mlflow_db_password" {
   tags = var.tags
 }
 
-resource "aws_ssm_parameter" "pipeline_db_password" {
-  name        = "/${var.cluster_name}/kubeflow/db-password"
-  description = "Kubeflow Pipelines MySQL database password"
-  type        = "SecureString"
-  value       = random_password.pipeline_db.result
-  key_id      = "alias/aws/ssm"
-
-  tags = var.tags
-}
 
 resource "aws_ssm_parameter" "minio_root_password" {
   name        = "/${var.cluster_name}/minio/root-password"
@@ -445,7 +431,7 @@ resource "helm_release" "kserve" {
   name       = "kserve"
   repository = "oci://ghcr.io/kserve/charts"
   chart      = "kserve-crd"
-  version    = "0.16.0"
+  version    = "v0.16.0" # Note: KServe OCI charts require 'v' prefix
   namespace  = kubernetes_namespace.kserve.metadata[0].name
 
   depends_on = [helm_release.cert_manager]
@@ -456,7 +442,7 @@ resource "helm_release" "kserve_controller" {
   name       = "kserve-controller"
   repository = "oci://ghcr.io/kserve/charts"
   chart      = "kserve"
-  version    = "0.16.0"
+  version    = "v0.16.0" # Note: KServe OCI charts require 'v' prefix
   namespace  = kubernetes_namespace.kserve.metadata[0].name
 
   set {
@@ -495,15 +481,17 @@ resource "helm_release" "mlflow" {
 # Kubeflow Pipelines
 # =============================================================================
 
-# Kubeflow Pipelines (standalone mode - no full Kubeflow installation required)
-resource "helm_release" "kubeflow_pipelines" {
-  name       = "kubeflow-pipelines"
+# Argo Workflows for ML pipeline orchestration
+resource "helm_release" "argo_workflows" {
+  name       = "argo-workflows"
   repository = "https://argoproj.github.io/argo-helm"
   chart      = "argo-workflows"
   version    = "0.46.1"
   namespace  = kubernetes_namespace.kubeflow.metadata[0].name
 
-  # Argo Workflows is the execution engine for Kubeflow Pipelines
+  # Increase timeout for CRD installation
+  timeout = 600
+
   values = [file("${path.module}/../../../helm/aws/argo-workflows-values.yaml")]
 
   depends_on = [module.eks]
@@ -566,68 +554,6 @@ resource "helm_release" "minio" {
   depends_on = [module.eks]
 }
 
-# MySQL for Kubeflow Pipelines metadata
-resource "helm_release" "mysql" {
-  name       = "mysql"
-  repository = "oci://registry-1.docker.io/bitnamicharts"
-  chart      = "mysql"
-  version    = "14.0.3"
-  namespace  = kubernetes_namespace.kubeflow.metadata[0].name
-
-  # Use generated passwords
-  set {
-    name  = "auth.rootPassword"
-    value = random_password.pipeline_db.result
-  }
-
-  set {
-    name  = "auth.database"
-    value = "mlpipeline"
-  }
-
-  set {
-    name  = "auth.username"
-    value = "mlpipeline"
-  }
-
-  set {
-    name  = "auth.password"
-    value = random_password.pipeline_db.result
-  }
-
-  set {
-    name  = "primary.persistence.size"
-    value = "10Gi"
-  }
-
-  set {
-    name  = "primary.persistence.storageClass"
-    value = "gp3"
-  }
-
-  set {
-    name  = "primary.resources.requests.memory"
-    value = "1Gi"
-  }
-
-  set {
-    name  = "primary.resources.limits.memory"
-    value = "2Gi"
-  }
-
-  # CPU limits
-  set {
-    name  = "primary.resources.requests.cpu"
-    value = "250m"
-  }
-
-  set {
-    name  = "primary.resources.limits.cpu"
-    value = "1"
-  }
-
-  depends_on = [module.eks]
-}
 
 # =============================================================================
 # Karpenter - GPU Autoscaling
@@ -653,6 +579,9 @@ resource "helm_release" "karpenter" {
   chart      = "karpenter"
   version    = "1.8.0" # Karpenter >= 1.8 required for Kubernetes 1.34
   namespace  = kubernetes_namespace.karpenter.metadata[0].name
+
+  # Increase timeout for CRD installation
+  timeout = 600
 
   set {
     name  = "settings.clusterName"
@@ -989,13 +918,13 @@ resource "kubectl_manifest" "mlflow_external_secret" {
   ]
 }
 
-# External Secret for Kubeflow/MinIO
+# External Secret for MinIO (Argo Workflows artifact storage)
 resource "kubectl_manifest" "kubeflow_external_secret" {
   yaml_body = <<-YAML
     apiVersion: external-secrets.io/v1beta1
     kind: ExternalSecret
     metadata:
-      name: pipeline-credentials
+      name: minio-credentials
       namespace: kubeflow
     spec:
       refreshInterval: 1h
@@ -1003,13 +932,10 @@ resource "kubectl_manifest" "kubeflow_external_secret" {
         name: aws-ssm
         kind: ClusterSecretStore
       target:
-        name: pipeline-credentials
+        name: minio-credentials
         creationPolicy: Owner
       data:
-        - secretKey: mysql-password
-          remoteRef:
-            key: /${var.cluster_name}/kubeflow/db-password
-        - secretKey: minio-password
+        - secretKey: root-password
           remoteRef:
             key: /${var.cluster_name}/minio/root-password
   YAML

@@ -25,8 +25,11 @@ backendStore:
     port: 5432
     database: "${db_name}"
     user: "mlflow"
-    existingSecret: "mlflow-postgres"
-    existingSecretPasswordKey: "password"
+  # Use existing K8s secret for database credentials
+  existingDatabaseSecret:
+    name: "mlflow-postgres"
+    usernameKey: "username"
+    passwordKey: "password"
 
 # Artifact store - S3
 artifactRoot:
