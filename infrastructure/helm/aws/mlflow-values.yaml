@@ -3,9 +3,11 @@
 
 replicaCount: 1
 
+# Use chart's default image (burakince/mlflow) which includes psycopg2 for PostgreSQL
+# The official ghcr.io/mlflow/mlflow image does NOT include database drivers
 image:
-  repository: ghcr.io/mlflow/mlflow
-  tag: "v3.7.0"
+  repository: burakince/mlflow
+  tag: "3.7.0"
   pullPolicy: IfNotPresent
 
 serviceAccount:
