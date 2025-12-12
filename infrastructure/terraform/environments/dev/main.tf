@@ -888,7 +888,7 @@ resource "helm_release" "external_secrets" {
 # ClusterSecretStore for AWS SSM Parameter Store
 resource "kubectl_manifest" "cluster_secret_store" {
   yaml_body = <<-YAML
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: ClusterSecretStore
     metadata:
       name: aws-ssm
@@ -910,7 +910,7 @@ resource "kubectl_manifest" "cluster_secret_store" {
 # External Secret for MLflow (syncs SSM to K8s Secret)
 resource "kubectl_manifest" "mlflow_external_secret" {
   yaml_body = <<-YAML
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       name: mlflow-db-credentials
@@ -938,7 +938,7 @@ resource "kubectl_manifest" "mlflow_external_secret" {
 # External Secret for MinIO (Argo Workflows artifact storage)
 resource "kubectl_manifest" "kubeflow_external_secret" {
   yaml_body = <<-YAML
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       name: minio-credentials
