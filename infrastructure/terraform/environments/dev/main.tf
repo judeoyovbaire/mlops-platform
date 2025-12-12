@@ -651,7 +651,7 @@ resource "helm_release" "karpenter" {
   name       = "karpenter"
   repository = "oci://public.ecr.aws/karpenter"
   chart      = "karpenter"
-  version    = "1.5.6"
+  version    = "1.8.0" # Karpenter >= 1.8 required for Kubernetes 1.34
   namespace  = kubernetes_namespace.karpenter.metadata[0].name
 
   set {

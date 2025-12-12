@@ -86,7 +86,7 @@ Data Scientist                    Platform (Automated)
 | Pipeline Orchestration | Argo Workflows | 0.46.1 | ML workflow automation |
 | Experiment Tracking | MLflow | 3.5.1 | Model versioning & metrics |
 | Model Serving | KServe | 0.16.0 | Production inference (CNCF) |
-| GPU Autoscaling | Karpenter | 1.5.6 | Dynamic GPU node provisioning |
+| GPU Autoscaling | Karpenter | 1.8.0 | Dynamic GPU node provisioning |
 | GitOps | ArgoCD | 7.9.0 | Declarative deployments |
 | Ingress | AWS ALB Controller | 1.16.0 | External load balancing |
 | TLS | cert-manager | 1.19.1 | Certificate management |
@@ -252,7 +252,7 @@ terraform -chdir=infrastructure/terraform/bootstrap output github_actions_role_a
 | Resource | Purpose |
 |----------|---------|
 | VPC | Networking with public/private subnets across 3 AZs |
-| EKS Cluster | Managed Kubernetes control plane (v1.33) |
+| EKS Cluster | Managed Kubernetes control plane (v1.34) |
 | Node Groups | General (t3.large), Training (SPOT), GPU (g4dn SPOT) |
 | S3 Bucket | MLflow artifact storage |
 | RDS PostgreSQL | MLflow metadata backend |
