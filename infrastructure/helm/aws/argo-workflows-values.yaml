@@ -1,5 +1,5 @@
-# Argo Workflows values for Kubeflow Pipelines
-# This provides the workflow execution engine for ML pipelines
+# Argo Workflows values for ML pipeline orchestration
+# Lightweight configuration without database persistence
 
 # Controller configuration
 controller:
@@ -27,20 +27,10 @@ controller:
       podGC:
         strategy: OnPodCompletion
 
-  # Persistence for workflow archive
+  # Disable database persistence (use Kubernetes CRDs only)
+  # This is sufficient for dev/small workloads
   persistence:
-    archive: true
-    mysql:
-      host: mysql
-      port: 3306
-      database: mlpipeline
-      tableName: argo_workflows
-      userNameSecret:
-        name: mysql
-        key: mysql-password
-      passwordSecret:
-        name: mysql
-        key: mysql-password
+    archive: false
 
   # Metrics for Prometheus
   metricsConfig:
