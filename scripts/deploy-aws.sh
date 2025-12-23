@@ -184,9 +184,9 @@ status() {
     echo ""
     echo -e "${BLUE}SSM Secrets (stored securely):${NC}"
     echo "  /${CLUSTER_NAME}/mlflow/db-password"
-    echo "  /${CLUSTER_NAME}/kubeflow/db-password"
     echo "  /${CLUSTER_NAME}/minio/root-password"
     echo "  /${CLUSTER_NAME}/argocd/admin-password"
+    echo "  /${CLUSTER_NAME}/grafana/admin-password"
     echo ""
     echo "  Retrieve with: aws ssm get-parameter --name \"/<param>\" --with-decryption"
 }
@@ -211,16 +211,16 @@ secrets() {
     aws ssm get-parameter --name "/${CLUSTER_NAME}/mlflow/db-password" --with-decryption --query 'Parameter.Value' --output text --region "${AWS_REGION}" 2>/dev/null || print_error "Not found"
 
     echo ""
-    echo -e "${CYAN}Kubeflow Pipeline DB Password:${NC}"
-    aws ssm get-parameter --name "/${CLUSTER_NAME}/kubeflow/db-password" --with-decryption --query 'Parameter.Value' --output text --region "${AWS_REGION}" 2>/dev/null || print_error "Not found"
-
-    echo ""
     echo -e "${CYAN}MinIO Root Password:${NC}"
     aws ssm get-parameter --name "/${CLUSTER_NAME}/minio/root-password" --with-decryption --query 'Parameter.Value' --output text --region "${AWS_REGION}" 2>/dev/null || print_error "Not found"
 
     echo ""
     echo -e "${CYAN}ArgoCD Admin Password:${NC}"
     aws ssm get-parameter --name "/${CLUSTER_NAME}/argocd/admin-password" --with-decryption --query 'Parameter.Value' --output text --region "${AWS_REGION}" 2>/dev/null || print_error "Not found"
+
+    echo ""
+    echo -e "${CYAN}Grafana Admin Password:${NC}"
+    aws ssm get-parameter --name "/${CLUSTER_NAME}/grafana/admin-password" --with-decryption --query 'Parameter.Value' --output text --region "${AWS_REGION}" 2>/dev/null || print_error "Not found"
 
     echo ""
 }

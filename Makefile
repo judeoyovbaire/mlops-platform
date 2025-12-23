@@ -4,7 +4,7 @@
 .PHONY: help deploy status destroy validate lint test test-unit test-cov clean deps \
         terraform-init terraform-plan terraform-apply terraform-destroy \
         port-forward-mlflow port-forward-argocd port-forward-grafana port-forward-prometheus \
-        compile-pipeline deploy-example bootstrap
+        port-forward-argo-wf validate-workflow deploy-example
 
 # Default target
 help:
@@ -28,10 +28,11 @@ help:
 	@echo "  make test             - Run tests"
 	@echo ""
 	@echo "Development (after deployment):"
-	@echo "  make port-forward-mlflow  - Forward MLflow to localhost:5000"
-	@echo "  make port-forward-argocd  - Forward ArgoCD to localhost:8080"
-	@echo "  make compile-pipeline     - Compile Kubeflow pipeline"
-	@echo "  make deploy-example       - Deploy example inference service"
+	@echo "  make port-forward-mlflow    - Forward MLflow to localhost:5000"
+	@echo "  make port-forward-argocd    - Forward ArgoCD to localhost:8080"
+	@echo "  make port-forward-grafana   - Forward Grafana to localhost:3000"
+	@echo "  make port-forward-argo-wf   - Forward Argo Workflows to localhost:2746"
+	@echo "  make deploy-example         - Deploy example inference service"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  make clean            - Clean generated files"
@@ -98,7 +99,7 @@ validate-terraform:
 
 validate-python:
 	@echo "Validating Python code..."
-	@$(PYTHON) -m py_compile pipelines/training/example-pipeline.py
+	@$(PYTHON) -c "import yaml; list(yaml.safe_load_all(open('pipelines/training/ml-training-workflow.yaml')))"
 	@echo "Python validation passed"
 
 lint: lint-python lint-terraform
@@ -144,10 +145,10 @@ port-forward-argocd:
 	@echo "Password: $$($(KUBECTL) -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)"
 	$(KUBECTL) port-forward svc/argocd-server 8080:443 -n argocd
 
-port-forward-kubeflow:
-	@echo "Forwarding Kubeflow to localhost:8081..."
-	@echo "Access Kubeflow at http://localhost:8081"
-	$(KUBECTL) port-forward svc/ml-pipeline-ui 8081:80 -n kubeflow
+port-forward-argo-wf:
+	@echo "Forwarding Argo Workflows to localhost:2746..."
+	@echo "Access Argo Workflows at http://localhost:2746"
+	$(KUBECTL) port-forward svc/argo-workflows-server 2746:2746 -n argo-workflows
 
 port-forward-grafana:
 	@echo "Forwarding Grafana to localhost:3000..."
@@ -161,10 +162,10 @@ port-forward-prometheus:
 	@echo "Access Prometheus at http://localhost:9090"
 	$(KUBECTL) port-forward svc/prometheus-kube-prometheus-prometheus 9090:9090 -n monitoring
 
-compile-pipeline:
-	@echo "Compiling Kubeflow pipeline..."
-	cd $(PIPELINE_DIR) && $(PYTHON) example-pipeline.py
-	@echo "Pipeline compiled to $(PIPELINE_DIR)/ml_training_pipeline.yaml"
+validate-workflow:
+	@echo "Validating Argo Workflow..."
+	@$(PYTHON) -c "import yaml; list(yaml.safe_load_all(open('$(PIPELINE_DIR)/ml-training-workflow.yaml')))"
+	@echo "Argo Workflow YAML is valid"
 
 deploy-example:
 	@echo "Deploying example inference service..."

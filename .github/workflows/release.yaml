@@ -39,8 +39,8 @@ jobs:
           # Package examples
           tar -czvf release/examples.tar.gz examples/
 
-          # Create install script bundle
-          cp scripts/install.sh release/
+          # Package deploy script
+          cp scripts/deploy-aws.sh release/
 
       - name: Generate changelog
         id: changelog
@@ -69,24 +69,27 @@ jobs:
             ### Installation
 
             ```bash
-            # Quick install
-            curl -sSL https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/install.sh | bash
+            # Deploy using the deploy script
+            ./deploy-aws.sh deploy
 
-            # Or apply manifests directly
-            kubectl apply -f https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/mlops-platform.yaml
+            # Or use Terraform directly
+            cd infrastructure/terraform/environments/dev
+            terraform init && terraform apply
             ```
 
             ### Components
-            - MLflow v3.6.0
-            - KServe v0.15.0
-            - ArgoCD v3.2.x
-            - Kubeflow Pipelines (latest)
+            - MLflow v3.7.0
+            - KServe v0.16.0
+            - ArgoCD v7.9.0
+            - Argo Workflows v0.46.1
+            - Karpenter v1.8.0
+            - Prometheus Stack v72.6.2
 
           files: |
             release/mlops-platform.yaml
             release/terraform-eks-module.tar.gz
             release/examples.tar.gz
-            release/install.sh
+            release/deploy-aws.sh
           draft: false
           prerelease: false
         env:

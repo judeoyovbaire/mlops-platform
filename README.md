@@ -2,7 +2,7 @@
 
 A production-ready MLOps platform for model training, versioning, and deployment on AWS EKS. Enables data science teams to go from experiment to production with self-service workflows.
 
-[![CI](https://github.com/judeoyovbaire/mlops-platform/actions/workflows/ci.yaml/badge.svg)](https://github.com/judeoyovbaire/mlops-platform/actions/workflows/ci.yaml)
+[![CI/CD](https://github.com/judeoyovbaire/mlops-platform/actions/workflows/ci-cd.yaml/badge.svg)](https://github.com/judeoyovbaire/mlops-platform/actions/workflows/ci-cd.yaml)
 
 ## The Problem
 
@@ -139,7 +139,7 @@ cd infrastructure/terraform/bootstrap
 terraform init && terraform apply
 
 # 3. Update backend configuration with your account ID
-# Edit infrastructure/terraform/environments/dev/main.tf
+# Edit infrastructure/terraform/environments/dev/providers.tf
 # Update the S3 bucket name in the backend block:
 #   bucket = "mlops-platform-tfstate-<YOUR_AWS_ACCOUNT_ID>"
 
@@ -155,7 +155,7 @@ make port-forward-mlflow   # MLflow at localhost:5000
 make port-forward-argocd   # ArgoCD at localhost:8080
 ```
 
-> **Note**: The S3 backend bucket name in `environments/dev/main.tf` must match the bucket created by bootstrap (which includes your AWS account ID). This is a one-time configuration step.
+> **Note**: The S3 backend bucket name in `environments/dev/providers.tf` must match the bucket created by bootstrap (which includes your AWS account ID). This is a one-time configuration step.
 
 ### Using the Makefile
 
@@ -300,11 +300,11 @@ Estimated monthly costs (eu-west-1):
 - [x] Argo Workflows for ML pipelines
 - [x] Karpenter for GPU autoscaling
 - [x] CI/CD pipeline (GitHub Actions)
-- [x] Security hardening (NetworkPolicies, IRSA)
+- [x] Security hardening (PSA, Kyverno policies, Tetragon runtime security)
 - [x] Observability (Prometheus, Grafana, alerts)
+- [x] Model drift detection with Evidently AI
 
 ### Future Enhancements
-- [ ] Model monitoring and drift detection
 - [ ] Distributed training support
 - [ ] Data versioning with DVC
 - [ ] Multi-tenancy support
