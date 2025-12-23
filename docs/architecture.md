@@ -288,6 +288,114 @@ jobs:
 
 ## Security Architecture
 
+The platform implements defense-in-depth security across multiple layers:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         Security Architecture                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────┐  ┌──────────────────┐  ┌────────────────────────────┐  │
+│  │ Pod Security    │  │ Policy Engine    │  │ Runtime Security           │  │
+│  │ Standards (PSA) │  │ (Kyverno)        │  │ (Tetragon)                 │  │
+│  ├─────────────────┤  ├──────────────────┤  ├────────────────────────────┤  │
+│  │ Enforces:       │  │ Validates:       │  │ Monitors:                  │  │
+│  │ - baseline mode │  │ - Resource limits│  │ - Sensitive file access    │  │
+│  │ - restricted    │  │ - Image tags     │  │ - Container escapes        │  │
+│  │   (audit/warn)  │  │ - Registries     │  │ - Network connections      │  │
+│  │                 │  │ - Labels         │  │ - Process execution        │  │
+│  └─────────────────┘  └──────────────────┘  └────────────────────────────┘  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Pod Security Standards (PSA)
+
+Native Kubernetes pod security using namespace labels:
+
+| Namespace | Enforce Level | Warn Level | Audit Level | Rationale |
+|-----------|---------------|------------|-------------|-----------|
+| `mlops` | baseline | restricted | restricted | ML inference workloads |
+| `mlflow` | baseline | restricted | restricted | Experiment tracking |
+| `kserve` | baseline | restricted | restricted | Model serving |
+| `argo` | baseline | baseline | restricted | Pipeline execution |
+| `monitoring` | baseline | baseline | baseline | Node-exporter needs hostPath |
+| `karpenter` | baseline | baseline | baseline | Node management |
+| `kyverno` | privileged | - | - | Admission controller |
+| `tetragon` | privileged | - | - | eBPF runtime security |
+
+### Kyverno Policy Engine
+
+Kubernetes-native policy engine (CNCF Incubating) providing policy-as-code:
+
+**Cluster Policies:**
+
+| Policy | Scope | Action | Purpose |
+|--------|-------|--------|---------|
+| `require-resource-limits` | ML namespaces | Audit | Prevent resource exhaustion |
+| `disallow-latest-tag` | mlops, kserve | Audit | Ensure reproducibility |
+| `require-mlops-labels` | mlops | Audit | Model traceability |
+| `restrict-image-registries` | mlops, kserve | Audit | Supply chain security |
+| `add-default-networkpolicy` | New namespaces | Generate | Zero-trust networking |
+
+**Example Policy:**
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-limits
+spec:
+  validationFailureAction: Audit  # Change to Enforce after validation
+  rules:
+    - name: validate-resources
+      match:
+        resources:
+          kinds: [Pod]
+          namespaces: [mlops, mlflow, argo, kserve]
+      validate:
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    memory: "?*"
+                    cpu: "?*"
+```
+
+### Tetragon Runtime Security
+
+eBPF-based runtime security from the Cilium project:
+
+**Tracing Policies:**
+
+| Policy | Detection | Namespaces |
+|--------|-----------|------------|
+| `sensitive-file-access` | Access to /etc/shadow, SSH keys, K8s secrets | mlops, argo, kserve |
+| `container-escape-detection` | ptrace, setns syscalls | mlops, argo, kserve |
+| `ml-network-connections` | Outbound TCP connections | mlops, kserve |
+| `suspicious-process-execution` | wget, curl, nc in inference pods | kserve |
+
+**Example TracingPolicy:**
+```yaml
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: sensitive-file-access
+spec:
+  kprobes:
+    - call: "fd_install"
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: "Prefix"
+              values:
+                - "/etc/shadow"
+                - "/var/run/secrets/kubernetes.io"
+          matchNamespaces:
+            - namespace: mlops
+              operator: In
+```
+
 ### Network Policies
 
 The platform implements namespace isolation with Kubernetes NetworkPolicies:
@@ -301,9 +409,11 @@ infrastructure/kubernetes/network-policies.yaml
 | Namespace | Ingress From                 | Egress To            |
 |-----------|------------------------------|----------------------|
 | mlops     | ALB (inference), internal    | -                    |
-| mlflow    | mlops, kubeflow, kserve, ALB | PostgreSQL (RDS), S3 |
-| kubeflow  | ALB (UI)                     | mlflow, kserve       |
+| mlflow    | mlops, argo, kserve, ALB     | PostgreSQL (RDS), S3 |
+| argo      | ALB (UI)                     | mlflow, kserve       |
 | kserve    | kube-system                  | Kubernetes API       |
+
+**Auto-Generated Policies:** Kyverno automatically creates `default-deny-ingress` NetworkPolicy for new namespaces.
 
 ### Security Layers
 
@@ -316,13 +426,20 @@ infrastructure/kubernetes/network-policies.yaml
 │  - Namespace isolation │  - Non-root      │  - Role per       │
 │  - Ingress/Egress      │  - Read-only FS  │    namespace      │
 │  - VPC security groups │  - Capabilities  │  - Least          │
-│                        │                  │    privilege      │
+│  - Kyverno auto-gen    │  - PSA labels    │    privilege      │
 ├───────────────────────────────────────────────────────────────┤
-│  IRSA (AWS)            │  Image Security  │  Audit            │
-│  ─────────────────     │  ──────────────  │  ─────            │
-│  - Pod-level IAM       │  - Signed images │  - CloudTrail     │
-│  - No static creds     │  - Vulnerability │  - EKS audit logs │
-│  - S3/RDS access       │    scanning      │                   │
+│  IRSA (AWS)            │  Image Security  │  Runtime          │
+│  ─────────────────     │  ──────────────  │  ─────────        │
+│  - Pod-level IAM       │  - Kyverno       │  - Tetragon       │
+│  - No static creds     │    registry      │  - eBPF tracing   │
+│  - S3/RDS access       │    allowlist     │  - Prometheus     │
+│                        │  - No :latest    │    metrics        │
+├───────────────────────────────────────────────────────────────┤
+│  Audit & Compliance    │                                      │
+│  ──────────────────    │                                      │
+│  - CloudTrail          │  - Kyverno policy reports            │
+│  - EKS audit logs      │  - Tetragon event logs               │
+│  - PSA violations      │  - Prometheus alerting               │
 └───────────────────────────────────────────────────────────────┘
 ```
 

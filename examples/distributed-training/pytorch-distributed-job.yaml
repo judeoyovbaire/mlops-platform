@@ -1,0 +1,191 @@
+# PyTorch Distributed Training Job
+#
+# This example trains a simple model using PyTorch DDP on CPU.
+# For GPU training, add nvidia.com/gpu resources and nodeSelector.
+#
+# Usage:
+#   kubectl apply -f pytorch-distributed-job.yaml
+#   kubectl get pytorchjobs -n mlops
+#   kubectl logs -f pytorch-ddp-example-master-0 -n mlops
+
+apiVersion: kubeflow.org/v1
+kind: PyTorchJob
+metadata:
+  name: pytorch-ddp-example
+  namespace: mlops
+spec:
+  # Clean up completed jobs after 1 hour
+  ttlSecondsAfterFinished: 3600
+
+  pytorchReplicaSpecs:
+    Master:
+      replicas: 1
+      restartPolicy: OnFailure
+      template:
+        metadata:
+          labels:
+            app: pytorch-ddp
+            role: master
+        spec:
+          containers:
+            - name: pytorch
+              image: python:3.11-slim
+              command:
+                - python
+                - -c
+                - |
+                  import os
+                  import torch
+                  import torch.distributed as dist
+                  import torch.nn as nn
+                  import torch.optim as optim
+                  from torch.nn.parallel import DistributedDataParallel as DDP
+
+                  def setup():
+                      dist.init_process_group(backend="gloo")
+                      rank = dist.get_rank()
+                      world_size = dist.get_world_size()
+                      print(f"Rank {rank}/{world_size} initialized")
+                      return rank, world_size
+
+                  def cleanup():
+                      dist.destroy_process_group()
+
+                  class SimpleModel(nn.Module):
+                      def __init__(self):
+                          super().__init__()
+                          self.fc = nn.Linear(10, 10)
+
+                      def forward(self, x):
+                          return self.fc(x)
+
+                  def train():
+                      rank, world_size = setup()
+
+                      model = SimpleModel()
+                      ddp_model = DDP(model)
+                      optimizer = optim.SGD(ddp_model.parameters(), lr=0.01)
+                      loss_fn = nn.MSELoss()
+
+                      # Simulate training
+                      for epoch in range(5):
+                          optimizer.zero_grad()
+                          x = torch.randn(32, 10)
+                          y = torch.randn(32, 10)
+                          pred = ddp_model(x)
+                          loss = loss_fn(pred, y)
+                          loss.backward()
+                          optimizer.step()
+
+                          if rank == 0:
+                              print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
+
+                      if rank == 0:
+                          print("Training complete!")
+                          # Log to MLflow (if available)
+                          try:
+                              import mlflow
+                              mlflow.set_tracking_uri("http://mlflow.mlflow:5000")
+                              mlflow.set_experiment("distributed-training")
+                              with mlflow.start_run():
+                                  mlflow.log_param("world_size", world_size)
+                                  mlflow.log_param("epochs", 5)
+                                  mlflow.log_metric("final_loss", loss.item())
+                          except Exception as e:
+                              print(f"MLflow logging skipped: {e}")
+
+                      cleanup()
+
+                  if __name__ == "__main__":
+                      train()
+
+              resources:
+                requests:
+                  cpu: "500m"
+                  memory: "512Mi"
+                limits:
+                  cpu: "1"
+                  memory: "1Gi"
+
+              env:
+                - name: MASTER_ADDR
+                  value: "pytorch-ddp-example-master-0"
+                - name: MASTER_PORT
+                  value: "23456"
+
+    Worker:
+      replicas: 2
+      restartPolicy: OnFailure
+      template:
+        metadata:
+          labels:
+            app: pytorch-ddp
+            role: worker
+        spec:
+          containers:
+            - name: pytorch
+              image: python:3.11-slim
+              command:
+                - python
+                - -c
+                - |
+                  import os
+                  import torch
+                  import torch.distributed as dist
+                  import torch.nn as nn
+                  import torch.optim as optim
+                  from torch.nn.parallel import DistributedDataParallel as DDP
+
+                  def setup():
+                      dist.init_process_group(backend="gloo")
+                      rank = dist.get_rank()
+                      world_size = dist.get_world_size()
+                      print(f"Rank {rank}/{world_size} initialized")
+                      return rank, world_size
+
+                  def cleanup():
+                      dist.destroy_process_group()
+
+                  class SimpleModel(nn.Module):
+                      def __init__(self):
+                          super().__init__()
+                          self.fc = nn.Linear(10, 10)
+
+                      def forward(self, x):
+                          return self.fc(x)
+
+                  def train():
+                      rank, world_size = setup()
+
+                      model = SimpleModel()
+                      ddp_model = DDP(model)
+                      optimizer = optim.SGD(ddp_model.parameters(), lr=0.01)
+                      loss_fn = nn.MSELoss()
+
+                      for epoch in range(5):
+                          optimizer.zero_grad()
+                          x = torch.randn(32, 10)
+                          y = torch.randn(32, 10)
+                          pred = ddp_model(x)
+                          loss = loss_fn(pred, y)
+                          loss.backward()
+                          optimizer.step()
+
+                      cleanup()
+
+                  if __name__ == "__main__":
+                      train()
+
+              resources:
+                requests:
+                  cpu: "500m"
+                  memory: "512Mi"
+                limits:
+                  cpu: "1"
+                  memory: "1Gi"
+
+              env:
+                - name: MASTER_ADDR
+                  value: "pytorch-ddp-example-master-0"
+                - name: MASTER_PORT
+                  value: "23456"

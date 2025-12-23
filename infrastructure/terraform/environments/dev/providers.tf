@@ -1,0 +1,93 @@
+# =============================================================================
+# Terraform Configuration and Providers
+# =============================================================================
+
+terraform {
+  required_version = ">= 1.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.23"
+    }
+    kubectl = {
+      source  = "gavinbunney/kubectl"
+      version = "~> 1.14"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.11"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.4"
+    }
+  }
+
+  # Remote state backend - created by bootstrap module
+  backend "s3" {
+    bucket         = "mlops-platform-tfstate-183590992229"
+    key            = "mlops-platform/dev/terraform.tfstate"
+    region         = "eu-west-1"
+    encrypt        = true
+    dynamodb_table = "mlops-platform-terraform-locks"
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+
+  default_tags {
+    tags = {
+      Environment = "dev"
+      Project     = "mlops-platform"
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
+# Kubernetes provider configuration (after cluster creation)
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+  }
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = module.eks.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+
+    exec {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "aws"
+      args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+    }
+  }
+}
+
+# kubectl provider for CRD-based resources (handles cluster-not-exist scenario during plan)
+provider "kubectl" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  load_config_file       = false
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+  }
+}

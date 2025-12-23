@@ -1,0 +1,243 @@
+# Argo Workflow for Model Drift Detection with Evidently AI
+#
+# This workflow:
+# 1. Fetches reference data and recent predictions from S3
+# 2. Runs Evidently drift detection tests
+# 3. Generates HTML report and saves to S3
+# 4. Exports drift metrics to Prometheus via pushgateway
+#
+# Usage:
+#   kubectl apply -f drift-detection-workflow.yaml
+#   argo submit --from cronworkflow/drift-detection -n argo
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: drift-detection
+  namespace: argo
+spec:
+  entrypoint: detect-drift
+
+  arguments:
+    parameters:
+      - name: model-name
+        value: "sklearn-iris"
+      - name: reference-data-path
+        value: "s3://mlflow-artifacts/drift-detection/reference/iris_reference.csv"
+      - name: current-data-path
+        value: "s3://mlflow-artifacts/drift-detection/current/iris_current.csv"
+      - name: report-output-path
+        value: "s3://mlflow-artifacts/drift-detection/reports/"
+      - name: drift-threshold
+        value: "0.1"
+
+  templates:
+    - name: detect-drift
+      dag:
+        tasks:
+          - name: fetch-data
+            template: fetch-data
+          - name: run-drift-detection
+            template: run-drift-detection
+            dependencies: [fetch-data]
+            arguments:
+              artifacts:
+                - name: reference-data
+                  from: "{{tasks.fetch-data.outputs.artifacts.reference-data}}"
+                - name: current-data
+                  from: "{{tasks.fetch-data.outputs.artifacts.current-data}}"
+          - name: export-metrics
+            template: export-metrics
+            dependencies: [run-drift-detection]
+            arguments:
+              artifacts:
+                - name: drift-results
+                  from: "{{tasks.run-drift-detection.outputs.artifacts.drift-results}}"
+          - name: upload-report
+            template: upload-report
+            dependencies: [run-drift-detection]
+            arguments:
+              artifacts:
+                - name: drift-report
+                  from: "{{tasks.run-drift-detection.outputs.artifacts.drift-report}}"
+
+    - name: fetch-data
+      container:
+        image: amazon/aws-cli:2.15.0
+        command: [sh, -c]
+        args:
+          - |
+            aws s3 cp {{workflow.parameters.reference-data-path}} /tmp/reference.csv
+            aws s3 cp {{workflow.parameters.current-data-path}} /tmp/current.csv
+        env:
+          - name: AWS_DEFAULT_REGION
+            value: "eu-west-1"
+      outputs:
+        artifacts:
+          - name: reference-data
+            path: /tmp/reference.csv
+          - name: current-data
+            path: /tmp/current.csv
+
+    - name: run-drift-detection
+      inputs:
+        artifacts:
+          - name: reference-data
+            path: /tmp/reference.csv
+          - name: current-data
+            path: /tmp/current.csv
+      container:
+        image: python:3.11-slim
+        command: [python, -c]
+        args:
+          - |
+            import json
+            import pandas as pd
+            from evidently import ColumnMapping
+            from evidently.report import Report
+            from evidently.metric_preset import DataDriftPreset, DataQualityPreset
+            from evidently.metrics import DatasetDriftMetric, ColumnDriftMetric
+
+            # Load data
+            reference = pd.read_csv('/tmp/reference.csv')
+            current = pd.read_csv('/tmp/current.csv')
+
+            # Define column mapping (adjust for your model)
+            column_mapping = ColumnMapping(
+                target='species',
+                numerical_features=['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
+            )
+
+            # Create drift report
+            report = Report(metrics=[
+                DatasetDriftMetric(),
+                DataDriftPreset(),
+                DataQualityPreset(),
+            ])
+
+            report.run(reference_data=reference, current_data=current, column_mapping=column_mapping)
+
+            # Save HTML report
+            report.save_html('/tmp/drift_report.html')
+
+            # Extract metrics for Prometheus
+            results = report.as_dict()
+            drift_metrics = {
+                'dataset_drift_score': results['metrics'][0]['result']['drift_share'],
+                'dataset_drift_detected': int(results['metrics'][0]['result']['dataset_drift']),
+                'drifted_features_count': results['metrics'][0]['result']['number_of_drifted_columns'],
+                'total_features': results['metrics'][0]['result']['number_of_columns'],
+            }
+
+            # Add per-feature drift
+            for metric in results['metrics']:
+                if 'column_name' in metric.get('result', {}):
+                    col = metric['result']['column_name']
+                    drift_metrics[f'feature_drift_{col}'] = int(metric['result'].get('drift_detected', False))
+
+            with open('/tmp/drift_results.json', 'w') as f:
+                json.dump(drift_metrics, f, indent=2)
+
+            print("Drift Detection Results:")
+            print(json.dumps(drift_metrics, indent=2))
+
+            # Fail workflow if significant drift detected
+            if drift_metrics['dataset_drift_score'] > float('{{workflow.parameters.drift-threshold}}'):
+                print(f"WARNING: Dataset drift score {drift_metrics['dataset_drift_score']} exceeds threshold")
+      outputs:
+        artifacts:
+          - name: drift-results
+            path: /tmp/drift_results.json
+          - name: drift-report
+            path: /tmp/drift_report.html
+
+    - name: export-metrics
+      inputs:
+        artifacts:
+          - name: drift-results
+            path: /tmp/drift_results.json
+      container:
+        image: python:3.11-slim
+        command: [python, -c]
+        args:
+          - |
+            import json
+            import urllib.request
+
+            with open('/tmp/drift_results.json') as f:
+                metrics = json.load(f)
+
+            model_name = '{{workflow.parameters.model-name}}'
+
+            # Format metrics for Prometheus Pushgateway
+            lines = []
+            lines.append(f'# HELP evidently_dataset_drift_score Dataset drift score from Evidently')
+            lines.append(f'# TYPE evidently_dataset_drift_score gauge')
+            lines.append(f'evidently_dataset_drift_score{{model="{model_name}"}} {metrics["dataset_drift_score"]}')
+
+            lines.append(f'# HELP evidently_drift_detected Whether drift was detected (1=yes, 0=no)')
+            lines.append(f'# TYPE evidently_drift_detected gauge')
+            lines.append(f'evidently_drift_detected{{model="{model_name}"}} {metrics["dataset_drift_detected"]}')
+
+            lines.append(f'# HELP evidently_drifted_features_count Number of features with detected drift')
+            lines.append(f'# TYPE evidently_drifted_features_count gauge')
+            lines.append(f'evidently_drifted_features_count{{model="{model_name}"}} {metrics["drifted_features_count"]}')
+
+            # Per-feature drift
+            for key, value in metrics.items():
+                if key.startswith('feature_drift_'):
+                    feature = key.replace('feature_drift_', '')
+                    lines.append(f'evidently_feature_drift{{model="{model_name}",feature="{feature}"}} {value}')
+
+            metrics_text = '\n'.join(lines) + '\n'
+            print(metrics_text)
+
+            # Push to Prometheus Pushgateway (if available)
+            try:
+                req = urllib.request.Request(
+                    'http://prometheus-pushgateway.monitoring:9091/metrics/job/drift_detection/model/' + model_name,
+                    data=metrics_text.encode('utf-8'),
+                    method='POST'
+                )
+                urllib.request.urlopen(req, timeout=10)
+                print("Metrics pushed to Prometheus Pushgateway")
+            except Exception as e:
+                print(f"Note: Could not push to Pushgateway: {e}")
+                print("Metrics available in workflow logs")
+
+    - name: upload-report
+      inputs:
+        artifacts:
+          - name: drift-report
+            path: /tmp/drift_report.html
+      container:
+        image: amazon/aws-cli:2.15.0
+        command: [sh, -c]
+        args:
+          - |
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            MODEL="{{workflow.parameters.model-name}}"
+            aws s3 cp /tmp/drift_report.html "{{workflow.parameters.report-output-path}}${MODEL}_${TIMESTAMP}.html"
+            echo "Report uploaded to {{workflow.parameters.report-output-path}}${MODEL}_${TIMESTAMP}.html"
+        env:
+          - name: AWS_DEFAULT_REGION
+            value: "eu-west-1"
+
+---
+# CronWorkflow for scheduled drift detection
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: drift-detection
+  namespace: argo
+spec:
+  schedule: "0 6 * * *"  # Run daily at 6 AM
+  timezone: "UTC"
+  concurrencyPolicy: "Replace"
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+
+  workflowSpec:
+    workflowTemplateRef:
+      name: drift-detection
