@@ -32,8 +32,9 @@ resource "helm_release" "prometheus_stack" {
 
   values = [file("${path.module}/../../../helm/aws/prometheus-stack-values.yaml")]
 
-  # Increase timeout for CRD installation
-  timeout = 900
+  # Increase timeout for large chart with many CRDs
+  timeout = 1200
+  wait    = true
 
   set {
     name  = "grafana.adminPassword"
