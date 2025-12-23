@@ -89,7 +89,7 @@ resource "helm_release" "karpenter" {
 
   depends_on = [
     kubernetes_namespace.karpenter,
-    module.eks
+    time_sleep.alb_controller_ready
   ]
 }
 

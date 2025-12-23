@@ -43,6 +43,14 @@ resource "helm_release" "aws_load_balancer_controller" {
   depends_on = [module.eks]
 }
 
+# Wait for ALB Controller webhook to be ready
+# This prevents race conditions where other helm releases try to create
+# Services before the ALB Controller's MutatingWebhookConfiguration is serving
+resource "time_sleep" "alb_controller_ready" {
+  depends_on      = [helm_release.aws_load_balancer_controller]
+  create_duration = "60s"
+}
+
 # cert-manager (required by KServe)
 resource "helm_release" "cert_manager" {
   name             = "cert-manager"
@@ -57,7 +65,7 @@ resource "helm_release" "cert_manager" {
     value = "true"
   }
 
-  depends_on = [module.eks]
+  depends_on = [time_sleep.alb_controller_ready]
 }
 
 # ArgoCD
@@ -71,7 +79,7 @@ resource "helm_release" "argocd" {
 
   values = [file("${path.module}/../../../helm/aws/argocd-values.yaml")]
 
-  depends_on = [helm_release.aws_load_balancer_controller]
+  depends_on = [time_sleep.alb_controller_ready]
 }
 
 # KServe CRDs
@@ -132,7 +140,7 @@ resource "helm_release" "mlflow" {
   depends_on = [
     kubernetes_service_account.mlflow,
     kubernetes_secret.mlflow_postgres,
-    helm_release.aws_load_balancer_controller
+    time_sleep.alb_controller_ready
   ]
 }
 
@@ -153,7 +161,7 @@ resource "helm_release" "argo_workflows" {
 
   values = [file("${path.module}/../../../helm/aws/argo-workflows-values.yaml")]
 
-  depends_on = [module.eks]
+  depends_on = [time_sleep.alb_controller_ready]
 }
 
 # MinIO for pipeline artifact storage (lightweight S3-compatible storage)
@@ -210,5 +218,5 @@ resource "helm_release" "minio" {
     value = "none"
   }
 
-  depends_on = [module.eks]
+  depends_on = [time_sleep.alb_controller_ready]
 }

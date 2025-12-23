@@ -76,7 +76,7 @@ resource "helm_release" "external_secrets" {
     value = "9443"
   }
 
-  depends_on = [module.eks]
+  depends_on = [time_sleep.alb_controller_ready]
 }
 
 # ClusterSecretStore for AWS SSM Parameter Store

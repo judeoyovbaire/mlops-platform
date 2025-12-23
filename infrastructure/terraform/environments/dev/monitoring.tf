@@ -42,7 +42,7 @@ resource "helm_release" "prometheus_stack" {
 
   depends_on = [
     kubernetes_namespace.monitoring,
-    helm_release.aws_load_balancer_controller
+    time_sleep.alb_controller_ready
   ]
 }
 

@@ -77,7 +77,10 @@ resource "helm_release" "kyverno" {
     value = "512Mi"
   }
 
-  depends_on = [kubernetes_namespace.kyverno]
+  depends_on = [
+    kubernetes_namespace.kyverno,
+    time_sleep.alb_controller_ready
+  ]
 }
 
 # =============================================================================

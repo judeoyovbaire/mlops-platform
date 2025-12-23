@@ -70,7 +70,10 @@ resource "helm_release" "tetragon" {
     value = "512Mi"
   }
 
-  depends_on = [kubernetes_namespace.tetragon]
+  depends_on = [
+    kubernetes_namespace.tetragon,
+    time_sleep.alb_controller_ready
+  ]
 }
 
 # =============================================================================
@@ -106,13 +109,6 @@ resource "kubectl_manifest" "tetragon_sensitive_files" {
                     - "/home/*/.ssh"
                     - "/etc/kubernetes"
                     - "/var/run/secrets/kubernetes.io"
-              matchNamespaces:
-                - namespace: mlops
-                  operator: In
-                - namespace: argo
-                  operator: In
-                - namespace: kserve
-                  operator: In
   YAML
 
   depends_on = [helm_release.tetragon]
@@ -134,14 +130,6 @@ resource "kubectl_manifest" "tetragon_container_escape" {
           args:
             - index: 0
               type: int
-          selectors:
-            - matchNamespaces:
-                - namespace: mlops
-                  operator: In
-                - namespace: argo
-                  operator: In
-                - namespace: kserve
-                  operator: In
         - call: "__x64_sys_setns"
           syscall: true
           args:
@@ -149,12 +137,6 @@ resource "kubectl_manifest" "tetragon_container_escape" {
               type: int
             - index: 1
               type: int
-          selectors:
-            - matchNamespaces:
-                - namespace: mlops
-                  operator: In
-                - namespace: argo
-                  operator: In
   YAML
 
   depends_on = [helm_release.tetragon]
@@ -176,12 +158,6 @@ resource "kubectl_manifest" "tetragon_network_monitor" {
           args:
             - index: 0
               type: "sock"
-          selectors:
-            - matchNamespaces:
-                - namespace: mlops
-                  operator: In
-                - namespace: kserve
-                  operator: In
   YAML
 
   depends_on = [helm_release.tetragon]
@@ -218,9 +194,6 @@ resource "kubectl_manifest" "tetragon_process_execution" {
                     - "/usr/bin/curl"
                     - "/usr/bin/nc"
                     - "/usr/bin/ncat"
-              matchNamespaces:
-                - namespace: kserve
-                  operator: In
   YAML
 
   depends_on = [helm_release.tetragon]
