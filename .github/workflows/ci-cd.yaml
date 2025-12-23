@@ -216,22 +216,6 @@ jobs:
         working-directory: infrastructure/terraform/environments/dev
         run: terraform init
 
-      - name: Apply EKS Access Entries First
-        if: steps.aws-creds.outcome == 'success'
-        working-directory: infrastructure/terraform/environments/dev
-        run: |
-          # Apply EKS access entries first to grant cluster access to GitHub Actions role
-          # This resolves the chicken-and-egg problem where Terraform plan needs cluster access
-          # but the access entry change hasn't been applied yet
-          echo "Applying EKS access entries..."
-          terraform apply -auto-approve \
-            -target=module.eks.module.eks.aws_eks_access_entry.this \
-            -target=module.eks.module.eks.aws_eks_access_policy_association.this \
-            2>&1 | tee access-apply.txt || true
-
-          # Brief pause to allow access propagation
-          sleep 10
-
       - name: Terraform Plan
         if: steps.aws-creds.outcome == 'success'
         id: plan
