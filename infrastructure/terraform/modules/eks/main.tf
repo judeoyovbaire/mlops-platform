@@ -376,6 +376,49 @@ module "karpenter_irsa" {
     }
   }
 
+  # Additional policy for instance profile management (required by Karpenter 1.0+)
+  role_policy_arns = {
+    karpenter_instance_profile = aws_iam_policy.karpenter_instance_profile.arn
+  }
+
+  tags = var.tags
+}
+
+# Additional IAM policy for Karpenter instance profile management
+# Karpenter 1.0+ uses the "role" field in EC2NodeClass and dynamically creates instance profiles
+resource "aws_iam_policy" "karpenter_instance_profile" {
+  name        = "${var.cluster_name}-karpenter-instance-profile"
+  description = "Policy for Karpenter to manage instance profiles dynamically"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "KarpenterInstanceProfileManagement"
+        Effect = "Allow"
+        Action = [
+          "iam:CreateInstanceProfile",
+          "iam:DeleteInstanceProfile",
+          "iam:GetInstanceProfile",
+          "iam:TagInstanceProfile",
+          "iam:AddRoleToInstanceProfile",
+          "iam:RemoveRoleFromInstanceProfile",
+          "iam:ListInstanceProfiles",
+          "iam:ListInstanceProfilesForRole"
+        ]
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:instance-profile/*"
+        ]
+      },
+      {
+        Sid    = "KarpenterPassRoleToNodeRole"
+        Effect = "Allow"
+        Action = "iam:PassRole"
+        Resource = aws_iam_role.karpenter_node.arn
+      }
+    ]
+  })
+
   tags = var.tags
 }
 
