@@ -417,15 +417,15 @@ resource "aws_iam_policy" "karpenter_instance_profile" {
         Resource = "*"
       },
       {
-        Sid    = "KarpenterPassRoleToNodeRole"
-        Effect = "Allow"
-        Action = "iam:PassRole"
+        Sid      = "KarpenterPassRoleToNodeRole"
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
         Resource = aws_iam_role.karpenter_node.arn
       },
       {
-        Sid    = "KarpenterEC2RunInstances"
-        Effect = "Allow"
-        Action = "ec2:RunInstances"
+        Sid      = "KarpenterEC2RunInstances"
+        Effect   = "Allow"
+        Action   = "ec2:RunInstances"
         Resource = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:launch-template/*"
       }
     ]
