@@ -384,11 +384,12 @@ module "karpenter_irsa" {
   tags = var.tags
 }
 
-# Additional IAM policy for Karpenter instance profile management
+# Additional IAM policy for Karpenter (instance profile + EC2 permissions)
 # Karpenter 1.0+ uses the "role" field in EC2NodeClass and dynamically creates instance profiles
+# The built-in module policy has restrictive conditions on RunInstances that fail validation
 resource "aws_iam_policy" "karpenter_instance_profile" {
   name        = "${var.cluster_name}-karpenter-instance-profile"
-  description = "Policy for Karpenter to manage instance profiles dynamically"
+  description = "Policy for Karpenter to manage instance profiles and launch EC2 instances"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -402,19 +403,30 @@ resource "aws_iam_policy" "karpenter_instance_profile" {
           "iam:GetInstanceProfile",
           "iam:TagInstanceProfile",
           "iam:AddRoleToInstanceProfile",
-          "iam:RemoveRoleFromInstanceProfile",
+          "iam:RemoveRoleFromInstanceProfile"
+        ]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:instance-profile/*"
+      },
+      {
+        Sid    = "KarpenterListInstanceProfiles"
+        Effect = "Allow"
+        Action = [
           "iam:ListInstanceProfiles",
           "iam:ListInstanceProfilesForRole"
         ]
-        Resource = [
-          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:instance-profile/*"
-        ]
+        Resource = "*"
       },
       {
         Sid    = "KarpenterPassRoleToNodeRole"
         Effect = "Allow"
         Action = "iam:PassRole"
         Resource = aws_iam_role.karpenter_node.arn
+      },
+      {
+        Sid    = "KarpenterEC2RunInstances"
+        Effect = "Allow"
+        Action = "ec2:RunInstances"
+        Resource = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:launch-template/*"
       }
     ]
   })

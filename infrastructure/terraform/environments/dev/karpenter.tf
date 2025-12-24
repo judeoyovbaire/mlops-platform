@@ -188,6 +188,51 @@ resource "kubectl_manifest" "karpenter_training_nodepool" {
   depends_on = [helm_release.karpenter]
 }
 
+# Karpenter NodePool for general platform workloads (no taints)
+# Used for system pods like Prometheus, ArgoCD, etc.
+resource "kubectl_manifest" "karpenter_general_nodepool" {
+  yaml_body = <<-YAML
+    apiVersion: karpenter.sh/v1
+    kind: NodePool
+    metadata:
+      name: general-workloads
+    spec:
+      template:
+        metadata:
+          labels:
+            node-type: general
+            karpenter.sh/capacity-type: on-demand
+        spec:
+          nodeClassRef:
+            group: karpenter.k8s.aws
+            kind: EC2NodeClass
+            name: default
+          requirements:
+            - key: karpenter.k8s.aws/instance-category
+              operator: In
+              values: ["m", "c", "r"]
+            - key: karpenter.k8s.aws/instance-size
+              operator: In
+              values: ["large", "xlarge", "2xlarge"]
+            - key: karpenter.sh/capacity-type
+              operator: In
+              values: ["on-demand", "spot"]
+            - key: kubernetes.io/arch
+              operator: In
+              values: ["amd64"]
+          # No taints - general workloads can schedule here
+      limits:
+        cpu: "100"
+        memory: 400Gi
+      disruption:
+        consolidationPolicy: WhenEmptyOrUnderutilized
+        consolidateAfter: 5m
+      weight: 100  # Higher weight = prefer this pool for general workloads
+  YAML
+
+  depends_on = [helm_release.karpenter]
+}
+
 # Karpenter EC2NodeClass for GPU instances
 resource "kubectl_manifest" "karpenter_gpu_nodeclass" {
   yaml_body = <<-YAML
