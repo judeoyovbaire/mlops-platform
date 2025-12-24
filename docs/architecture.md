@@ -587,7 +587,7 @@ Current versions deployed by the platform:
 
 | Component | Version | Notes |
 |-----------|---------|-------|
-| MLflow | 1.8.1 | Helm chart with S3/RDS backend |
+| MLflow | 3.x (chart 1.8.1) | Helm chart with S3/RDS backend |
 | KServe | 0.16.0 | CNCF Incubating, RawDeployment mode |
 | Argo Workflows | 0.46.1 | ML pipeline execution engine |
 | Karpenter | 1.8.0 | GPU autoscaling with SPOT support |

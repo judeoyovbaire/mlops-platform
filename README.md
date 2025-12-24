@@ -303,11 +303,13 @@ Estimated monthly costs (eu-west-1):
 - [x] Security hardening (PSA, Kyverno policies, Tetragon runtime security)
 - [x] Observability (Prometheus, Grafana, alerts)
 - [x] Model drift detection with Evidently AI
+- [x] Multi-tenancy policies (Kyverno)
+- [x] Automated infrastructure cleanup script
 
 ### Future Enhancements
 - [ ] Distributed training support
 - [ ] Data versioning with DVC
-- [ ] Multi-tenancy support
+- [ ] Production environment configuration
 
 ## Examples
 

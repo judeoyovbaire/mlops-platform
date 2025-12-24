@@ -9,7 +9,6 @@ resource "random_password" "mlflow_db" {
   override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
-
 resource "random_password" "minio" {
   length           = 32
   special          = true
@@ -31,7 +30,6 @@ resource "aws_ssm_parameter" "mlflow_db_password" {
 
   tags = var.tags
 }
-
 
 resource "aws_ssm_parameter" "minio_root_password" {
   name        = "/${var.cluster_name}/minio/root-password"

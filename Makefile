@@ -148,7 +148,7 @@ port-forward-argocd:
 port-forward-argo-wf:
 	@echo "Forwarding Argo Workflows to localhost:2746..."
 	@echo "Access Argo Workflows at http://localhost:2746"
-	$(KUBECTL) port-forward svc/argo-workflows-server 2746:2746 -n argo-workflows
+	$(KUBECTL) port-forward svc/argo-workflows-server 2746:2746 -n argo
 
 port-forward-grafana:
 	@echo "Forwarding Grafana to localhost:3000..."

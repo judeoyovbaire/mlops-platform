@@ -37,15 +37,15 @@ variable "public_subnets" {
 }
 
 # Note: Database passwords are now auto-generated and stored in AWS SSM Parameter Store
-# See main.tf for:
+# See secrets.tf for:
 #   - random_password resources (auto-generation)
 #   - aws_ssm_parameter resources (secure storage)
 #   - External Secrets Operator (K8s sync)
 #
 # To retrieve passwords after deployment:
 #   aws ssm get-parameter --name "/${cluster_name}/mlflow/db-password" --with-decryption
-#   aws ssm get-parameter --name "/${cluster_name}/kubeflow/db-password" --with-decryption
 #   aws ssm get-parameter --name "/${cluster_name}/minio/root-password" --with-decryption
+#   aws ssm get-parameter --name "/${cluster_name}/argocd/admin-password" --with-decryption
 
 variable "tags" {
   description = "Additional tags for resources"
