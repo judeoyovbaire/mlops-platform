@@ -225,34 +225,10 @@ secrets() {
     echo ""
 }
 
-# Destroy infrastructure
+# Destroy infrastructure - delegates to destroy-aws.sh
 destroy() {
-    echo ""
-    echo -e "${RED}========================================${NC}"
-    echo -e "${RED}  WARNING: Destroying AWS Infrastructure${NC}"
-    echo -e "${RED}========================================${NC}"
-    echo ""
-    print_warning "This will delete ALL resources including:"
-    echo "  - EKS cluster and all workloads"
-    echo "  - RDS database (data will be lost)"
-    echo "  - S3 bucket and artifacts"
-    echo "  - VPC and networking"
-    echo ""
-
-    read -p "Are you sure you want to destroy? (yes/no): " -r
-    echo
-    if [[ ! $REPLY == "yes" ]]; then
-        print_info "Destroy cancelled"
-        exit 0
-    fi
-
-    cd "${TF_DIR}"
-
-    print_info "Destroying infrastructure..."
-    terraform destroy -auto-approve
-
-    print_status "Infrastructure destroyed"
-    print_info "Run 'kubectl config delete-context' to clean up local kubeconfig if needed"
+    # Use the dedicated destroy script which handles cleanup properly
+    "${SCRIPT_DIR}/destroy-aws.sh" "$@"
 }
 
 # Print access information
@@ -277,7 +253,8 @@ main() {
             secrets
             ;;
         destroy)
-            destroy
+            shift  # Remove 'destroy' from arguments
+            destroy "$@"
             ;;
         --help|help)
             echo "Usage: $0 <command>"
