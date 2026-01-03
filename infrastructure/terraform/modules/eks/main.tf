@@ -187,7 +187,7 @@ module "eks" {
 # IRSA for EBS CSI Driver
 module "ebs_csi_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.0"
+  version = "~> 6.2"
 
   role_name             = "${var.cluster_name}-ebs-csi"
   attach_ebs_csi_policy = true
@@ -205,7 +205,7 @@ module "ebs_csi_irsa" {
 # IRSA for AWS Load Balancer Controller
 module "aws_lb_controller_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.0"
+  version = "~> 6.2"
 
   role_name                              = "${var.cluster_name}-aws-lb-controller"
   attach_load_balancer_controller_policy = true
@@ -223,7 +223,7 @@ module "aws_lb_controller_irsa" {
 # IRSA for MLflow S3 access
 module "mlflow_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.0"
+  version = "~> 6.2"
 
   role_name = "${var.cluster_name}-mlflow"
 
@@ -374,7 +374,7 @@ resource "aws_db_instance" "mlflow" {
 # IRSA for Karpenter
 module "karpenter_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.0"
+  version = "~> 6.2"
 
   role_name                          = "${var.cluster_name}-karpenter"
   attach_karpenter_controller_policy = true
