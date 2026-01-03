@@ -143,12 +143,69 @@ variable "mlflow_db_instance_class" {
   description = "Instance class for MLflow RDS"
   type        = string
   default     = "db.t3.small"
+
+  validation {
+    condition     = can(regex("^db\\.[a-z0-9]+\\.[a-z0-9]+$", var.mlflow_db_instance_class))
+    error_message = "Must be a valid RDS instance class (e.g., db.t3.small, db.r5.large)."
+  }
 }
 
 variable "mlflow_db_password" {
   description = "Password for MLflow database"
   type        = string
   sensitive   = true
+
+  validation {
+    condition     = length(var.mlflow_db_password) >= 16
+    error_message = "Database password must be at least 16 characters long for security."
+  }
+}
+
+variable "mlflow_db_allocated_storage" {
+  description = "Allocated storage for MLflow RDS in GB"
+  type        = number
+  default     = 20
+}
+
+variable "mlflow_db_max_allocated_storage" {
+  description = "Maximum allocated storage for MLflow RDS autoscaling in GB"
+  type        = number
+  default     = 100
+}
+
+variable "mlflow_db_engine_version" {
+  description = "PostgreSQL engine version for MLflow RDS"
+  type        = string
+  default     = "15"
+}
+
+variable "mlflow_db_skip_final_snapshot" {
+  description = "Skip final snapshot when destroying RDS (set to false for production)"
+  type        = bool
+  default     = true
+}
+
+variable "mlflow_db_backup_retention_period" {
+  description = "Number of days to retain automated backups (0 to disable, 7+ recommended for production)"
+  type        = number
+  default     = 7
+
+  validation {
+    condition     = var.mlflow_db_backup_retention_period >= 0 && var.mlflow_db_backup_retention_period <= 35
+    error_message = "Backup retention period must be between 0 and 35 days."
+  }
+}
+
+variable "mlflow_db_deletion_protection" {
+  description = "Enable deletion protection for RDS (recommended for production)"
+  type        = bool
+  default     = false
+}
+
+variable "mlflow_db_multi_az" {
+  description = "Enable Multi-AZ deployment for RDS high availability"
+  type        = bool
+  default     = false
 }
 
 # Cluster access

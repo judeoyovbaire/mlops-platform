@@ -16,8 +16,18 @@ kind: WorkflowTemplate
 metadata:
   name: drift-detection
   namespace: argo
+  labels:
+    app: mlops
+    component: drift-detection
 spec:
   entrypoint: detect-drift
+  serviceAccountName: argo-workflows-server
+
+  # Security context for all pods in this workflow
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
 
   arguments:
     parameters:
@@ -73,6 +83,17 @@ spec:
         env:
           - name: AWS_DEFAULT_REGION
             value: "eu-west-1"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
       outputs:
         artifacts:
           - name: reference-data
@@ -89,9 +110,10 @@ spec:
             path: /tmp/current.csv
       container:
         image: python:3.11-slim
-        command: [python, -c]
+        command: [sh, -c]
         args:
           - |
+            pip install -q pandas evidently && python << 'EOF'
             import json
             import pandas as pd
             from evidently import ColumnMapping
@@ -145,6 +167,18 @@ spec:
             # Fail workflow if significant drift detected
             if drift_metrics['dataset_drift_score'] > float('{{workflow.parameters.drift-threshold}}'):
                 print(f"WARNING: Dataset drift score {drift_metrics['dataset_drift_score']} exceeds threshold")
+            EOF
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
       outputs:
         artifacts:
           - name: drift-results
@@ -205,6 +239,17 @@ spec:
             except Exception as e:
                 print(f"Note: Could not push to Pushgateway: {e}")
                 print("Metrics available in workflow logs")
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
 
     - name: upload-report
       inputs:
@@ -223,6 +268,17 @@ spec:
         env:
           - name: AWS_DEFAULT_REGION
             value: "eu-west-1"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
 
 ---
 # CronWorkflow for scheduled drift detection
@@ -231,6 +287,9 @@ kind: CronWorkflow
 metadata:
   name: drift-detection
   namespace: argo
+  labels:
+    app: mlops
+    component: drift-detection
 spec:
   schedule: "0 6 * * *"  # Run daily at 6 AM
   timezone: "UTC"

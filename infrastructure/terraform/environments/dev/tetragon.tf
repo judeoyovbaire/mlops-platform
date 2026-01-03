@@ -26,7 +26,7 @@ resource "helm_release" "tetragon" {
   name       = "tetragon"
   repository = "https://helm.cilium.io"
   chart      = "tetragon"
-  version    = "1.3.0" # Latest stable as of Dec 2025
+  version    = var.helm_tetragon_version
   namespace  = kubernetes_namespace.tetragon.metadata[0].name
 
   # Increase timeout for daemonset rollout

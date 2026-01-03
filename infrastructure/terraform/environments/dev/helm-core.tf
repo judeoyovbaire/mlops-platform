@@ -7,7 +7,7 @@ resource "helm_release" "aws_load_balancer_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
-  version    = "1.16.0"
+  version    = var.helm_aws_lb_controller_version
   namespace  = "kube-system"
 
   set {
@@ -56,7 +56,7 @@ resource "helm_release" "cert_manager" {
   name             = "cert-manager"
   repository       = "https://charts.jetstack.io"
   chart            = "cert-manager"
-  version          = "v1.19.1"
+  version          = var.helm_cert_manager_version
   namespace        = "cert-manager"
   create_namespace = true
 
@@ -73,7 +73,7 @@ resource "helm_release" "argocd" {
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
   chart            = "argo-cd"
-  version          = "7.9.0"
+  version          = var.helm_argocd_version
   namespace        = "argocd"
   create_namespace = true
 
@@ -87,7 +87,7 @@ resource "helm_release" "kserve" {
   name       = "kserve"
   repository = "oci://ghcr.io/kserve/charts"
   chart      = "kserve-crd"
-  version    = "v0.16.0" # Note: KServe OCI charts require 'v' prefix
+  version    = var.helm_kserve_version # Note: KServe OCI charts require 'v' prefix
   namespace  = kubernetes_namespace.kserve.metadata[0].name
 
   depends_on = [helm_release.cert_manager]
@@ -98,7 +98,7 @@ resource "helm_release" "kserve_controller" {
   name       = "kserve-controller"
   repository = "oci://ghcr.io/kserve/charts"
   chart      = "kserve"
-  version    = "v0.16.0" # Note: KServe OCI charts require 'v' prefix
+  version    = var.helm_kserve_version # Note: KServe OCI charts require 'v' prefix
   namespace  = kubernetes_namespace.kserve.metadata[0].name
 
   set {
@@ -125,7 +125,7 @@ resource "helm_release" "mlflow" {
   name       = "mlflow"
   repository = "https://community-charts.github.io/helm-charts"
   chart      = "mlflow"
-  version    = "1.8.1" # Upgraded: supports existingDatabaseSecret
+  version    = var.helm_mlflow_version
   namespace  = kubernetes_namespace.mlflow.metadata[0].name
 
   values = [
@@ -153,7 +153,7 @@ resource "helm_release" "argo_workflows" {
   name       = "argo-workflows"
   repository = "https://argoproj.github.io/argo-helm"
   chart      = "argo-workflows"
-  version    = "0.46.1"
+  version    = var.helm_argo_workflows_version
   namespace  = kubernetes_namespace.argo.metadata[0].name
 
   # Increase timeout for CRD installation
@@ -169,7 +169,7 @@ resource "helm_release" "minio" {
   name       = "minio"
   repository = "https://charts.min.io/"
   chart      = "minio"
-  version    = "5.4.0"
+  version    = var.helm_minio_version
   namespace  = kubernetes_namespace.argo.metadata[0].name
 
   set {

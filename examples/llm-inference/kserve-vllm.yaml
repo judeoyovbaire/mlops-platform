@@ -60,6 +60,13 @@ spec:
             memory: "16Gi"
             nvidia.com/gpu: "1"
 
+        # Security hardening (compatible with GPU workloads)
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+
         # Health checks
         readinessProbe:
           httpGet:
@@ -129,6 +136,12 @@ spec:
             memory: "4Gi"
             nvidia.com/gpu: "1"
 
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+
         readinessProbe:
           httpGet:
             path: /health
@@ -184,6 +197,12 @@ spec:
             cpu: "4"
             memory: "16Gi"
             nvidia.com/gpu: "1"
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
 
         readinessProbe:
           httpGet:

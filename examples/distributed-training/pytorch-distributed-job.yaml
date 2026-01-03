@@ -27,6 +27,10 @@ spec:
             app: pytorch-ddp
             role: master
         spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
           containers:
             - name: pytorch
               image: python:3.11-slim
@@ -107,6 +111,13 @@ spec:
                   cpu: "1"
                   memory: "1Gi"
 
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                capabilities:
+                  drop:
+                    - ALL
+
               env:
                 - name: MASTER_ADDR
                   value: "pytorch-ddp-example-master-0"
@@ -122,6 +133,10 @@ spec:
             app: pytorch-ddp
             role: worker
         spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
           containers:
             - name: pytorch
               image: python:3.11-slim
@@ -183,6 +198,13 @@ spec:
                 limits:
                   cpu: "1"
                   memory: "1Gi"
+
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                capabilities:
+                  drop:
+                    - ALL
 
               env:
                 - name: MASTER_ADDR

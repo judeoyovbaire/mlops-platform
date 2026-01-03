@@ -12,6 +12,12 @@ spec:
   entrypoint: ml-pipeline
   serviceAccountName: argo-workflows-server
 
+  # Security context for all pods in this workflow
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
   # Pipeline parameters with defaults
   arguments:
     parameters:
@@ -141,6 +147,17 @@ spec:
             except Exception as e:
                 print(f"Error downloading data: {e}", file=sys.stderr)
                 sys.exit(1)
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
 
     # Step 2: Validate data quality
     - name: validate-data
@@ -184,6 +201,17 @@ spec:
                 print(f'Validation error: {e}', file=sys.stderr)
                 sys.exit(1)
             "
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
 
     # Step 3: Feature engineering
     - name: feature-engineering
@@ -234,6 +262,17 @@ spec:
                 print(f'Feature engineering error: {e}', file=sys.stderr)
                 sys.exit(1)
             "
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
 
     # Step 4: Train model with MLflow tracking
     - name: train-model
@@ -334,6 +373,17 @@ spec:
                 print(f'Training error: {e}', file=sys.stderr)
                 sys.exit(1)
             "
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
 
     # Step 5: Register model with MLflow alias
     - name: register-model
@@ -385,6 +435,17 @@ spec:
                 print(f'Registration error: {e}', file=sys.stderr)
                 sys.exit(1)
             "
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
 
 ---
 # Workflow to run the training pipeline

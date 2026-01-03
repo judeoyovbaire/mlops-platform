@@ -27,7 +27,7 @@ resource "helm_release" "prometheus_stack" {
   name       = "prometheus"
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "kube-prometheus-stack"
-  version    = "72.6.2"
+  version    = var.helm_prometheus_stack_version
   namespace  = kubernetes_namespace.monitoring.metadata[0].name
 
   values = [file("${path.module}/../../../helm/aws/prometheus-stack-values.yaml")]

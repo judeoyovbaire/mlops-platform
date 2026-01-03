@@ -4,4 +4,5 @@ kind: Kustomization
 resources:
   - monitoring.yaml
   - network-policies.yaml
+  - pod-disruption-budgets.yaml
   - dashboards/mlops-overview-dashboard.yaml

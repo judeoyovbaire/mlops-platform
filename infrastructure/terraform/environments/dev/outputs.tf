@@ -35,6 +35,31 @@ output "vpc_id" {
   value       = module.eks.vpc_id
 }
 
+output "ecr_repository_url" {
+  description = "ECR repository URL for ML model images"
+  value       = module.eks.ecr_repository_url
+}
+
+output "karpenter_irsa_role_arn" {
+  description = "IAM role ARN for Karpenter controller"
+  value       = module.eks.karpenter_irsa_role_arn
+}
+
+output "private_subnet_ids" {
+  description = "Private subnet IDs for workload deployment"
+  value       = module.eks.private_subnets
+}
+
+output "cluster_security_group_id" {
+  description = "Security group ID attached to the EKS cluster"
+  value       = module.eks.cluster_security_group_id
+}
+
+output "oidc_provider_arn" {
+  description = "OIDC provider ARN for IRSA configuration"
+  value       = module.eks.oidc_provider_arn
+}
+
 # =============================================================================
 # SSM Parameter Store - Secret Locations
 # =============================================================================

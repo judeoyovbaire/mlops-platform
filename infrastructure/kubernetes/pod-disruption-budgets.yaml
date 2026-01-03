@@ -1,0 +1,130 @@
+# PodDisruptionBudgets for Critical Platform Services
+#
+# These PDBs ensure high availability during voluntary disruptions
+# such as node drains, cluster upgrades, and maintenance.
+
+---
+# MLflow Tracking Server
+# Maintains experiment tracking availability during updates
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mlflow-pdb
+  namespace: mlflow
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: mlflow
+
+---
+# Argo Workflows Controller
+# Ensures workflow orchestration remains available
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: argo-workflow-controller-pdb
+  namespace: argo
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: workflow-controller
+
+---
+# Argo Server (UI)
+# Keeps workflow UI accessible during maintenance
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: argo-server-pdb
+  namespace: argo
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: argo-server
+
+---
+# Istio Ingress Gateway (KServe traffic)
+# Critical for model inference traffic routing
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: istio-ingressgateway-pdb
+  namespace: istio-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: istio-ingressgateway
+
+---
+# Istiod Control Plane
+# Required for service mesh operations
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: istiod-pdb
+  namespace: istio-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: istiod
+
+---
+# KServe Controller
+# Manages InferenceService deployments
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: kserve-controller-pdb
+  namespace: kserve
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      control-plane: kserve-controller-manager
+
+---
+# Karpenter Controller
+# Critical for node provisioning - must stay available
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: karpenter-pdb
+  namespace: karpenter
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: karpenter
+
+---
+# Prometheus (Monitoring)
+# Maintains observability during cluster operations
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: prometheus-pdb
+  namespace: monitoring
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+
+---
+# Grafana (Dashboards)
+# Keeps dashboards accessible for troubleshooting
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: grafana-pdb
+  namespace: monitoring
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: grafana

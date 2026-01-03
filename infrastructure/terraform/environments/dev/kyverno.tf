@@ -26,7 +26,7 @@ resource "helm_release" "kyverno" {
   name       = "kyverno"
   repository = "https://kyverno.github.io/kyverno"
   chart      = "kyverno"
-  version    = "3.3.4" # Latest stable as of Dec 2025
+  version    = var.helm_kyverno_version
   namespace  = kubernetes_namespace.kyverno.metadata[0].name
 
   # Increase timeout for CRD installation

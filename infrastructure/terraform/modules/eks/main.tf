@@ -334,10 +334,10 @@ resource "aws_db_instance" "mlflow" {
   identifier = "${var.cluster_name}-mlflow"
 
   engine                = "postgres"
-  engine_version        = "15"
+  engine_version        = var.mlflow_db_engine_version
   instance_class        = var.mlflow_db_instance_class
-  allocated_storage     = 20
-  max_allocated_storage = 100
+  allocated_storage     = var.mlflow_db_allocated_storage
+  max_allocated_storage = var.mlflow_db_max_allocated_storage
 
   db_name  = "mlflow"
   username = "mlflow"
@@ -346,8 +346,23 @@ resource "aws_db_instance" "mlflow" {
   db_subnet_group_name   = aws_db_subnet_group.mlflow.name
   vpc_security_group_ids = [aws_security_group.mlflow_rds.id]
 
-  skip_final_snapshot = true
+  # Security settings
+  publicly_accessible = false
   storage_encrypted   = true
+
+  # Backup and recovery settings
+  backup_retention_period   = var.mlflow_db_backup_retention_period
+  backup_window             = "03:00-04:00"
+  maintenance_window        = "sun:04:00-sun:05:00"
+  skip_final_snapshot       = var.mlflow_db_skip_final_snapshot
+  final_snapshot_identifier = var.mlflow_db_skip_final_snapshot ? null : "${var.cluster_name}-mlflow-final-snapshot"
+  deletion_protection       = var.mlflow_db_deletion_protection
+
+  # High availability
+  multi_az = var.mlflow_db_multi_az
+
+  # Performance settings
+  performance_insights_enabled = true
 
   tags = var.tags
 }

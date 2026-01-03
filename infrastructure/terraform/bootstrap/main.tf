@@ -257,6 +257,8 @@ resource "aws_iam_role_policy" "terraform_state_access" {
 }
 
 # Policy for Terraform plan/apply operations
+# NOTE: Permissions are scoped to project-specific resources where possible
+# to follow the principle of least privilege
 resource "aws_iam_role_policy" "terraform_operations" {
   name = "terraform-operations"
   role = aws_iam_role.github_actions.id
@@ -264,63 +266,338 @@ resource "aws_iam_role_policy" "terraform_operations" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      # EKS permissions
+      # EKS permissions - scoped to project clusters
       {
-        Sid    = "EKSFullAccess"
+        Sid    = "EKSClusterAccess"
         Effect = "Allow"
         Action = [
-          "eks:*"
+          "eks:CreateCluster",
+          "eks:DeleteCluster",
+          "eks:DescribeCluster",
+          "eks:ListClusters",
+          "eks:UpdateClusterConfig",
+          "eks:UpdateClusterVersion",
+          "eks:TagResource",
+          "eks:UntagResource",
+          "eks:CreateNodegroup",
+          "eks:DeleteNodegroup",
+          "eks:DescribeNodegroup",
+          "eks:ListNodegroups",
+          "eks:UpdateNodegroupConfig",
+          "eks:UpdateNodegroupVersion",
+          "eks:CreateAddon",
+          "eks:DeleteAddon",
+          "eks:DescribeAddon",
+          "eks:DescribeAddonVersions",
+          "eks:ListAddons",
+          "eks:UpdateAddon",
+          "eks:CreateAccessEntry",
+          "eks:DeleteAccessEntry",
+          "eks:DescribeAccessEntry",
+          "eks:ListAccessEntries",
+          "eks:AssociateAccessPolicy",
+          "eks:DisassociateAccessPolicy",
+          "eks:ListAccessPolicies",
+          "eks:ListAssociatedAccessPolicies"
+        ]
+        Resource = [
+          "arn:aws:eks:${var.aws_region}:${data.aws_caller_identity.current.account_id}:cluster/${var.project_name}*",
+          "arn:aws:eks:${var.aws_region}:${data.aws_caller_identity.current.account_id}:nodegroup/${var.project_name}*/*/*",
+          "arn:aws:eks:${var.aws_region}:${data.aws_caller_identity.current.account_id}:addon/${var.project_name}*/*/*",
+          "arn:aws:eks:${var.aws_region}:${data.aws_caller_identity.current.account_id}:access-entry/${var.project_name}*/*"
+        ]
+      },
+      # EKS read-only for discovery
+      {
+        Sid    = "EKSReadOnly"
+        Effect = "Allow"
+        Action = [
+          "eks:DescribeCluster",
+          "eks:ListClusters",
+          "eks:ListNodegroups",
+          "eks:ListAddons"
         ]
         Resource = "*"
       },
-      # VPC and networking (full EC2 for VPC, routes, etc.)
+      # VPC and networking - scoped actions for infrastructure creation
       {
-        Sid    = "EC2FullAccess"
+        Sid    = "EC2NetworkingAccess"
         Effect = "Allow"
         Action = [
-          "ec2:*"
+          "ec2:CreateVpc",
+          "ec2:DeleteVpc",
+          "ec2:DescribeVpcs",
+          "ec2:ModifyVpcAttribute",
+          "ec2:CreateSubnet",
+          "ec2:DeleteSubnet",
+          "ec2:DescribeSubnets",
+          "ec2:ModifySubnetAttribute",
+          "ec2:CreateRouteTable",
+          "ec2:DeleteRouteTable",
+          "ec2:DescribeRouteTables",
+          "ec2:AssociateRouteTable",
+          "ec2:DisassociateRouteTable",
+          "ec2:CreateRoute",
+          "ec2:DeleteRoute",
+          "ec2:CreateInternetGateway",
+          "ec2:DeleteInternetGateway",
+          "ec2:AttachInternetGateway",
+          "ec2:DetachInternetGateway",
+          "ec2:DescribeInternetGateways",
+          "ec2:CreateNatGateway",
+          "ec2:DeleteNatGateway",
+          "ec2:DescribeNatGateways",
+          "ec2:AllocateAddress",
+          "ec2:ReleaseAddress",
+          "ec2:DescribeAddresses",
+          "ec2:CreateSecurityGroup",
+          "ec2:DeleteSecurityGroup",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribeSecurityGroupRules",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:AuthorizeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupEgress",
+          "ec2:CreateTags",
+          "ec2:DeleteTags",
+          "ec2:DescribeTags",
+          "ec2:DescribeAvailabilityZones",
+          "ec2:DescribeAccountAttributes",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:CreateLaunchTemplate",
+          "ec2:DeleteLaunchTemplate",
+          "ec2:DescribeLaunchTemplates",
+          "ec2:DescribeLaunchTemplateVersions",
+          "ec2:CreateLaunchTemplateVersion",
+          "ec2:DescribeImages",
+          "ec2:DescribeInstanceTypes",
+          "ec2:DescribeInstanceTypeOfferings",
+          "ec2:RunInstances",
+          "ec2:TerminateInstances",
+          "ec2:DescribeInstances"
         ]
         Resource = "*"
       },
-      # IAM for IRSA and roles (full IAM for EKS node roles, IRSA, policies)
+      # IAM - scoped to project-prefixed roles and policies
       {
-        Sid    = "IAMFullAccess"
+        Sid    = "IAMRoleManagement"
         Effect = "Allow"
         Action = [
-          "iam:*"
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:GetRole",
+          "iam:ListRoles",
+          "iam:UpdateRole",
+          "iam:TagRole",
+          "iam:UntagRole",
+          "iam:ListRoleTags",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:ListAttachedRolePolicies",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:GetRolePolicy",
+          "iam:ListRolePolicies",
+          "iam:UpdateAssumeRolePolicy"
+        ]
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}*"
+        ]
+      },
+      {
+        Sid    = "IAMPolicyManagement"
+        Effect = "Allow"
+        Action = [
+          "iam:CreatePolicy",
+          "iam:DeletePolicy",
+          "iam:GetPolicy",
+          "iam:ListPolicies",
+          "iam:GetPolicyVersion",
+          "iam:ListPolicyVersions",
+          "iam:CreatePolicyVersion",
+          "iam:DeletePolicyVersion",
+          "iam:TagPolicy",
+          "iam:UntagPolicy"
+        ]
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${var.project_name}*"
+        ]
+      },
+      {
+        Sid    = "IAMInstanceProfileManagement"
+        Effect = "Allow"
+        Action = [
+          "iam:CreateInstanceProfile",
+          "iam:DeleteInstanceProfile",
+          "iam:GetInstanceProfile",
+          "iam:ListInstanceProfiles",
+          "iam:AddRoleToInstanceProfile",
+          "iam:RemoveRoleFromInstanceProfile",
+          "iam:TagInstanceProfile",
+          "iam:ListInstanceProfilesForRole"
+        ]
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:instance-profile/${var.project_name}*"
+        ]
+      },
+      {
+        Sid    = "IAMServiceLinkedRoles"
+        Effect = "Allow"
+        Action = [
+          "iam:CreateServiceLinkedRole"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "iam:AWSServiceName" = [
+              "eks.amazonaws.com",
+              "eks-nodegroup.amazonaws.com",
+              "autoscaling.amazonaws.com",
+              "elasticloadbalancing.amazonaws.com"
+            ]
+          }
+        }
+      },
+      {
+        Sid    = "IAMOIDCProvider"
+        Effect = "Allow"
+        Action = [
+          "iam:CreateOpenIDConnectProvider",
+          "iam:DeleteOpenIDConnectProvider",
+          "iam:GetOpenIDConnectProvider",
+          "iam:ListOpenIDConnectProviders",
+          "iam:TagOpenIDConnectProvider",
+          "iam:UntagOpenIDConnectProvider",
+          "iam:UpdateOpenIDConnectProviderThumbprint"
+        ]
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/oidc.eks.${var.aws_region}.amazonaws.com/*"
+        ]
+      },
+      {
+        Sid    = "IAMPassRole"
+        Effect = "Allow"
+        Action = [
+          "iam:PassRole"
+        ]
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}*"
+        ]
+      },
+      # S3 - scoped to project buckets
+      {
+        Sid    = "S3BucketManagement"
+        Effect = "Allow"
+        Action = [
+          "s3:CreateBucket",
+          "s3:DeleteBucket",
+          "s3:ListBucket",
+          "s3:GetBucketLocation",
+          "s3:GetBucketVersioning",
+          "s3:PutBucketVersioning",
+          "s3:GetBucketEncryption",
+          "s3:PutBucketEncryption",
+          "s3:GetBucketPublicAccessBlock",
+          "s3:PutBucketPublicAccessBlock",
+          "s3:GetBucketPolicy",
+          "s3:PutBucketPolicy",
+          "s3:DeleteBucketPolicy",
+          "s3:GetBucketTagging",
+          "s3:PutBucketTagging",
+          "s3:GetLifecycleConfiguration",
+          "s3:PutLifecycleConfiguration",
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = [
+          "arn:aws:s3:::${var.project_name}*",
+          "arn:aws:s3:::${var.project_name}*/*"
+        ]
+      },
+      {
+        Sid    = "S3ListBuckets"
+        Effect = "Allow"
+        Action = [
+          "s3:ListAllMyBuckets",
+          "s3:GetBucketLocation"
         ]
         Resource = "*"
       },
-      # S3 for MLflow artifacts (full S3 for bucket management)
+      # ECR - scoped to project repositories
       {
-        Sid    = "S3FullAccess"
+        Sid    = "ECRRepositoryManagement"
         Effect = "Allow"
         Action = [
-          "s3:*"
+          "ecr:CreateRepository",
+          "ecr:DeleteRepository",
+          "ecr:DescribeRepositories",
+          "ecr:ListTagsForResource",
+          "ecr:TagResource",
+          "ecr:UntagResource",
+          "ecr:GetRepositoryPolicy",
+          "ecr:SetRepositoryPolicy",
+          "ecr:DeleteRepositoryPolicy",
+          "ecr:PutLifecyclePolicy",
+          "ecr:GetLifecyclePolicy",
+          "ecr:DeleteLifecyclePolicy",
+          "ecr:PutImageScanningConfiguration",
+          "ecr:GetAuthorizationToken"
+        ]
+        Resource = [
+          "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${var.project_name}*"
+        ]
+      },
+      {
+        Sid    = "ECRGetToken"
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken"
         ]
         Resource = "*"
       },
-      # ECR for container images (full ECR access)
+      # RDS - scoped to project databases
       {
-        Sid    = "ECRFullAccess"
+        Sid    = "RDSManagement"
         Effect = "Allow"
         Action = [
-          "ecr:*"
+          "rds:CreateDBInstance",
+          "rds:DeleteDBInstance",
+          "rds:DescribeDBInstances",
+          "rds:ModifyDBInstance",
+          "rds:RebootDBInstance",
+          "rds:CreateDBSubnetGroup",
+          "rds:DeleteDBSubnetGroup",
+          "rds:DescribeDBSubnetGroups",
+          "rds:ModifyDBSubnetGroup",
+          "rds:AddTagsToResource",
+          "rds:RemoveTagsFromResource",
+          "rds:ListTagsForResource",
+          "rds:CreateDBSnapshot",
+          "rds:DeleteDBSnapshot",
+          "rds:DescribeDBSnapshots",
+          "rds:RestoreDBInstanceFromDBSnapshot"
+        ]
+        Resource = [
+          "arn:aws:rds:${var.aws_region}:${data.aws_caller_identity.current.account_id}:db:${var.project_name}*",
+          "arn:aws:rds:${var.aws_region}:${data.aws_caller_identity.current.account_id}:subgrp:${var.project_name}*",
+          "arn:aws:rds:${var.aws_region}:${data.aws_caller_identity.current.account_id}:snapshot:${var.project_name}*"
+        ]
+      },
+      {
+        Sid    = "RDSDescribe"
+        Effect = "Allow"
+        Action = [
+          "rds:DescribeDBInstances",
+          "rds:DescribeDBSubnetGroups",
+          "rds:DescribeDBEngineVersions",
+          "rds:DescribeOrderableDBInstanceOptions"
         ]
         Resource = "*"
       },
-      # RDS for MLflow backend
+      # SSM Parameter Store - scoped to project parameters
       {
-        Sid    = "RDSAccess"
-        Effect = "Allow"
-        Action = [
-          "rds:*"
-        ]
-        Resource = "*"
-      },
-      # SSM Parameter Store for secrets
-      {
-        Sid    = "SSMAccess"
+        Sid    = "SSMParameterAccess"
         Effect = "Allow"
         Action = [
           "ssm:GetParameter",
@@ -329,34 +606,101 @@ resource "aws_iam_role_policy" "terraform_operations" {
           "ssm:DeleteParameter",
           "ssm:DescribeParameters",
           "ssm:AddTagsToResource",
+          "ssm:RemoveTagsFromResource",
           "ssm:ListTagsForResource"
         ]
-        Resource = "*"
+        Resource = [
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/*"
+        ]
       },
-      # KMS for encryption (full KMS for EKS secrets encryption)
       {
-        Sid    = "KMSFullAccess"
+        Sid    = "SSMDescribe"
         Effect = "Allow"
         Action = [
-          "kms:*"
+          "ssm:DescribeParameters"
         ]
         Resource = "*"
       },
-      # CloudWatch for logging (full logs access for EKS)
+      # KMS - scoped to project keys
       {
-        Sid    = "CloudWatchLogsFullAccess"
+        Sid    = "KMSKeyManagement"
         Effect = "Allow"
         Action = [
-          "logs:*"
+          "kms:CreateKey",
+          "kms:DescribeKey",
+          "kms:GetKeyPolicy",
+          "kms:GetKeyRotationStatus",
+          "kms:ListResourceTags",
+          "kms:TagResource",
+          "kms:UntagResource",
+          "kms:ScheduleKeyDeletion",
+          "kms:EnableKeyRotation",
+          "kms:CreateAlias",
+          "kms:DeleteAlias",
+          "kms:ListAliases",
+          "kms:UpdateAlias"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "aws:ResourceTag/Project" = var.project_name
+          }
+        }
+      },
+      {
+        Sid    = "KMSListKeys"
+        Effect = "Allow"
+        Action = [
+          "kms:ListKeys",
+          "kms:ListAliases",
+          "kms:DescribeKey"
         ]
         Resource = "*"
       },
-      # Auto Scaling for node groups
+      # CloudWatch Logs - scoped to project log groups
+      {
+        Sid    = "CloudWatchLogsManagement"
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:DeleteLogGroup",
+          "logs:DescribeLogGroups",
+          "logs:PutRetentionPolicy",
+          "logs:DeleteRetentionPolicy",
+          "logs:TagResource",
+          "logs:UntagResource",
+          "logs:ListTagsForResource"
+        ]
+        Resource = [
+          "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/eks/${var.project_name}*",
+          "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:${var.project_name}*"
+        ]
+      },
+      {
+        Sid    = "CloudWatchLogsDescribe"
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups"
+        ]
+        Resource = "*"
+      },
+      # Auto Scaling - required for EKS managed node groups
       {
         Sid    = "AutoScalingAccess"
         Effect = "Allow"
         Action = [
-          "autoscaling:*"
+          "autoscaling:CreateAutoScalingGroup",
+          "autoscaling:DeleteAutoScalingGroup",
+          "autoscaling:DescribeAutoScalingGroups",
+          "autoscaling:UpdateAutoScalingGroup",
+          "autoscaling:CreateLaunchConfiguration",
+          "autoscaling:DeleteLaunchConfiguration",
+          "autoscaling:DescribeLaunchConfigurations",
+          "autoscaling:SetDesiredCapacity",
+          "autoscaling:TerminateInstanceInAutoScalingGroup",
+          "autoscaling:CreateOrUpdateTags",
+          "autoscaling:DeleteTags",
+          "autoscaling:DescribeTags"
         ]
         Resource = "*"
       },
