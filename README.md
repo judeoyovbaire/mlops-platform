@@ -45,26 +45,26 @@ Data Scientist                    Platform (Automated)
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           MLOps Platform                                     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                   │
-│  │     Argo     │    │   MLflow 3   │    │   KServe     │                   │
-│  │  Workflows   │───▶│  Tracking &  │───▶│   Model      │                   │
-│  │              │    │  Registry    │    │   Serving    │                   │
-│  └──────────────┘    └──────────────┘    └──────────────┘                   │
-│         │                   │                   │                            │
-│         ▼                   ▼                   ▼                            │
-│  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                         AWS EKS Cluster                              │    │
-│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐   │    │
-│  │  │ GPU     │  │ S3 +    │  │ ALB     │  │ Prom/   │  │ ArgoCD  │   │    │
-│  │  │ Nodes   │  │ RDS     │  │ Ingress │  │ Grafana │  │ GitOps  │   │    │
-│  │  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘   │    │
-│  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────┐
+│                           MLOps Platform                                  │
+├───────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                 │
+│  │     Argo     │    │   MLflow 3   │    │   KServe     │                 │
+│  │  Workflows   │───▶│  Tracking &  │───▶│   Model      │                 │
+│  │              │    │  Registry    │    │   Serving    │                 │
+│  └──────────────┘    └──────────────┘    └──────────────┘                 │
+│         │                   │                   │                         │
+│         ▼                   ▼                   ▼                         │
+│  ┌────────────────────────────────────────────────────────────────────┐   │
+│  │                         AWS EKS Cluster                            │   │
+│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐   │   │
+│  │  │ GPU     │  │ S3 +    │  │ ALB     │  │ Prom/   │  │ ArgoCD  │   │   │
+│  │  │ Nodes   │  │ RDS     │  │ Ingress │  │ Grafana │  │ GitOps  │   │   │
+│  │  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘   │   │
+│  └────────────────────────────────────────────────────────────────────┘   │
+│                                                                           │
+└───────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Features
@@ -226,21 +226,21 @@ Single unified pipeline with OIDC authentication (no static AWS credentials):
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           CI/CD PIPELINE                                     │
+│                           CI/CD PIPELINE                                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ON PUSH/PR (automatic):                                                     │
-│  ├── Lint Python (ruff)                                                      │
-│  ├── Validate Terraform                                                      │
-│  ├── Validate Kubernetes manifests                                           │
-│  ├── Security scan (Trivy, Checkov)                                          │
-│  ├── Run tests (pytest)                                                      │
-│  └── Terraform plan (shows infrastructure changes)                           │
-│                                                                              │
-│  MANUAL TRIGGER (Actions → CI/CD → Run workflow):                            │
+│                                                                             │
+│  ON PUSH/PR (automatic):                                                    │
+│  ├── Lint Python (ruff)                                                     │
+│  ├── Validate Terraform                                                     │
+│  ├── Validate Kubernetes manifests                                          │
+│  ├── Security scan (Trivy, Checkov)                                         │
+│  ├── Run tests (pytest)                                                     │
+│  └── Terraform plan (shows infrastructure changes)                          │
+│                                                                             │
+│  MANUAL TRIGGER (Actions → CI/CD → Run workflow):                           │
 │  ├── deploy-infra  → Creates EKS cluster, RDS, S3, ECR (~15-20 min)         │
 │  └── deploy-model  → Deploys example InferenceServices to KServe            │
-│                                                                              │
+│                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 

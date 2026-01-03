@@ -12,10 +12,10 @@ Drift detection monitors your ML models in production to detect:
 ## Architecture
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│  Inference  │────▶│   S3/MinIO   │────▶│   Argo      │
+┌─────────────┐     ┌───────────────┐     ┌─────────────┐
+│  Inference  │────▶│   S3/MinIO    │────▶│   Argo      │
 │  Service    │     │  (predictions)│     │  Workflow   │
-└─────────────┘     └──────────────┘     └──────┬──────┘
+└─────────────┘     └───────────────┘     └──────┬──────┘
                                                  │
                     ┌──────────────┐             │
                     │  Evidently   │◀────────────┘
