@@ -62,6 +62,8 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "hashicorp/aws"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "hashicorp/kubernetes"
+        update-types: ["version-update:semver-major"]
       - dependency-name: "terraform-aws-modules/iam/aws"
         update-types: ["version-update:semver-major"]
       - dependency-name: "terraform-aws-modules/eks/aws"
@@ -86,6 +88,8 @@ updates:
       - dependency-name: "hashicorp/helm"
         update-types: ["version-update:semver-major"]
       - dependency-name: "hashicorp/aws"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "hashicorp/kubernetes"
         update-types: ["version-update:semver-major"]
       - dependency-name: "terraform-aws-modules/iam/aws"
         update-types: ["version-update:semver-major"]
