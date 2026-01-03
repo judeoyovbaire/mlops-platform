@@ -29,7 +29,7 @@ data "aws_caller_identity" "current" {}
 # VPC for EKS
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 5.0"
+  version = "~> 6.5"
 
   name = "${var.cluster_name}-vpc"
   cidr = var.vpc_cidr
