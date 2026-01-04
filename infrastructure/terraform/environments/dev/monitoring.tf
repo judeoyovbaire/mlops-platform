@@ -9,12 +9,12 @@ resource "kubernetes_namespace" "monitoring" {
     labels = {
       "app.kubernetes.io/name"    = "monitoring"
       "app.kubernetes.io/part-of" = "mlops-platform"
-      # Monitoring stack needs baseline for node-exporter hostPath mounts
-      "pod-security.kubernetes.io/enforce"         = "baseline"
+      # Monitoring stack needs privileged for node-exporter (hostNetwork, hostPID, hostPath, hostPort)
+      "pod-security.kubernetes.io/enforce"         = "privileged"
       "pod-security.kubernetes.io/enforce-version" = "latest"
-      "pod-security.kubernetes.io/warn"            = "baseline"
+      "pod-security.kubernetes.io/warn"            = "privileged"
       "pod-security.kubernetes.io/warn-version"    = "latest"
-      "pod-security.kubernetes.io/audit"           = "baseline"
+      "pod-security.kubernetes.io/audit"           = "privileged"
       "pod-security.kubernetes.io/audit-version"   = "latest"
     }
   }
