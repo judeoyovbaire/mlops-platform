@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # =============================================================================
 # MLOps Platform - AWS Infrastructure Destroy Script

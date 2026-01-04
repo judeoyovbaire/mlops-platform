@@ -115,6 +115,9 @@ spec:
 
     # Step 1: Load data from URL
     - name: load-data
+      retryStrategy:
+        limit: 2
+        retryPolicy: "OnError"
       inputs:
         parameters:
           - name: dataset-url
@@ -161,6 +164,9 @@ spec:
 
     # Step 2: Validate data quality
     - name: validate-data
+      retryStrategy:
+        limit: 2
+        retryPolicy: "OnError"
       inputs:
         artifacts:
           - name: input-data
@@ -215,6 +221,9 @@ spec:
 
     # Step 3: Feature engineering
     - name: feature-engineering
+      retryStrategy:
+        limit: 2
+        retryPolicy: "OnError"
       inputs:
         parameters:
           - name: target-column
@@ -276,6 +285,9 @@ spec:
 
     # Step 4: Train model with MLflow tracking
     - name: train-model
+      retryStrategy:
+        limit: 2
+        retryPolicy: "OnError"
       inputs:
         parameters:
           - name: target-column
@@ -387,6 +399,9 @@ spec:
 
     # Step 5: Register model with MLflow alias
     - name: register-model
+      retryStrategy:
+        limit: 2
+        retryPolicy: "OnError"
       inputs:
         parameters:
           - name: model-name
