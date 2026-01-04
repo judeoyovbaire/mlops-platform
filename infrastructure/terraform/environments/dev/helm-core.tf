@@ -106,7 +106,7 @@ resource "helm_release" "kserve_controller" {
     value = "RawDeployment"
   }
 
-  # Disable KServe's built-in ingress creation - we manage Ingress separately
+  # Disable KServe's built-in ingress creation - we manage Ingress separately via ALB
   set {
     name  = "kserve.controller.ingress.disableIngressCreation"
     value = "true"
@@ -115,6 +115,22 @@ resource "helm_release" "kserve_controller" {
   set {
     name  = "kserve.controller.ingress.disableIstioVirtualHost"
     value = "true"
+  }
+
+  # Required even when ingress is disabled
+  set {
+    name  = "kserve.controller.ingress.ingressGateway"
+    value = "kserve/kserve-ingress-gateway"
+  }
+
+  set {
+    name  = "kserve.controller.ingress.ingressClassName"
+    value = "alb"
+  }
+
+  set {
+    name  = "kserve.controller.ingress.ingressDomain"
+    value = "example.com"
   }
 
   depends_on = [helm_release.kserve]
