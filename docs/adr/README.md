@@ -13,8 +13,6 @@ An Architecture Decision Record captures an important architectural decision mad
 | [001](001-kserve-over-seldon.md) | Use KServe over Seldon Core for Model Serving | Accepted | 2024-01 |
 | [002](002-karpenter-over-cluster-autoscaler.md) | Use Karpenter over Cluster Autoscaler | Accepted | 2024-01 |
 | [003](003-rawdeployment-mode-kserve.md) | Use RawDeployment Mode for KServe | Accepted | 2024-01 |
-| [004](004-kyverno-policy-engine.md) | Use Kyverno for Policy-as-Code | Accepted | 2024-01 |
-| [005](005-spot-instances-ml-workloads.md) | Use SPOT Instances for ML Workloads | Accepted | 2024-01 |
 
 ## Creating a New ADR
 

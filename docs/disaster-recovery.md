@@ -289,4 +289,3 @@ State is stored in S3 with:
 
 - [Runbooks](runbooks/README.md)
 - [Architecture](architecture.md)
-- [Monitoring Guide](monitoring.md)
