@@ -29,45 +29,16 @@ spec:
         limits:
           cpu: 500m
           memory: 512Mi
-    # Pod-level security context
-    podSpec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 1000
-      containers:
-        - name: kserve-container
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-            readOnlyRootFilesystem: false
-          # Health probes
-          readinessProbe:
-            httpGet:
-              path: /v1/models/sklearn-iris
-              port: 8080
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            failureThreshold: 3
-          livenessProbe:
-            httpGet:
-              path: /v1/models/sklearn-iris
-              port: 8080
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            failureThreshold: 3
-      # Pod anti-affinity for high availability
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              podAffinityTerm:
-                labelSelector:
-                  matchLabels:
-                    app.kubernetes.io/name: sklearn-iris
-                topologyKey: kubernetes.io/hostname
+    # Pod anti-affinity for high availability
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: sklearn-iris
+              topologyKey: kubernetes.io/hostname
 ---
 # Ingress for external access via AWS ALB
 apiVersion: networking.k8s.io/v1
