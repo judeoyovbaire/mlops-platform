@@ -93,6 +93,21 @@ jobs:
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
+      - name: Cache Terraform plugins
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            infrastructure/terraform/**/.terraform
+          key: terraform-${{ runner.os }}-${{ hashFiles('infrastructure/terraform/**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-${{ runner.os }}-
+
+      - name: Configure Terraform plugin cache
+        run: |
+          mkdir -p ~/.terraform.d/plugin-cache
+          echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
+
       - name: Terraform Format Check
         run: terraform fmt -check -recursive infrastructure/terraform/
 
@@ -244,6 +259,23 @@ jobs:
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
+      - name: Cache Terraform plugins
+        if: steps.aws-creds.outcome == 'success'
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            infrastructure/terraform/**/.terraform
+          key: terraform-${{ runner.os }}-${{ hashFiles('infrastructure/terraform/**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-${{ runner.os }}-
+
+      - name: Configure Terraform plugin cache
+        if: steps.aws-creds.outcome == 'success'
+        run: |
+          mkdir -p ~/.terraform.d/plugin-cache
+          echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
+
       - name: Terraform Init
         if: steps.aws-creds.outcome == 'success'
         working-directory: infrastructure/terraform/environments/dev
@@ -339,6 +371,21 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Cache Terraform plugins
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            infrastructure/terraform/**/.terraform
+          key: terraform-${{ runner.os }}-${{ hashFiles('infrastructure/terraform/**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-${{ runner.os }}-
+
+      - name: Configure Terraform plugin cache
+        run: |
+          mkdir -p ~/.terraform.d/plugin-cache
+          echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
 
       - name: Terraform Init
         working-directory: infrastructure/terraform/environments/dev

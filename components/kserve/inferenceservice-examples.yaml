@@ -1,14 +1,23 @@
 # KServe InferenceService Examples
 # These use public pre-trained models to validate KServe functionality
 
-# Basic sklearn model deployment
+# Basic sklearn model deployment with production-ready configuration
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
   name: sklearn-iris
   namespace: mlops
+  labels:
+    app.kubernetes.io/name: sklearn-iris
+    app.kubernetes.io/component: inference
+    app.kubernetes.io/part-of: mlops-platform
+    app.kubernetes.io/managed-by: kserve
 spec:
   predictor:
+    serviceAccountName: kserve-inference
+    minReplicas: 1
+    maxReplicas: 3
+    containerConcurrency: 10
     model:
       modelFormat:
         name: sklearn
@@ -20,6 +29,45 @@ spec:
         limits:
           cpu: 500m
           memory: 512Mi
+    # Pod-level security context
+    podSpec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: kserve-container
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false
+          # Health probes
+          readinessProbe:
+            httpGet:
+              path: /v1/models/sklearn-iris
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /v1/models/sklearn-iris
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+      # Pod anti-affinity for high availability
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: sklearn-iris
+                topologyKey: kubernetes.io/hostname
 ---
 # Ingress for external access via AWS ALB
 apiVersion: networking.k8s.io/v1
@@ -27,6 +75,10 @@ kind: Ingress
 metadata:
   name: sklearn-iris-ingress
   namespace: mlops
+  labels:
+    app.kubernetes.io/name: sklearn-iris
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: mlops-platform
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
@@ -43,3 +95,30 @@ spec:
                 name: sklearn-iris-predictor
                 port:
                   number: 80
+---
+# ServiceAccount for KServe inference workloads
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kserve-inference
+  namespace: mlops
+  labels:
+    app.kubernetes.io/name: kserve-inference
+    app.kubernetes.io/component: serviceaccount
+    app.kubernetes.io/part-of: mlops-platform
+---
+# PodDisruptionBudget for sklearn-iris
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sklearn-iris-pdb
+  namespace: mlops
+  labels:
+    app.kubernetes.io/name: sklearn-iris
+    app.kubernetes.io/component: pdb
+    app.kubernetes.io/part-of: mlops-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      serving.kserve.io/inferenceservice: sklearn-iris

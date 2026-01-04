@@ -292,9 +292,9 @@ The platform implements defense-in-depth security across multiple layers:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         Security Architecture                                │
+│                         Security Architecture                               │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
+│                                                                             │
 │  ┌─────────────────┐  ┌──────────────────┐  ┌────────────────────────────┐  │
 │  │ Pod Security    │  │ Policy Engine    │  │ Runtime Security           │  │
 │  │ Standards (PSA) │  │ (Kyverno)        │  │ (Tetragon)                 │  │
@@ -305,7 +305,7 @@ The platform implements defense-in-depth security across multiple layers:
 │  │   (audit/warn)  │  │ - Registries     │  │ - Network connections      │  │
 │  │                 │  │ - Labels         │  │ - Process execution        │  │
 │  └─────────────────┘  └──────────────────┘  └────────────────────────────┘  │
-│                                                                              │
+│                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 

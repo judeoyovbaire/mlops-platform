@@ -9,12 +9,34 @@ variable "cluster_version" {
   description = "Kubernetes version for the EKS cluster"
   type        = string
   default     = "1.34"
+
+  validation {
+    condition     = can(regex("^1\\.(2[89]|3[0-4])$", var.cluster_version))
+    error_message = "Cluster version must be a supported EKS version (1.28-1.34)."
+  }
+}
+
+variable "cluster_endpoint_public_access" {
+  description = "Enable public access to EKS API endpoint (set to false for production)"
+  type        = bool
+  default     = true
 }
 
 variable "vpc_cidr" {
   description = "CIDR block for the VPC"
   type        = string
   default     = "10.0.0.0/16"
+
+  validation {
+    condition     = can(cidrhost(var.vpc_cidr, 0))
+    error_message = "VPC CIDR must be a valid IPv4 CIDR block (e.g., 10.0.0.0/16)."
+  }
+}
+
+variable "enable_kms_encryption" {
+  description = "Enable customer-managed KMS encryption for S3, RDS, and SSM"
+  type        = bool
+  default     = true
 }
 
 variable "private_subnets" {

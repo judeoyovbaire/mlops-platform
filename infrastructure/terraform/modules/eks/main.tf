@@ -64,7 +64,7 @@ module "eks" {
   cluster_name    = var.cluster_name
   cluster_version = var.cluster_version
 
-  cluster_endpoint_public_access  = true
+  cluster_endpoint_public_access  = var.cluster_endpoint_public_access
   cluster_endpoint_private_access = true
 
   vpc_id     = module.vpc.vpc_id
@@ -266,6 +266,74 @@ resource "aws_iam_policy" "mlflow_s3" {
   })
 }
 
+# =============================================================================
+# KMS Key for Encryption (S3, RDS, SSM)
+# =============================================================================
+
+resource "aws_kms_key" "mlops" {
+  count = var.enable_kms_encryption ? 1 : 0
+
+  description             = "KMS key for MLOps platform encryption (S3, RDS, SSM)"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "Allow RDS Service"
+        Effect = "Allow"
+        Principal = {
+          Service = "rds.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "Allow S3 Service"
+        Effect = "Allow"
+        Principal = {
+          Service = "s3.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = merge(var.tags, {
+    Name = "${var.cluster_name}-mlops-kms"
+  })
+}
+
+resource "aws_kms_alias" "mlops" {
+  count = var.enable_kms_encryption ? 1 : 0
+
+  name          = "alias/${var.cluster_name}-mlops"
+  target_key_id = aws_kms_key.mlops[0].key_id
+}
+
 # S3 bucket for MLflow artifacts
 resource "aws_s3_bucket" "mlflow_artifacts" {
   bucket = "${var.cluster_name}-mlflow-artifacts-${data.aws_caller_identity.current.account_id}"
@@ -286,8 +354,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "mlflow_artifacts"
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      sse_algorithm     = var.enable_kms_encryption ? "aws:kms" : "AES256"
+      kms_master_key_id = var.enable_kms_encryption ? aws_kms_key.mlops[0].arn : null
     }
+    bucket_key_enabled = var.enable_kms_encryption
   }
 }
 
@@ -349,6 +419,7 @@ resource "aws_db_instance" "mlflow" {
   # Security settings
   publicly_accessible = false
   storage_encrypted   = true
+  kms_key_id          = var.enable_kms_encryption ? aws_kms_key.mlops[0].arn : null
 
   # Backup and recovery settings
   backup_retention_period   = var.mlflow_db_backup_retention_period
