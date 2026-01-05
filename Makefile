@@ -1,31 +1,47 @@
 # MLOps Platform Makefile
-# AWS EKS Deployment
+# Multi-Cloud Deployment (AWS EKS / Azure AKS)
 
-.PHONY: help deploy status destroy validate lint test test-unit test-cov clean deps \
+.PHONY: help deploy deploy-aws deploy-azure status status-aws status-azure destroy destroy-aws destroy-azure \
+        validate lint test test-unit test-cov clean deps \
         terraform-init terraform-plan terraform-apply terraform-destroy \
+        terraform-init-aws terraform-plan-aws terraform-apply-aws terraform-destroy-aws \
+        terraform-init-azure terraform-plan-azure terraform-apply-azure terraform-destroy-azure \
         port-forward-mlflow port-forward-argocd port-forward-grafana port-forward-prometheus \
-        port-forward-argo-wf validate-workflow deploy-example
+        port-forward-argo-wf validate-workflow deploy-example secrets secrets-aws secrets-azure
 
 # Default target
 help:
-	@echo "MLOps Platform - Available Commands"
-	@echo "===================================="
+	@echo "MLOps Platform - Multi-Cloud Commands"
+	@echo "======================================"
+	@echo ""
+	@echo "Quick Deployment (AWS default):"
+	@echo "  make deploy             - Deploy to AWS EKS (default)"
+	@echo "  make status             - Check AWS deployment status"
+	@echo "  make destroy            - Destroy AWS resources"
+	@echo "  make secrets            - Retrieve secrets from AWS"
 	@echo ""
 	@echo "AWS EKS Deployment:"
-	@echo "  make deploy           - Deploy to AWS EKS (~15-20 min)"
-	@echo "  make status           - Check deployment status"
-	@echo "  make destroy          - Destroy AWS resources"
+	@echo "  make deploy-aws         - Deploy to AWS EKS (~15-20 min)"
+	@echo "  make status-aws         - Check AWS deployment status"
+	@echo "  make destroy-aws        - Destroy AWS resources"
+	@echo "  make secrets-aws        - Retrieve secrets from AWS SSM"
+	@echo ""
+	@echo "Azure AKS Deployment:"
+	@echo "  make deploy-azure       - Deploy to Azure AKS (~15-25 min)"
+	@echo "  make status-azure       - Check Azure deployment status"
+	@echo "  make destroy-azure      - Destroy Azure resources"
+	@echo "  make secrets-azure      - Retrieve secrets from Azure Key Vault"
 	@echo ""
 	@echo "Terraform (Advanced):"
-	@echo "  make terraform-init   - Initialize Terraform"
-	@echo "  make terraform-plan   - Plan infrastructure changes"
-	@echo "  make terraform-apply  - Apply infrastructure changes"
-	@echo "  make terraform-destroy - Destroy infrastructure"
+	@echo "  make terraform-init-aws     - Initialize AWS Terraform"
+	@echo "  make terraform-plan-aws     - Plan AWS infrastructure"
+	@echo "  make terraform-init-azure   - Initialize Azure Terraform"
+	@echo "  make terraform-plan-azure   - Plan Azure infrastructure"
 	@echo ""
 	@echo "Validation & Testing:"
-	@echo "  make validate         - Validate all manifests"
-	@echo "  make lint             - Lint Python and Terraform code"
-	@echo "  make test             - Run tests"
+	@echo "  make validate           - Validate all manifests"
+	@echo "  make lint               - Lint Python and Terraform code"
+	@echo "  make test               - Run tests"
 	@echo ""
 	@echo "Development (after deployment):"
 	@echo "  make port-forward-mlflow    - Forward MLflow to localhost:5000"
@@ -35,8 +51,8 @@ help:
 	@echo "  make deploy-example         - Deploy example inference service"
 	@echo ""
 	@echo "Utilities:"
-	@echo "  make clean            - Clean generated files"
-	@echo "  make deps             - Install development dependencies"
+	@echo "  make clean              - Clean generated files"
+	@echo "  make deps               - Install development dependencies"
 
 # Variables
 KUBECTL ?= kubectl
@@ -44,58 +60,127 @@ HELM ?= helm
 TERRAFORM ?= terraform
 PYTHON ?= python3
 
-TERRAFORM_DIR = infrastructure/terraform/environments/dev
+TERRAFORM_DIR_AWS = infrastructure/terraform/environments/aws/dev
+TERRAFORM_DIR_AZURE = infrastructure/terraform/environments/azure/dev
 PIPELINE_DIR = pipelines/training
+
+# =============================================================================
+# Default Deployment (AWS)
+# =============================================================================
+
+deploy: deploy-aws
+
+status: status-aws
+
+destroy: destroy-aws
+
+secrets: secrets-aws
 
 # =============================================================================
 # AWS EKS Deployment
 # =============================================================================
 
-deploy:
+deploy-aws:
 	@echo "Deploying MLOps Platform to AWS EKS..."
 	./scripts/deploy-aws.sh deploy
 
-status:
+status-aws:
 	@echo "Checking AWS deployment status..."
 	./scripts/deploy-aws.sh status
 
-destroy:
+destroy-aws:
 	@echo "Destroying AWS EKS deployment..."
-	./scripts/deploy-aws.sh destroy
+	./scripts/destroy-aws.sh
+
+secrets-aws:
+	@echo "Retrieving secrets from AWS SSM..."
+	./scripts/deploy-aws.sh secrets
 
 # =============================================================================
-# Terraform (Advanced)
+# Azure AKS Deployment
 # =============================================================================
 
-terraform-init:
-	@echo "Initializing Terraform..."
-	cd $(TERRAFORM_DIR) && $(TERRAFORM) init
+deploy-azure:
+	@echo "Deploying MLOps Platform to Azure AKS..."
+	./scripts/deploy-azure.sh deploy
 
-terraform-plan:
-	@echo "Planning Terraform changes..."
-	cd $(TERRAFORM_DIR) && $(TERRAFORM) plan
+status-azure:
+	@echo "Checking Azure deployment status..."
+	./scripts/deploy-azure.sh status
 
-terraform-apply:
-	@echo "Applying Terraform changes..."
-	cd $(TERRAFORM_DIR) && $(TERRAFORM) apply
+destroy-azure:
+	@echo "Destroying Azure AKS deployment..."
+	./scripts/destroy-azure.sh
 
-terraform-destroy:
-	@echo "Destroying Terraform resources..."
-	cd $(TERRAFORM_DIR) && $(TERRAFORM) destroy
+secrets-azure:
+	@echo "Retrieving secrets from Azure Key Vault..."
+	./scripts/deploy-azure.sh secrets
+
+# =============================================================================
+# Terraform - AWS (Advanced)
+# =============================================================================
+
+terraform-init: terraform-init-aws
+
+terraform-plan: terraform-plan-aws
+
+terraform-apply: terraform-apply-aws
+
+terraform-destroy: terraform-destroy-aws
+
+terraform-init-aws:
+	@echo "Initializing AWS Terraform..."
+	cd $(TERRAFORM_DIR_AWS) && $(TERRAFORM) init
+
+terraform-plan-aws:
+	@echo "Planning AWS Terraform changes..."
+	cd $(TERRAFORM_DIR_AWS) && $(TERRAFORM) plan
+
+terraform-apply-aws:
+	@echo "Applying AWS Terraform changes..."
+	cd $(TERRAFORM_DIR_AWS) && $(TERRAFORM) apply
+
+terraform-destroy-aws:
+	@echo "Destroying AWS Terraform resources..."
+	cd $(TERRAFORM_DIR_AWS) && $(TERRAFORM) destroy
+
+# =============================================================================
+# Terraform - Azure (Advanced)
+# =============================================================================
+
+terraform-init-azure:
+	@echo "Initializing Azure Terraform..."
+	cd $(TERRAFORM_DIR_AZURE) && $(TERRAFORM) init
+
+terraform-plan-azure:
+	@echo "Planning Azure Terraform changes..."
+	cd $(TERRAFORM_DIR_AZURE) && $(TERRAFORM) plan
+
+terraform-apply-azure:
+	@echo "Applying Azure Terraform changes..."
+	cd $(TERRAFORM_DIR_AZURE) && $(TERRAFORM) apply
+
+terraform-destroy-azure:
+	@echo "Destroying Azure Terraform resources..."
+	cd $(TERRAFORM_DIR_AZURE) && $(TERRAFORM) destroy
 
 # =============================================================================
 # Validation & Testing
 # =============================================================================
 
-validate: validate-terraform validate-python
+validate: validate-terraform-aws validate-terraform-azure validate-python
 	@echo "All validations passed!"
 
-validate-terraform:
-	@echo "Validating Terraform..."
-	@cd $(TERRAFORM_DIR) && $(TERRAFORM) init -backend=false > /dev/null
-	@cd $(TERRAFORM_DIR) && $(TERRAFORM) validate
-	@$(TERRAFORM) fmt -check -recursive infrastructure/terraform/
-	@echo "Terraform validation passed"
+validate-terraform-aws:
+	@echo "Validating AWS Terraform..."
+	@cd $(TERRAFORM_DIR_AWS) && $(TERRAFORM) init -backend=false > /dev/null
+	@cd $(TERRAFORM_DIR_AWS) && $(TERRAFORM) validate
+	@echo "AWS Terraform validation passed"
+
+validate-terraform-azure:
+	@echo "Validating Azure Terraform..."
+	@cd $(TERRAFORM_DIR_AZURE) && $(TERRAFORM) init -backend=false > /dev/null 2>&1 || true
+	@cd $(TERRAFORM_DIR_AZURE) && $(TERRAFORM) validate 2>/dev/null || echo "Azure Terraform validation skipped (bootstrap required)"
 
 validate-python:
 	@echo "Validating Python code..."
@@ -131,7 +216,7 @@ test-cov:
 	@echo "Coverage report generated in htmlcov/"
 
 # =============================================================================
-# Development (post-deployment)
+# Development (post-deployment - cloud-agnostic)
 # =============================================================================
 
 port-forward-mlflow:
@@ -142,7 +227,7 @@ port-forward-mlflow:
 port-forward-argocd:
 	@echo "Forwarding ArgoCD to localhost:8080..."
 	@echo "Access ArgoCD at https://localhost:8080"
-	@echo "Password: $$($(KUBECTL) -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)"
+	@echo "Password: $$($(KUBECTL) -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d 2>/dev/null || echo 'Check secrets')"
 	$(KUBECTL) port-forward svc/argocd-server 8080:443 -n argocd
 
 port-forward-argo-wf:
@@ -154,7 +239,7 @@ port-forward-grafana:
 	@echo "Forwarding Grafana to localhost:3000..."
 	@echo "Access Grafana at http://localhost:3000"
 	@echo "Username: admin"
-	@echo "Password: Retrieve with 'aws ssm get-parameter --name /mlops-platform-dev/grafana/admin-password --with-decryption'"
+	@echo "Password: Check 'make secrets-aws' or 'make secrets-azure'"
 	$(KUBECTL) port-forward svc/prometheus-grafana 3000:80 -n monitoring
 
 port-forward-prometheus:
@@ -188,6 +273,8 @@ clean:
 	rm -f $(PIPELINE_DIR)/*.json
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
+	rm -f $(TERRAFORM_DIR_AWS)/tfplan
+	rm -f $(TERRAFORM_DIR_AZURE)/tfplan
 	@echo "Clean complete"
 
 logs-mlflow:

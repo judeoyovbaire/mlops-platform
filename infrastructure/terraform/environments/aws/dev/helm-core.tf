@@ -77,7 +77,7 @@ resource "helm_release" "argocd" {
   namespace        = "argocd"
   create_namespace = true
 
-  values = [file("${path.module}/../../../helm/aws/argocd-values.yaml")]
+  values = [file("${path.module}/../../../../helm/aws/argocd-values.yaml")]
 
   depends_on = [time_sleep.alb_controller_ready]
 }
@@ -145,7 +145,7 @@ resource "helm_release" "mlflow" {
   namespace  = kubernetes_namespace.mlflow.metadata[0].name
 
   values = [
-    templatefile("${path.module}/../../../helm/aws/mlflow-values.yaml", {
+    templatefile("${path.module}/../../../../helm/aws/mlflow-values.yaml", {
       db_host    = split(":", module.eks.mlflow_db_endpoint)[0]
       db_name    = module.eks.mlflow_db_name
       s3_bucket  = module.eks.mlflow_s3_bucket
@@ -175,7 +175,7 @@ resource "helm_release" "argo_workflows" {
   # Increase timeout for CRD installation
   timeout = 600
 
-  values = [file("${path.module}/../../../helm/aws/argo-workflows-values.yaml")]
+  values = [file("${path.module}/../../../../helm/aws/argo-workflows-values.yaml")]
 
   depends_on = [time_sleep.alb_controller_ready]
 }

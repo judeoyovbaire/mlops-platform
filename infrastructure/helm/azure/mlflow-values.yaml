@@ -1,0 +1,92 @@
+# =============================================================================
+# MLflow Helm Values - Azure AKS
+# =============================================================================
+# Uses Azure Blob Storage and PostgreSQL Flexible Server
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/mlflow/mlflow
+  tag: "v2.10.0"
+  pullPolicy: IfNotPresent
+
+# Service account with Workload Identity
+serviceAccount:
+  create: true
+  name: mlflow
+  annotations:
+    azure.workload.identity/client-id: "${mlflow_identity_client_id}"
+
+# Pod labels for Workload Identity
+podLabels:
+  azure.workload.identity/use: "true"
+
+# Backend store - Azure PostgreSQL
+backendStore:
+  postgres:
+    enabled: true
+    host: "${postgresql_host}"
+    port: 5432
+    database: "mlflow"
+    user: "mlflow"
+    # Password from External Secret
+    existingSecret: "mlflow-db-credentials"
+    existingSecretPasswordKey: "password"
+
+# Artifact store - Azure Blob Storage
+artifactRoot:
+  azureBlob:
+    enabled: true
+    storageAccount: "${storage_account_name}"
+    container: "mlflow-artifacts"
+    # Uses Workload Identity - no connection string needed
+
+# Environment variables
+extraEnvVars:
+  - name: AZURE_STORAGE_ACCOUNT
+    value: "${storage_account_name}"
+  - name: MLFLOW_ARTIFACT_UPLOAD_DOWNLOAD_TIMEOUT
+    value: "600"
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 5000
+
+# Resource configuration
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Ingress configuration (NGINX)
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+  hosts:
+    - host: mlflow.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+# Liveness and readiness probes
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 5000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 5000
+  initialDelaySeconds: 10
+  periodSeconds: 5

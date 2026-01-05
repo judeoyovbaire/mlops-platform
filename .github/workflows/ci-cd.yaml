@@ -1,10 +1,12 @@
 # Unified CI/CD Pipeline for MLOps Platform
 #
-# This pipeline handles all validation, planning, and deployment:
-# - On push/PR: Validates code and shows terraform plan
-# - Manual dispatch: Deploy infrastructure or models
+# Multi-Cloud Support: AWS EKS and Azure AKS
 #
-# Destroy is intentionally excluded - run locally via `make destroy` for safety
+# This pipeline handles all validation, planning, and deployment:
+# - On push/PR: Validates code and shows terraform plan for both clouds
+# - Manual dispatch: Deploy infrastructure or models to selected cloud
+#
+# Destroy is intentionally excluded - run locally via `make destroy-{aws,azure}` for safety
 
 name: CI/CD
 
@@ -15,6 +17,14 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      cloud:
+        description: 'Cloud provider'
+        required: true
+        default: 'aws'
+        type: choice
+        options:
+          - aws
+          - azure
       action:
         description: 'Action to perform'
         required: true
@@ -29,6 +39,7 @@ env:
   PYTHON_VERSION: "3.10"
   TERRAFORM_VERSION: "1.6.0"
   AWS_REGION: "eu-west-1"
+  AZURE_LOCATION: "westeurope"
 
 permissions:
   id-token: write
@@ -43,7 +54,7 @@ concurrency:
 jobs:
   # ============================================================================
   # STAGE 1: VALIDATE
-  # Runs on every push/PR - no AWS credentials needed
+  # Runs on every push/PR - no cloud credentials needed
   # ============================================================================
 
   lint-python:
@@ -115,20 +126,40 @@ jobs:
       - name: Terraform Format Check
         run: terraform fmt -check -recursive infrastructure/terraform/
 
+      # AWS Validation
       - name: Validate EKS Module
         working-directory: infrastructure/terraform/modules/eks
         run: |
           terraform init -backend=false
           terraform validate
 
-      - name: Validate Bootstrap
-        working-directory: infrastructure/terraform/bootstrap
+      - name: Validate AWS Bootstrap
+        working-directory: infrastructure/terraform/bootstrap/aws
         run: |
           terraform init -backend=false
           terraform validate
 
-      - name: Validate Dev Environment
-        working-directory: infrastructure/terraform/environments/dev
+      - name: Validate AWS Dev Environment
+        working-directory: infrastructure/terraform/environments/aws/dev
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      # Azure Validation
+      - name: Validate AKS Module
+        working-directory: infrastructure/terraform/modules/aks
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate Azure Bootstrap
+        working-directory: infrastructure/terraform/bootstrap/azure
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate Azure Dev Environment
+        working-directory: infrastructure/terraform/environments/azure/dev
         run: |
           terraform init -backend=false
           terraform validate
@@ -164,9 +195,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate Helm values
+      - name: Validate AWS Helm values
         run: |
           for f in infrastructure/helm/aws/*.yaml; do
+            echo "Checking $f..."
+            python3 -c "import yaml; yaml.safe_load(open('$f'))"
+          done
+
+      - name: Validate Azure Helm values
+        run: |
+          for f in infrastructure/helm/azure/*.yaml; do
             echo "Checking $f..."
             python3 -c "import yaml; yaml.safe_load(open('$f'))"
           done
@@ -235,12 +273,12 @@ jobs:
           echo "Argo Workflow YAML is valid"
 
   # ============================================================================
-  # STAGE 2: TERRAFORM PLAN
+  # STAGE 2: TERRAFORM PLAN (AWS)
   # Runs on every push/PR - requires AWS credentials
   # ============================================================================
 
-  terraform-plan:
-    name: Terraform Plan
+  terraform-plan-aws:
+    name: Terraform Plan (AWS)
     runs-on: ubuntu-latest
     needs: [lint-python, validate-terraform, validate-kubernetes, validate-helm, security-scan, test-python]
     outputs:
@@ -282,23 +320,23 @@ jobs:
 
       - name: Terraform Init
         if: steps.aws-creds.outcome == 'success'
-        working-directory: infrastructure/terraform/environments/dev
+        working-directory: infrastructure/terraform/environments/aws/dev
         run: terraform init
 
       - name: Terraform Plan
         if: steps.aws-creds.outcome == 'success'
         id: plan
-        working-directory: infrastructure/terraform/environments/dev
+        working-directory: infrastructure/terraform/environments/aws/dev
         run: |
           terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
 
           if grep -q "No changes" plan.txt; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
-            echo "## Terraform Plan: No Changes" >> $GITHUB_STEP_SUMMARY
+            echo "## AWS Terraform Plan: No Changes" >> $GITHUB_STEP_SUMMARY
             echo "Infrastructure is up to date." >> $GITHUB_STEP_SUMMARY
           else
             echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "## Terraform Plan" >> $GITHUB_STEP_SUMMARY
+            echo "## AWS Terraform Plan" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "<details><summary>Click to expand plan</summary>" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -314,13 +352,13 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const plan = fs.readFileSync('infrastructure/terraform/environments/dev/plan.txt', 'utf8');
+            const plan = fs.readFileSync('infrastructure/terraform/environments/aws/dev/plan.txt', 'utf8');
             const maxLength = 65000;
             const truncatedPlan = plan.length > maxLength
               ? plan.substring(0, maxLength) + '\n\n... (truncated)'
               : plan;
 
-            const output = `## Terraform Plan
+            const output = `## AWS Terraform Plan
 
             <details><summary>Show Plan</summary>
 
@@ -330,7 +368,7 @@ jobs:
 
             </details>
 
-            **To deploy**: After merging, go to Actions → CI/CD → Run workflow → Select "deploy-infra"
+            **To deploy**: After merging, go to Actions → CI/CD → Run workflow → Select "aws" and "deploy-infra"
 
             *Pushed by: @${{ github.actor }}*`;
 
@@ -344,22 +382,112 @@ jobs:
       - name: Skip notice (no AWS credentials)
         if: steps.aws-creds.outcome != 'success'
         run: |
-          echo "## Terraform Plan: Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "## AWS Terraform Plan: Skipped" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "AWS credentials not configured. Add \`AWS_ROLE_ARN\` secret after running bootstrap." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**All validation checks passed!**" >> $GITHUB_STEP_SUMMARY
 
   # ============================================================================
-  # STAGE 3: DEPLOY INFRASTRUCTURE (Manual Only)
-  # Only runs when manually triggered with action = "deploy-infra"
+  # STAGE 2: TERRAFORM PLAN (Azure)
+  # Runs on every push/PR - requires Azure credentials
   # ============================================================================
 
-  deploy-infra:
-    name: Deploy Infrastructure
+  terraform-plan-azure:
+    name: Terraform Plan (Azure)
     runs-on: ubuntu-latest
-    needs: terraform-plan
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'deploy-infra'
+    needs: [lint-python, validate-terraform, validate-kubernetes, validate-helm, security-scan, test-python]
+    outputs:
+      has_changes: ${{ steps.plan.outputs.has_changes }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        continue-on-error: true
+        id: azure-creds
+
+      - name: Setup Terraform
+        if: steps.azure-creds.outcome == 'success'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Cache Terraform plugins
+        if: steps.azure-creds.outcome == 'success'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            infrastructure/terraform/**/.terraform
+          key: terraform-${{ runner.os }}-${{ hashFiles('infrastructure/terraform/**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-${{ runner.os }}-
+
+      - name: Configure Terraform plugin cache
+        if: steps.azure-creds.outcome == 'success'
+        run: |
+          mkdir -p ~/.terraform.d/plugin-cache
+          echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
+
+      - name: Terraform Init
+        if: steps.azure-creds.outcome == 'success'
+        working-directory: infrastructure/terraform/environments/azure/dev
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        run: terraform init
+
+      - name: Terraform Plan
+        if: steps.azure-creds.outcome == 'success'
+        id: plan
+        working-directory: infrastructure/terraform/environments/azure/dev
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        run: |
+          terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+
+          if grep -q "No changes" plan.txt; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "## Azure Terraform Plan: No Changes" >> $GITHUB_STEP_SUMMARY
+            echo "Infrastructure is up to date." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "## Azure Terraform Plan" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Click to expand plan</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            head -500 plan.txt >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Skip notice (no Azure credentials)
+        if: steps.azure-creds.outcome != 'success'
+        run: |
+          echo "## Azure Terraform Plan: Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Azure credentials not configured. Add \`AZURE_CLIENT_ID\`, \`AZURE_TENANT_ID\`, and \`AZURE_SUBSCRIPTION_ID\` secrets after running bootstrap." >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # STAGE 3: DEPLOY INFRASTRUCTURE - AWS (Manual Only)
+  # Only runs when manually triggered with cloud = "aws" and action = "deploy-infra"
+  # ============================================================================
+
+  deploy-infra-aws:
+    name: Deploy Infrastructure (AWS)
+    runs-on: ubuntu-latest
+    needs: [terraform-plan-aws]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'aws' && github.event.inputs.action == 'deploy-infra'
     environment: production
     steps:
       - name: Checkout code
@@ -392,17 +520,17 @@ jobs:
           echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
 
       - name: Terraform Init
-        working-directory: infrastructure/terraform/environments/dev
+        working-directory: infrastructure/terraform/environments/aws/dev
         run: terraform init
 
       - name: Terraform Apply
-        working-directory: infrastructure/terraform/environments/dev
+        working-directory: infrastructure/terraform/environments/aws/dev
         run: terraform apply -auto-approve
 
       - name: Get Outputs
-        working-directory: infrastructure/terraform/environments/dev
+        working-directory: infrastructure/terraform/environments/aws/dev
         run: |
-          echo "## Infrastructure Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "## AWS Infrastructure Deployed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Output | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
@@ -420,16 +548,111 @@ jobs:
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
   # ============================================================================
-  # STAGE 4: DEPLOY MODEL (Manual Only)
-  # Only runs when manually triggered with action = "deploy-model"
-  # Deploys example InferenceServices to validate KServe is working
+  # STAGE 3: DEPLOY INFRASTRUCTURE - Azure (Manual Only)
+  # Only runs when manually triggered with cloud = "azure" and action = "deploy-infra"
   # ============================================================================
 
-  deploy-model:
-    name: Deploy Model
+  deploy-infra-azure:
+    name: Deploy Infrastructure (Azure)
     runs-on: ubuntu-latest
-    needs: terraform-plan
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'deploy-model'
+    needs: [terraform-plan-azure]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'azure' && github.event.inputs.action == 'deploy-infra'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Cache Terraform plugins
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            infrastructure/terraform/**/.terraform
+          key: terraform-${{ runner.os }}-${{ hashFiles('infrastructure/terraform/**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-${{ runner.os }}-
+
+      - name: Configure Terraform plugin cache
+        run: |
+          mkdir -p ~/.terraform.d/plugin-cache
+          echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
+
+      - name: Terraform Init
+        working-directory: infrastructure/terraform/environments/azure/dev
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: infrastructure/terraform/environments/azure/dev
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        run: terraform apply -auto-approve
+
+      - name: Get Outputs
+        working-directory: infrastructure/terraform/environments/azure/dev
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        run: |
+          echo "## Azure Infrastructure Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Output | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          terraform output -json | jq -r 'to_entries[] | "| \(.key) | \(.value.value // "N/A") |"' >> $GITHUB_STEP_SUMMARY
+
+      - name: Configure kubectl
+        run: |
+          az aks get-credentials \
+            --resource-group rg-mlops-platform-dev \
+            --name mlops-platform-dev \
+            --overwrite-existing
+
+      - name: Install kubelogin
+        run: |
+          curl -LO https://github.com/Azure/kubelogin/releases/download/v0.1.0/kubelogin-linux-amd64.zip
+          unzip kubelogin-linux-amd64.zip -d kubelogin
+          sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
+          kubelogin convert-kubeconfig -l azurecli
+
+      - name: Verify Cluster
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Cluster Status" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          kubectl get nodes >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Cluster provisioning..."
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # STAGE 4: DEPLOY MODEL - AWS (Manual Only)
+  # Only runs when manually triggered with cloud = "aws" and action = "deploy-model"
+  # ============================================================================
+
+  deploy-model-aws:
+    name: Deploy Model (AWS)
+    runs-on: ubuntu-latest
+    needs: [terraform-plan-aws]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'aws' && github.event.inputs.action == 'deploy-model'
     environment: production
     steps:
       - name: Checkout code
@@ -448,7 +671,69 @@ jobs:
         run: |
           kubectl apply -f components/kserve/inferenceservice-examples.yaml
 
-          echo "## Model Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "## Model Deployment (AWS)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Deployed KServe InferenceService examples" >> $GITHUB_STEP_SUMMARY
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for InferenceService to be ready..."
+          kubectl wait --for=condition=Ready inferenceservice/sklearn-iris -n mlops --timeout=300s || true
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## InferenceService Status" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          kubectl get inferenceservice -n mlops >> $GITHUB_STEP_SUMMARY 2>&1
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Get service URL
+        run: |
+          SERVICE_URL=$(kubectl get inferenceservice sklearn-iris -n mlops -o jsonpath='{.status.url}' 2>/dev/null || echo "pending")
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Service URL" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: ${SERVICE_URL}" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # STAGE 4: DEPLOY MODEL - Azure (Manual Only)
+  # Only runs when manually triggered with cloud = "azure" and action = "deploy-model"
+  # ============================================================================
+
+  deploy-model-azure:
+    name: Deploy Model (Azure)
+    runs-on: ubuntu-latest
+    needs: [terraform-plan-azure]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'azure' && github.event.inputs.action == 'deploy-model'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Configure kubectl
+        run: |
+          az aks get-credentials \
+            --resource-group rg-mlops-platform-dev \
+            --name mlops-platform-dev \
+            --overwrite-existing
+
+      - name: Install kubelogin
+        run: |
+          curl -LO https://github.com/Azure/kubelogin/releases/download/v0.1.0/kubelogin-linux-amd64.zip
+          unzip kubelogin-linux-amd64.zip -d kubelogin
+          sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
+          kubelogin convert-kubeconfig -l azurecli
+
+      - name: Deploy to KServe
+        run: |
+          kubectl apply -f components/kserve/inferenceservice-examples.yaml
+
+          echo "## Model Deployment (Azure)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Deployed KServe InferenceService examples" >> $GITHUB_STEP_SUMMARY
 
@@ -478,19 +763,23 @@ jobs:
   summary:
     name: Pipeline Summary
     runs-on: ubuntu-latest
-    needs: [terraform-plan]
+    needs: [terraform-plan-aws, terraform-plan-azure]
     if: always() && (github.event_name == 'push' || github.event_name == 'pull_request')
     steps:
       - name: Summary
         run: |
           echo "## CI/CD Pipeline Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
-          echo "1. Review the Terraform plan above" >> $GITHUB_STEP_SUMMARY
-          echo "2. To deploy infrastructure: Actions → CI/CD → Run workflow → \`deploy-infra\`" >> $GITHUB_STEP_SUMMARY
-          echo "3. To deploy model (after infra): Actions → CI/CD → Run workflow → \`deploy-model\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Multi-Cloud Platform Ready**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deploy to AWS:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Actions → CI/CD → Run workflow → Cloud: \`aws\` → Action: \`deploy-infra\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deploy to Azure:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Actions → CI/CD → Run workflow → Cloud: \`azure\` → Action: \`deploy-infra\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**To destroy** (local only for safety):" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "make destroy" >> $GITHUB_STEP_SUMMARY
+          echo "make destroy-aws    # Destroy AWS" >> $GITHUB_STEP_SUMMARY
+          echo "make destroy-azure  # Destroy Azure" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

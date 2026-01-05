@@ -1,0 +1,111 @@
+# =============================================================================
+# ArgoCD Helm Values - Azure AKS
+# Compatible with ArgoCD Helm chart v7.x
+# =============================================================================
+
+# Global configuration (required for v7.x)
+global:
+  domain: ""
+
+# Server configuration
+server:
+  replicas: 1
+
+  # NGINX Ingress
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    hosts:
+      - argocd.local
+    tls:
+      - hosts:
+          - argocd.local
+        secretName: argocd-server-tls
+
+  # Resource configuration
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Extra arguments
+  extraArgs:
+    - --insecure
+
+# Repo server
+repoServer:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Application controller
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# Redis
+redis:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Dex (SSO) - disabled for simplicity
+dex:
+  enabled: false
+
+# Notifications - disabled for simplicity
+notifications:
+  enabled: false
+
+# Application Set Controller
+applicationSet:
+  enabled: true
+  replicas: 1
+
+# Configs
+configs:
+  params:
+    server.insecure: true
+
+  # Resource customizations for KServe InferenceService
+  cm:
+    resource.customizations: |
+      serving.kserve.io/InferenceService:
+        health.lua: |
+          hs = {}
+          if obj.status ~= nil then
+            if obj.status.conditions ~= nil then
+              for i, condition in ipairs(obj.status.conditions) do
+                if condition.type == "Ready" and condition.status == "True" then
+                  hs.status = "Healthy"
+                  hs.message = "InferenceService is ready"
+                  return hs
+                end
+              end
+            end
+          end
+          hs.status = "Progressing"
+          hs.message = "Waiting for InferenceService to be ready"
+          return hs

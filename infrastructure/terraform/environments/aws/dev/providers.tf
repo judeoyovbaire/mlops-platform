@@ -35,7 +35,7 @@ terraform {
   # Remote state backend - created by bootstrap module
   backend "s3" {
     bucket         = "mlops-platform-tfstate-183590992229"
-    key            = "mlops-platform/dev/terraform.tfstate"
+    key            = "mlops-platform/aws/dev/terraform.tfstate"
     region         = "eu-west-1"
     encrypt        = true
     dynamodb_table = "mlops-platform-terraform-locks"

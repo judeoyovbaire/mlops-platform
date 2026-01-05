@@ -1,0 +1,48 @@
+# =============================================================================
+# NGINX Ingress Controller Helm Values - Azure
+# =============================================================================
+
+controller:
+  replicaCount: 2
+
+  # Azure Load Balancer configuration
+  service:
+    annotations:
+      service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: /healthz
+
+  # Resource configuration
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Metrics for Prometheus
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      namespace: monitoring
+
+  # Admission webhooks
+  admissionWebhooks:
+    enabled: true
+
+  # Config map settings
+  config:
+    use-forwarded-headers: "true"
+    proxy-body-size: "0"
+    proxy-read-timeout: "600"
+    proxy-send-timeout: "600"
+
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+# Default backend
+defaultBackend:
+  enabled: true
+  replicaCount: 1

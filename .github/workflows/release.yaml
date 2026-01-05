@@ -73,7 +73,7 @@ jobs:
             ./deploy-aws.sh deploy
 
             # Or use Terraform directly
-            cd infrastructure/terraform/environments/dev
+            cd infrastructure/terraform/environments/aws/dev
             terraform init && terraform apply
             ```
 

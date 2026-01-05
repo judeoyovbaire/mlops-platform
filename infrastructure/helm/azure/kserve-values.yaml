@@ -1,0 +1,52 @@
+# =============================================================================
+# KServe Helm Values - Azure AKS
+# =============================================================================
+
+# KServe mode - RawDeployment (no Knative required)
+kserve:
+  controller:
+    deploymentMode: "RawDeployment"
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  modelmeshEnabled: false
+
+# Ingress configuration
+ingress:
+  ingressClassName: nginx
+  ingressDomain: "mlops.local"
+
+  # Annotations for NGINX ingress
+  ingressAnnotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+
+# Default serving runtimes
+servingRuntimes:
+  sklearn:
+    enabled: true
+  xgboost:
+    enabled: true
+  tensorflow:
+    enabled: true
+  pytorch:
+    enabled: true
+  triton:
+    enabled: true
+  huggingface:
+    enabled: true
+
+# Logger configuration
+logger:
+  enabled: false
+
+# Metrics
+metricsAggregator:
+  enabled: true

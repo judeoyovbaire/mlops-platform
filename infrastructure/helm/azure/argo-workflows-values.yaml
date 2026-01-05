@@ -1,0 +1,84 @@
+# =============================================================================
+# Argo Workflows Helm Values - Azure AKS
+# =============================================================================
+
+# Controller configuration
+controller:
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Workflow defaults
+  workflowDefaults:
+    spec:
+      serviceAccountName: argo-workflow
+      ttlStrategy:
+        secondsAfterCompletion: 3600
+        secondsAfterSuccess: 600
+        secondsAfterFailure: 3600
+
+  # Metrics
+  metricsConfig:
+    enabled: true
+
+# Server configuration
+server:
+  replicas: 1
+
+  # Service account with Workload Identity
+  serviceAccount:
+    create: true
+    name: argo-workflows-server
+    annotations: {}
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # NGINX Ingress
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - argo-workflows.local
+
+  # Extra arguments
+  extraArgs:
+    - --auth-mode=server
+
+# Executor configuration
+executor:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Artifact repository - MinIO
+artifactRepository:
+  archiveLogs: true
+  s3:
+    bucket: argo-artifacts
+    endpoint: minio.argo.svc:9000
+    insecure: true
+    accessKeySecret:
+      name: minio
+      key: rootUser
+    secretKeySecret:
+      name: minio
+      key: rootPassword
+
+# Use Kubernetes emissary executor
+useDefaultArtifactRepo: true

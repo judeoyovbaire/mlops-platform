@@ -1,0 +1,62 @@
+# =============================================================================
+# KEDA Helm Values - Azure
+# =============================================================================
+
+# Operator configuration
+operator:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Metrics server configuration
+metricsServer:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Azure Workload Identity integration
+podIdentity:
+  azureWorkload:
+    enabled: true
+
+# Service account configuration
+serviceAccount:
+  create: true
+  name: keda-operator
+  annotations: {}
+
+# Pod labels for Workload Identity
+podLabels:
+  azure.workload.identity/use: "true"
+
+# Prometheus integration for custom metrics
+prometheus:
+  metricServer:
+    enabled: true
+    port: 9022
+  operator:
+    enabled: true
+    port: 8080
+
+# Logging configuration
+logging:
+  operator:
+    level: info
+    format: console
+  metricServer:
+    level: info
+
+# Webhook configuration
+webhooks:
+  enabled: true
+  port: 9443
