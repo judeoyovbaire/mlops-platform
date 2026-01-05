@@ -22,11 +22,14 @@ class TestSecurityConfiguration:
 
     @pytest.fixture
     def tf_content(self):
-        """Load all Terraform files content."""
-        tf_dir = PROJECT_ROOT / "infrastructure" / "terraform" / "environments" / "dev"
+        """Load all Terraform files content from both AWS and Azure environments."""
         content = ""
-        for tf_file in tf_dir.glob("*.tf"):
-            content += tf_file.read_text()
+        # Check both cloud environments
+        for cloud in ["aws", "azure"]:
+            tf_dir = PROJECT_ROOT / "infrastructure" / "terraform" / "environments" / cloud / "dev"
+            if tf_dir.exists():
+                for tf_file in tf_dir.glob("*.tf"):
+                    content += tf_file.read_text()
         return content
 
     def test_psa_configured(self, tf_content):
