@@ -74,7 +74,7 @@ resource "kubectl_manifest" "tetragon_network_policy" {
   depends_on = [helm_release.tetragon]
 }
 
-# Monitor process execution in MLOps namespace
+# Monitor process execution system-wide
 resource "kubectl_manifest" "tetragon_exec_policy" {
   yaml_body = <<-YAML
     apiVersion: cilium.io/v1alpha1
@@ -88,12 +88,6 @@ resource "kubectl_manifest" "tetragon_exec_policy" {
           args:
             - index: 1
               type: "string"
-          selectors:
-            - matchNamespaces:
-                - namespace: mlops
-                  operator: In
-                - namespace: mlflow
-                  operator: In
   YAML
 
   depends_on = [helm_release.tetragon]

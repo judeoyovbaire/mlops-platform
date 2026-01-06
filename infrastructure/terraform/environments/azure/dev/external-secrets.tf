@@ -19,6 +19,7 @@ resource "helm_release" "external_secrets" {
   set {
     name  = "podLabels.azure\\.workload\\.identity/use"
     value = "true"
+    type  = "string"
   }
 
   depends_on = [module.aks]

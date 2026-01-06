@@ -23,8 +23,7 @@ controller:
   metrics:
     enabled: true
     serviceMonitor:
-      enabled: true
-      namespace: monitoring
+      enabled: false  # Disabled - prometheus-stack CRDs may not be ready yet
 
   # Admission webhooks
   admissionWebhooks:
