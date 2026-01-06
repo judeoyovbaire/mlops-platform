@@ -121,7 +121,7 @@ resource "helm_release" "mlflow" {
   depends_on = [
     module.aks,
     helm_release.nginx_ingress,
-    helm_release.external_secrets
+    kubectl_manifest.mlflow_db_external_secret
   ]
 }
 
