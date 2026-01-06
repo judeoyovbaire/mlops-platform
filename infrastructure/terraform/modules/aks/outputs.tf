@@ -27,6 +27,18 @@ output "cluster_ca_certificate" {
   sensitive   = true
 }
 
+output "client_certificate" {
+  description = "Base64 encoded client certificate for admin access"
+  value       = azurerm_kubernetes_cluster.main.kube_config[0].client_certificate
+  sensitive   = true
+}
+
+output "client_key" {
+  description = "Base64 encoded client key for admin access"
+  value       = azurerm_kubernetes_cluster.main.kube_config[0].client_key
+  sensitive   = true
+}
+
 output "oidc_issuer_url" {
   description = "OIDC issuer URL for Workload Identity"
   value       = azurerm_kubernetes_cluster.main.oidc_issuer_url

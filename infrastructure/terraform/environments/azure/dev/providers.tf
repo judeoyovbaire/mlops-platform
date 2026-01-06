@@ -59,36 +59,21 @@ provider "azurerm" {
 
 provider "azuread" {}
 
-# Kubernetes provider configuration (after cluster creation)
+# Kubernetes provider configuration (using admin credentials)
+# Note: For production, consider using Azure AD with proper RBAC instead
 provider "kubernetes" {
   host                   = module.aks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.aks.cluster_ca_certificate)
-
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "kubelogin"
-    args = [
-      "get-token",
-      "--login", "azurecli",
-      "--server-id", "6dae42f8-4368-4678-94ff-3960e28e3630" # AKS AAD server
-    ]
-  }
+  client_certificate     = base64decode(module.aks.client_certificate)
+  client_key             = base64decode(module.aks.client_key)
 }
 
 provider "helm" {
   kubernetes {
     host                   = module.aks.cluster_endpoint
     cluster_ca_certificate = base64decode(module.aks.cluster_ca_certificate)
-
-    exec {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      command     = "kubelogin"
-      args = [
-        "get-token",
-        "--login", "azurecli",
-        "--server-id", "6dae42f8-4368-4678-94ff-3960e28e3630"
-      ]
-    }
+    client_certificate     = base64decode(module.aks.client_certificate)
+    client_key             = base64decode(module.aks.client_key)
   }
 }
 
@@ -96,15 +81,7 @@ provider "helm" {
 provider "kubectl" {
   host                   = module.aks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.aks.cluster_ca_certificate)
+  client_certificate     = base64decode(module.aks.client_certificate)
+  client_key             = base64decode(module.aks.client_key)
   load_config_file       = false
-
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "kubelogin"
-    args = [
-      "get-token",
-      "--login", "azurecli",
-      "--server-id", "6dae42f8-4368-4678-94ff-3960e28e3630"
-    ]
-  }
 }
