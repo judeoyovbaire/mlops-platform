@@ -26,10 +26,11 @@ resource "helm_release" "external_secrets" {
 }
 
 # Wait for External Secrets CRDs to be available
+# CRDs need time to register with API server after helm install
 resource "time_sleep" "wait_for_external_secrets_crds" {
   depends_on = [helm_release.external_secrets]
 
-  create_duration = "30s"
+  create_duration = "60s"
 }
 
 # =============================================================================
