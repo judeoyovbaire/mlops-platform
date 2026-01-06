@@ -2,7 +2,39 @@
 
 ## Overview
 
-The MLOps Platform is designed to provide a complete ML lifecycle management solution on AWS EKS. It follows cloud-native principles and enables teams to build, train, deploy, and monitor ML models at scale.
+The MLOps Platform is designed to provide a complete ML lifecycle management solution on **AWS EKS** or **Azure AKS**. It follows cloud-native principles and enables teams to build, train, deploy, and monitor ML models at scale with the same capabilities on either cloud.
+
+## Multi-Cloud Design
+
+The platform uses a layered architecture that maximizes code reuse while leveraging cloud-native services:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         Application Layer (Cloud-Agnostic)                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │    MLflow    │  │   KServe     │  │    Argo      │  │   ArgoCD     │     │
+│  │   Tracking   │  │   Serving    │  │  Workflows   │  │    GitOps    │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                         Platform Layer (Cloud-Agnostic)                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │  Prometheus  │  │   Kyverno    │  │   Tetragon   │  │ cert-manager │     │
+│  │   Grafana    │  │   Policies   │  │   Security   │  │     TLS      │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                         Infrastructure Layer (Cloud-Specific)               │
+│                                                                             │
+│  AWS EKS                           │  Azure AKS                             │
+│  ─────────────────────────────────│──────────────────────────────────────   │
+│  • Karpenter (GPU autoscaling)    │  • KEDA (event-driven autoscaling)      │
+│  • ALB Ingress Controller         │  • NGINX Ingress Controller             │
+│  • S3 + RDS PostgreSQL            │  • Blob Storage + PostgreSQL Flexible   │
+│  • IRSA (pod identity)            │  • Workload Identity                    │
+│  • SSM Parameter Store            │  • Azure Key Vault                      │
+│  • ECR (container registry)       │  • ACR (container registry)             │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ## Core Components
 
@@ -47,8 +79,8 @@ MLflow provides the experiment tracking and model registry capabilities.
 **Components:**
 - **Tracking Server**: Logs parameters, metrics, and artifacts
 - **Model Registry**: Central repository for model versions with aliases
-- **Backend Store**: RDS PostgreSQL for metadata
-- **Artifact Store**: S3 for model artifacts
+- **Backend Store**: PostgreSQL for metadata (RDS on AWS, Flexible Server on Azure)
+- **Artifact Store**: Object storage (S3 on AWS, Blob on Azure)
 
 **New in MLflow 3.x:**
 - Model aliases replace deprecated staging workflow
@@ -57,16 +89,17 @@ MLflow provides the experiment tracking and model registry capabilities.
 
 **Architecture:**
 ```
-┌─────────────────┐     ┌─────────────────┐
-│  Training Job   │────▶│  MLflow Server  │
-└─────────────────┘     └────────┬────────┘
-                                 │
-                    ┌────────────┴────────────┐
-                    │                         │
-              ┌─────▼─────┐           ┌───────▼───────┐
-              │ RDS       │           │  S3 Bucket    │
-              │ PostgreSQL│           │  (artifacts)  │
-              └───────────┘           └───────────────┘
+                    AWS                                    Azure
+┌─────────────────┐     ┌──────────────┐    ┌─────────────────┐     ┌──────────────┐
+│  Training Job   │────▶│ MLflow Server│    │  Training Job   │────▶│ MLflow Server│
+└─────────────────┘     └──────┬───────┘    └─────────────────┘     └──────┬───────┘
+                               │                                           │
+                  ┌────────────┴────────────┐             ┌────────────────┴────────────┐
+                  │                         │             │                             │
+            ┌─────▼─────┐           ┌───────▼───────┐   ┌─▼────────────┐     ┌─────────▼─────────┐
+            │ RDS       │           │  S3 Bucket    │   │ PostgreSQL   │     │  Blob Storage     │
+            │ PostgreSQL│           │  (artifacts)  │   │ Flexible     │     │  (artifacts)      │
+            └───────────┘           └───────────────┘   └──────────────┘     └───────────────────┘
 ```
 
 ### 3. KServe
@@ -93,7 +126,7 @@ spec:
     model:
       modelFormat:
         name: sklearn
-      storageUri: s3://models/sklearn/iris
+      storageUri: s3://models/sklearn/iris  # or wasbs:// for Azure
 ```
 
 ### 4. LLM Inference with vLLM
@@ -134,11 +167,12 @@ spec:
 | TinyLlama-1.1B      | 1.1B | ~4GB       | Testing, demos  |
 | CodeLlama-7B        | 7B   | ~14GB      | Code generation |
 
-### 5. Karpenter for GPU Autoscaling
+### 5. GPU Autoscaling
+
+**AWS: Karpenter**
 
 Karpenter provides just-in-time node provisioning for GPU and training workloads:
 
-**Key Benefits:**
 - Faster node provisioning than Cluster Autoscaler
 - Native SPOT instance support with fallback to on-demand
 - Right-sizing: Provisions optimal instance types automatically
@@ -151,19 +185,22 @@ Karpenter provides just-in-time node provisioning for GPU and training workloads
 | gpu-workloads | g4dn, g5, p3, p4d | SPOT preferred | `nvidia.com/gpu=true:NoSchedule` |
 | training-workloads | c5, m5, r5 (xlarge-4xlarge) | SPOT only | `workload=training:NoSchedule` |
 
-**Example GPU Pod Spec:**
-```yaml
-spec:
-  nodeSelector:
-    node-type: gpu
-  tolerations:
-    - key: nvidia.com/gpu
-      operator: Exists
-      effect: NoSchedule
-  resources:
-    limits:
-      nvidia.com/gpu: "1"
-```
+**Azure: KEDA + Cluster Autoscaler**
+
+KEDA provides event-driven pod autoscaling that triggers Cluster Autoscaler:
+
+- Event-driven scaling based on Prometheus metrics
+- Queue-based scaling for training workloads
+- HTTP-based scaling for inference workloads
+- Integrates with Azure Workload Identity
+
+**ScaledObjects Configured:**
+
+| ScaledObject | Trigger | Namespace | Target |
+|--------------|---------|-----------|--------|
+| gpu-workload-scaler | Prometheus (pending GPU pods) | mlops | GPU deployments |
+| training-workload-scaler | Prometheus (Argo queue depth) | mlops | Training workers |
+| inference-workload-scaler | Prometheus (HTTP request rate) | mlops | Inference workers |
 
 ### 6. GitOps with ArgoCD
 
@@ -173,33 +210,34 @@ All platform configurations are managed through Git, enabling:
 - Rollback capabilities
 - Multi-environment promotion
 
-## Cloud Provider
+## Cloud Providers
 
-The platform is deployed on AWS with production-ready Terraform modules:
+The platform supports both AWS and Azure with production-ready Terraform modules:
 
 | Cloud | Module         | Status             | Key Services                            |
 |-------|----------------|--------------------|-----------------------------------------|
 | AWS   | `modules/eks`  | **Production Ready** | EKS, S3, RDS, ALB, IRSA               |
+| Azure | `modules/aks`  | **Production Ready** | AKS, Blob, PostgreSQL, Key Vault, ACR |
 
-The Kubernetes layer (KServe, MLflow, ArgoCD) is cloud-agnostic and can be adapted to other providers.
+The Kubernetes layer (KServe, MLflow, ArgoCD) is cloud-agnostic and works identically on both providers.
 
-## AWS Infrastructure
+## Infrastructure
 
-### Terraform EKS Module
+### AWS Infrastructure
 
-The platform includes a production-ready Terraform module for AWS EKS:
-
+**Terraform Structure:**
 ```
 infrastructure/terraform/
-├── bootstrap/           # AWS prerequisites (S3, DynamoDB, GitHub OIDC)
+├── bootstrap/aws/       # AWS prerequisites (S3, GitHub OIDC)
 ├── modules/eks/         # AWS EKS module
 │   ├── main.tf          # VPC, EKS cluster, node groups, S3, RDS, IRSA
 │   ├── variables.tf     # Configurable inputs
 │   └── outputs.tf       # Cluster endpoints, ARNs
-└── environments/dev/    # Main deployment configuration
-    ├── main.tf          # EKS + Helm releases
-    ├── outputs.tf       # Access information
-    └── variables.tf     # Environment variables
+└── environments/aws/dev/# Main deployment configuration
+    ├── providers.tf     # AWS + Kubernetes providers
+    ├── eks.tf           # EKS module instantiation
+    ├── helm-core.tf     # Helm releases
+    └── ...
 ```
 
 **Node Groups:**
@@ -215,33 +253,59 @@ infrastructure/terraform/
 - IAM roles with IRSA for secure pod authentication
 - AWS Load Balancer Controller for ALB Ingress
 
+### Azure Infrastructure
+
+**Terraform Structure:**
+```
+infrastructure/terraform/
+├── bootstrap/azure/     # Azure prerequisites (Storage, GitHub OIDC)
+├── modules/aks/         # Azure AKS module
+│   ├── main.tf          # VNet, AKS cluster, node pools
+│   ├── workload-identity.tf  # Managed identities
+│   ├── storage.tf       # Blob, PostgreSQL, Key Vault, ACR
+│   ├── variables.tf
+│   └── outputs.tf
+└── environments/azure/dev/  # Main deployment configuration
+    ├── providers.tf     # Azure + Kubernetes providers
+    ├── aks.tf           # AKS module instantiation
+    ├── keda.tf          # KEDA autoscaling
+    ├── helm-core.tf     # Helm releases
+    └── ...
+```
+
+**Node Pools:**
+- **System**: Platform services (Standard_D4s_v3, autoscale 2-4)
+- **Training**: ML training jobs (Standard_D8s_v3, Spot, scale-to-zero)
+- **GPU**: GPU workloads (Standard_NC6s_v3, Spot, scale-to-zero)
+
+**Azure Resources Created:**
+- Virtual Network with AKS and PostgreSQL subnets
+- AKS cluster with OIDC and Workload Identity
+- Storage Account for MLflow artifacts (Blob)
+- PostgreSQL Flexible Server for MLflow metadata
+- Azure Key Vault for secrets
+- Azure Container Registry (ACR)
+- Managed Identities with federated credentials
+- NGINX Ingress Controller with Azure Load Balancer
+
 ### Helm Releases (via Terraform)
 
-The dev environment Terraform automatically deploys:
+Both environments deploy the same components with cloud-specific configurations:
 
-| Component                    | Chart                                    | Purpose             |
-|------------------------------|------------------------------------------|---------------------|
-| AWS Load Balancer Controller | eks-charts/aws-load-balancer-controller  | ALB Ingress         |
-| cert-manager                 | jetstack/cert-manager                    | TLS certificates    |
-| ArgoCD                       | argo/argo-cd                             | GitOps deployments  |
-| KServe CRDs                  | kserve/kserve-crd                        | Custom resources    |
-| KServe Controller            | kserve/kserve                            | Model serving       |
-| MLflow                       | community-charts/mlflow                  | Experiment tracking |
-
-### CI/CD Pipeline
-
-GitHub Actions workflows provide automated validation:
-
-```yaml
-# .github/workflows/ci.yaml
-jobs:
-  validate-manifests:    # Kubernetes manifest validation
-  lint-python:           # Ruff linter and formatter
-  validate-terraform:    # Terraform fmt and validate
-  security-scan:         # Trivy and Checkov security scans
-  validate-helm:         # Helm values validation
-  test-python:           # Pipeline compilation tests
-```
+| Component                    | AWS Chart                                | Azure Chart                    |
+|------------------------------|------------------------------------------|--------------------------------|
+| Ingress                      | eks-charts/aws-load-balancer-controller  | ingress-nginx/ingress-nginx    |
+| cert-manager                 | jetstack/cert-manager                    | jetstack/cert-manager          |
+| ArgoCD                       | argo/argo-cd                             | argo/argo-cd                   |
+| KServe CRDs                  | kserve/kserve-crd                        | kserve/kserve-crd              |
+| KServe Controller            | kserve/kserve                            | kserve/kserve                  |
+| MLflow                       | community-charts/mlflow                  | community-charts/mlflow        |
+| Argo Workflows               | argo/argo-workflows                      | argo/argo-workflows            |
+| Prometheus Stack             | prometheus-community/kube-prometheus-stack | prometheus-community/kube-prometheus-stack |
+| External Secrets             | external-secrets/external-secrets        | external-secrets/external-secrets |
+| Kyverno                      | kyverno/kyverno                          | kyverno/kyverno                |
+| Tetragon                     | cilium/tetragon                          | cilium/tetragon                |
+| GPU Autoscaling              | karpenter/karpenter                      | kedacore/keda                  |
 
 ## Data Flow
 
@@ -261,18 +325,26 @@ jobs:
 
 ## Infrastructure Layers
 
-### Layer 1: AWS Infrastructure
+### Layer 1: Cloud Infrastructure
+**AWS:**
 - VPC with public/private subnets
 - EKS cluster with managed node groups
 - RDS PostgreSQL for MLflow
 - S3 for artifact storage
 - ALB for external access
 
+**Azure:**
+- Virtual Network with subnets
+- AKS cluster with node pools
+- PostgreSQL Flexible Server
+- Blob Storage for artifacts
+- Azure Load Balancer with NGINX Ingress
+
 ### Layer 2: Platform Services
-- AWS Load Balancer Controller
+- Ingress Controller (ALB or NGINX)
 - cert-manager for TLS
 - Prometheus/Grafana for monitoring
-- External-dns for DNS management (optional)
+- External Secrets Operator
 
 ### Layer 3: ML Platform
 - Argo Workflows
@@ -319,8 +391,7 @@ Native Kubernetes pod security using namespace labels:
 | `mlflow` | baseline | restricted | restricted | Experiment tracking |
 | `kserve` | baseline | restricted | restricted | Model serving |
 | `argo` | baseline | baseline | restricted | Pipeline execution |
-| `monitoring` | baseline | baseline | baseline | Node-exporter needs hostPath |
-| `karpenter` | baseline | baseline | baseline | Node management |
+| `monitoring` | privileged | - | - | Node-exporter needs hostPath |
 | `kyverno` | privileged | - | - | Admission controller |
 | `tetragon` | privileged | - | - | eBPF runtime security |
 
@@ -338,30 +409,6 @@ Kubernetes-native policy engine (CNCF Incubating) providing policy-as-code:
 | `restrict-image-registries` | mlops, kserve | Audit | Supply chain security |
 | `add-default-networkpolicy` | New namespaces | Generate | Zero-trust networking |
 
-**Example Policy:**
-```yaml
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
-metadata:
-  name: require-resource-limits
-spec:
-  validationFailureAction: Audit  # Change to Enforce after validation
-  rules:
-    - name: validate-resources
-      match:
-        resources:
-          kinds: [Pod]
-          namespaces: [mlops, mlflow, argo, kserve]
-      validate:
-        pattern:
-          spec:
-            containers:
-              - resources:
-                  limits:
-                    memory: "?*"
-                    cpu: "?*"
-```
-
 ### Tetragon Runtime Security
 
 eBPF-based runtime security from the Cilium project:
@@ -375,45 +422,17 @@ eBPF-based runtime security from the Cilium project:
 | `ml-network-connections` | Outbound TCP connections | mlops, kserve |
 | `suspicious-process-execution` | wget, curl, nc in inference pods | kserve |
 
-**Example TracingPolicy:**
-```yaml
-apiVersion: cilium.io/v1alpha1
-kind: TracingPolicy
-metadata:
-  name: sensitive-file-access
-spec:
-  kprobes:
-    - call: "fd_install"
-      selectors:
-        - matchArgs:
-            - index: 1
-              operator: "Prefix"
-              values:
-                - "/etc/shadow"
-                - "/var/run/secrets/kubernetes.io"
-          matchNamespaces:
-            - namespace: mlops
-              operator: In
-```
+### Cloud-Specific Identity
 
-### Network Policies
+**AWS: IRSA (IAM Roles for Service Accounts)**
+- Pod-level IAM roles
+- No static credentials
+- Automatic credential rotation
 
-The platform implements namespace isolation with Kubernetes NetworkPolicies:
-
-```
-infrastructure/kubernetes/network-policies.yaml
-```
-
-**Policy Summary:**
-
-| Namespace | Ingress From                 | Egress To            |
-|-----------|------------------------------|----------------------|
-| mlops     | ALB (inference), internal    | -                    |
-| mlflow    | mlops, argo, kserve, ALB     | PostgreSQL (RDS), S3 |
-| argo      | ALB (UI)                     | mlflow, kserve       |
-| kserve    | kube-system                  | Kubernetes API       |
-
-**Auto-Generated Policies:** Kyverno automatically creates `default-deny-ingress` NetworkPolicy for new namespaces.
+**Azure: Workload Identity**
+- Federated credentials with Azure AD
+- No static credentials
+- Managed Identity per workload
 
 ### Security Layers
 
@@ -428,18 +447,12 @@ infrastructure/kubernetes/network-policies.yaml
 │  - VPC security groups │  - Capabilities  │  - Least          │
 │  - Kyverno auto-gen    │  - PSA labels    │    privilege      │
 ├───────────────────────────────────────────────────────────────┤
-│  IRSA (AWS)            │  Image Security  │  Runtime          │
+│  Pod Identity          │  Image Security  │  Runtime          │
 │  ─────────────────     │  ──────────────  │  ─────────        │
-│  - Pod-level IAM       │  - Kyverno       │  - Tetragon       │
-│  - No static creds     │    registry      │  - eBPF tracing   │
-│  - S3/RDS access       │    allowlist     │  - Prometheus     │
+│  - IRSA (AWS)          │  - Kyverno       │  - Tetragon       │
+│  - Workload ID (Azure) │    registry      │  - eBPF tracing   │
+│  - No static creds     │    allowlist     │  - Prometheus     │
 │                        │  - No :latest    │    metrics        │
-├───────────────────────────────────────────────────────────────┤
-│  Audit & Compliance    │                                      │
-│  ──────────────────    │                                      │
-│  - CloudTrail          │  - Kyverno policy reports            │
-│  - EKS audit logs      │  - Tetragon event logs               │
-│  - PSA violations      │  - Prometheus alerting               │
 └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -453,6 +466,7 @@ The platform includes ServiceMonitors for metrics collection:
 # infrastructure/kubernetes/monitoring.yaml
 - ServiceMonitor: mlflow          # MLflow tracking server
 - ServiceMonitor: kserve-inference # Inference services
+- ServiceMonitor: keda            # KEDA metrics (Azure)
 - PodMonitor: kubeflow-pipelines  # Pipeline runs
 ```
 
@@ -468,6 +482,7 @@ Pre-configured PrometheusRules for common issues:
 | MLflowDown               | Server unreachable 2m   | critical |
 | HighPipelineFailureRate  | >10% failures/hour      | warning  |
 | LowGPUUtilization        | <20% for 30m            | info     |
+| KEDAScalerErrors         | Scaler errors (Azure)   | warning  |
 
 ### Grafana Dashboard
 
@@ -482,7 +497,7 @@ A pre-built dashboard is included as a ConfigMap:
 
 ### Horizontal Scaling
 - Argo Workflows: Multiple workflow controllers
-- MLflow: Stateless tracking server behind ALB
+- MLflow: Stateless tracking server behind load balancer
 - KServe: HPA based on inference latency/throughput
 
 ### GPU Resource Management
@@ -500,7 +515,7 @@ spec:
 ### Cost Optimization
 - SPOT instances for training and GPU nodes
 - Scale-to-zero for training/GPU node groups
-- Single NAT gateway for dev environment
+- Single NAT gateway (AWS) or standard LB (Azure) for dev
 - Resource requests/limits enforcement
 
 ## Deployment Workflow
@@ -509,28 +524,42 @@ spec:
 
 ```bash
 # Deploy entire platform (~15-20 minutes)
-make deploy
+make deploy-aws
 
 # Check status
-make status
+make status-aws
 
 # Destroy when done
-make destroy
+make destroy-aws
+```
+
+### Azure Deployment
+
+```bash
+# Deploy entire platform (~15-25 minutes)
+make deploy-azure
+
+# Check status
+make status-azure
+
+# Destroy when done
+make destroy-azure
 ```
 
 ### Manual Terraform
 
 ```bash
-# Initialize Terraform
-make terraform-init
+# AWS
+make terraform-init-aws
+make terraform-plan-aws
+make terraform-apply-aws
 
-# Plan infrastructure changes
-make terraform-plan
+# Azure
+make terraform-init-azure
+make terraform-plan-azure
+make terraform-apply-azure
 
-# Apply infrastructure changes
-make terraform-apply
-
-# Port forward services
+# Port forward services (works with either cloud)
 make port-forward-mlflow   # localhost:5000
 make port-forward-argocd   # localhost:8080
 ```
@@ -542,16 +571,19 @@ Push to main
     │
     ├── validate-manifests (kubeconform)
     ├── lint-python (ruff)
-    ├── validate-terraform (fmt, validate)
-    ├── security-scan (trivy, checkov)
+    ├── validate-terraform (AWS + Azure)
+    ├── security-scan (trivy)
     └── test-python (pipeline compilation)
          │
-         └── All pass → Ready for deployment
+         ├── terraform-plan-aws (parallel)
+         └── terraform-plan-azure (parallel)
+              │
+              └── All pass → Ready for deployment
 ```
 
 ## External Access
 
-### ALB Ingress
+### AWS: ALB Ingress
 
 Services are exposed via AWS Application Load Balancer:
 
@@ -560,39 +592,42 @@ Services are exposed via AWS Application Load Balancer:
 | ArgoCD | alb | internet-facing |
 | MLflow | alb | internet-facing |
 
-Get ALB URLs after deployment:
-```bash
-kubectl get ingress -A
-```
+### Azure: NGINX Ingress
+
+Services are exposed via NGINX Ingress Controller:
+
+| Service | Ingress Class | Backend |
+|---------|--------------|---------|
+| ArgoCD | nginx | HTTPS passthrough |
+| MLflow | nginx | HTTP |
+| Grafana | nginx | HTTP |
 
 ### Port Forwarding (Development)
 
-For local development or when ALB is not needed:
+For local development or when external access is not needed:
 ```bash
 make port-forward-mlflow   # MLflow at localhost:5000
 make port-forward-argocd   # ArgoCD at localhost:8080
+make port-forward-grafana  # Grafana at localhost:3000
 ```
-
-## Examples
-
-The platform includes working examples to help you get started:
-
-| Example | Description | Complexity |
-|---------|-------------|------------|
-| [LLM Inference](../examples/llm-inference/) | Mistral-7B, TinyLlama, CodeLlama with vLLM on GPU | Advanced |
 
 ## Component Versions
 
-Current versions deployed by the platform:
+Current versions deployed by the platform (aligned across both clouds):
 
 | Component | Version | Notes |
 |-----------|---------|-------|
-| MLflow | 3.x (chart 1.8.1) | Helm chart with S3/RDS backend |
+| MLflow | 3.x (chart 1.8.1) | Helm chart with cloud-native storage |
 | KServe | 0.16.0 | CNCF Incubating, RawDeployment mode |
 | Argo Workflows | 0.46.1 | ML pipeline execution engine |
-| Karpenter | 1.8.0 | GPU autoscaling with SPOT support |
+| Karpenter (AWS) | 1.8.0 | GPU autoscaling with SPOT support |
+| KEDA (Azure) | 2.18.3 | Event-driven pod autoscaling |
 | ArgoCD | 7.9.0 | Chart deploys ArgoCD v2.x |
 | AWS ALB Controller | 1.16.0 | Kubernetes Ingress with ALB |
+| NGINX Ingress | 4.14.1 | Kubernetes Ingress with Azure LB |
 | cert-manager | 1.19.1 | TLS certificate management |
+| Prometheus Stack | 72.6.2 | Monitoring and alerting |
+| External Secrets | 1.1.1 | SSM / Key Vault integration |
+| Kyverno | 3.3.4 | Policy engine |
+| Tetragon | 1.3.0 | Runtime security |
 | vLLM | 0.8.0 | High-throughput LLM inference |
-| Terraform EKS Module | 20.x | Compatible with AWS provider 5.x |
