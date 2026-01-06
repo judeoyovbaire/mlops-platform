@@ -91,7 +91,7 @@ resource "kubectl_manifest" "mlflow_db_external_secret" {
   ]
 }
 
-# Grafana Admin Password
+# Grafana Admin Credentials
 resource "kubectl_manifest" "grafana_external_secret" {
   yaml_body = <<-YAML
     apiVersion: external-secrets.io/v1
@@ -107,8 +107,12 @@ resource "kubectl_manifest" "grafana_external_secret" {
       target:
         name: grafana-admin-credentials
         creationPolicy: Owner
+        template:
+          data:
+            admin-user: admin
+            admin-password: "{{ .password }}"
       data:
-        - secretKey: admin-password
+        - secretKey: password
           remoteRef:
             key: grafana-admin-password
   YAML

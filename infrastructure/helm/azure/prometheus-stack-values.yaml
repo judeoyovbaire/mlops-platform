@@ -145,16 +145,8 @@ grafana:
     - grafana-piechart-panel
     - grafana-clock-panel
 
-  # Default datasources
-  datasources:
-    datasources.yaml:
-      apiVersion: 1
-      datasources:
-        - name: Prometheus
-          type: prometheus
-          url: http://prometheus-kube-prometheus-prometheus.monitoring:9090
-          access: proxy
-          isDefault: true
+  # Datasources auto-provisioned by sidecar (no manual definition needed)
+  # The kube-prometheus-stack chart creates ConfigMaps that the sidecar discovers
 
   # Dashboards
   dashboardProviders:
