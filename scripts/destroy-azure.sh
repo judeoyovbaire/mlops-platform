@@ -27,8 +27,8 @@ TF_DIR="${PROJECT_ROOT}/infrastructure/terraform/environments/azure/dev"
 
 # Default configuration
 DEFAULT_CLUSTER_NAME="mlops-platform-dev"
-DEFAULT_AZURE_LOCATION="westeurope"
-DEFAULT_RESOURCE_GROUP="rg-mlops-platform-dev"
+DEFAULT_AZURE_LOCATION="northeurope"
+DEFAULT_RESOURCE_GROUP="mlops-platform-dev-rg"
 
 # Function to print status
 print_status() {
