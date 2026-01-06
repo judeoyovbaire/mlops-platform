@@ -39,7 +39,7 @@ resource "time_sleep" "wait_for_external_secrets_crds" {
 
 resource "kubectl_manifest" "cluster_secret_store_azure" {
   yaml_body = <<-YAML
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: ClusterSecretStore
     metadata:
       name: azure-keyvault
@@ -63,7 +63,7 @@ resource "kubectl_manifest" "cluster_secret_store_azure" {
 # MLflow Database Credentials
 resource "kubectl_manifest" "mlflow_db_external_secret" {
   yaml_body = <<-YAML
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       name: mlflow-db-credentials
@@ -94,7 +94,7 @@ resource "kubectl_manifest" "mlflow_db_external_secret" {
 # Grafana Admin Password
 resource "kubectl_manifest" "grafana_external_secret" {
   yaml_body = <<-YAML
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       name: grafana-admin-credentials
@@ -122,7 +122,7 @@ resource "kubectl_manifest" "grafana_external_secret" {
 # ArgoCD Admin Password
 resource "kubectl_manifest" "argocd_external_secret" {
   yaml_body = <<-YAML
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       name: argocd-admin-credentials
