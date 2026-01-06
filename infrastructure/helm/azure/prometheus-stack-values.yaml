@@ -1,9 +1,4 @@
-# =============================================================================
-# kube-prometheus-stack Helm Values - Azure AKS
-# Compatible with kube-prometheus-stack v72.x
-# =============================================================================
-
-# Global settings
+# kube-prometheus-stack Helm Values - Azure AKS (v72.x)
 fullnameOverride: ""
 namespaceOverride: ""
 

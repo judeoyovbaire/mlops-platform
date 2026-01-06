@@ -1,16 +1,7 @@
-# =============================================================================
 # Workload Identity - Azure equivalent of AWS IRSA
-# =============================================================================
-# Creates:
-#   - User Assigned Managed Identities for each workload
-#   - Federated Identity Credentials linking K8s ServiceAccounts to Azure identities
-#   - Role assignments for Azure resource access
-# =============================================================================
+# Creates managed identities with federated credentials for K8s ServiceAccounts
 
-# =============================================================================
 # MLflow Identity
-# =============================================================================
-
 resource "azurerm_user_assigned_identity" "mlflow" {
   name                = "${var.cluster_name}-mlflow-identity"
   location            = azurerm_resource_group.main.location
@@ -35,10 +26,7 @@ resource "azurerm_role_assignment" "mlflow_blob" {
   principal_id         = azurerm_user_assigned_identity.mlflow.principal_id
 }
 
-# =============================================================================
 # External Secrets Identity
-# =============================================================================
-
 resource "azurerm_user_assigned_identity" "external_secrets" {
   name                = "${var.cluster_name}-external-secrets-identity"
   location            = azurerm_resource_group.main.location
@@ -63,10 +51,7 @@ resource "azurerm_role_assignment" "external_secrets_kv" {
   principal_id         = azurerm_user_assigned_identity.external_secrets.principal_id
 }
 
-# =============================================================================
 # Argo Workflows Identity
-# =============================================================================
-
 resource "azurerm_user_assigned_identity" "argo_workflows" {
   name                = "${var.cluster_name}-argo-workflows-identity"
   location            = azurerm_resource_group.main.location
@@ -91,10 +76,7 @@ resource "azurerm_role_assignment" "argo_workflows_blob" {
   principal_id         = azurerm_user_assigned_identity.argo_workflows.principal_id
 }
 
-# =============================================================================
 # KEDA Identity (for Azure-specific scalers)
-# =============================================================================
-
 resource "azurerm_user_assigned_identity" "keda" {
   name                = "${var.cluster_name}-keda-identity"
   location            = azurerm_resource_group.main.location

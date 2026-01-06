@@ -1,16 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-# =============================================================================
 # MLOps Platform - Azure Infrastructure Destroy Script
-# =============================================================================
-# This script properly cleans up all Azure infrastructure including resources
-# that can cause issues during terraform destroy:
-#   - Kyverno webhooks (block their own deletion)
-#   - KEDA ScaledObjects
-#   - Managed Identities and federated credentials
-#   - Azure resources that may have delete locks
-# =============================================================================
+# Handles cleanup of resources that can cause terraform destroy issues:
+# Kyverno webhooks, KEDA ScaledObjects, Managed Identities, resource locks
 
 # Colors for output
 RED='\033[0;31m'

@@ -1,8 +1,4 @@
-# =============================================================================
-# KEDA Helm Values - Azure
-# =============================================================================
-
-# Operator configuration
+# KEDA Helm Values - Azure AKS
 operator:
   replicaCount: 2
   resources:

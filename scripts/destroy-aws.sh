@@ -1,15 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-# =============================================================================
 # MLOps Platform - AWS Infrastructure Destroy Script
-# =============================================================================
-# This script properly cleans up all AWS infrastructure including resources
-# that can cause issues during terraform destroy:
-#   - Kyverno webhooks (block their own deletion)
-#   - Karpenter-provisioned nodes and instance profiles
-#   - CloudWatch log groups (cause "already exists" on reinstall)
-# =============================================================================
+# Handles cleanup of resources that can cause terraform destroy issues:
+# Kyverno webhooks, Karpenter nodes/instance profiles, CloudWatch log groups
 
 # Colors for output
 RED='\033[0;31m'

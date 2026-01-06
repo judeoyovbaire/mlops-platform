@@ -1,14 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-# =============================================================================
 # MLOps Platform - Azure AKS Deployment
-# =============================================================================
-# This script deploys the MLOps platform to Azure AKS with:
-#   - Auto-generated secrets stored in Azure Key Vault
-#   - External Secrets Operator for K8s sync
-#   - Workload Identity for secure pod authentication
-# =============================================================================
+# Deploys platform with: Azure Key Vault secrets, External Secrets Operator,
+# Workload Identity for pod authentication, KEDA for autoscaling
 
 # Colors for output
 RED='\033[0;31m'

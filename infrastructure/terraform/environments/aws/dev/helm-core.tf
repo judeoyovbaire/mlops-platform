@@ -1,6 +1,4 @@
-# =============================================================================
 # Core Helm Releases
-# =============================================================================
 
 # AWS Load Balancer Controller for ALB Ingress
 resource "helm_release" "aws_load_balancer_controller" {
@@ -160,10 +158,7 @@ resource "helm_release" "mlflow" {
   ]
 }
 
-# =============================================================================
 # Argo Workflows - ML Pipeline Orchestration
-# =============================================================================
-
 # Argo Workflows for ML pipeline orchestration
 resource "helm_release" "argo_workflows" {
   name       = "argo-workflows"

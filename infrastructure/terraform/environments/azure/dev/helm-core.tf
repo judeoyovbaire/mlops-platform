@@ -1,11 +1,6 @@
-# =============================================================================
 # Core Helm Releases - Azure
-# =============================================================================
 
-# =============================================================================
-# NGINX Ingress Controller (replaces AWS ALB Controller)
-# =============================================================================
-
+# NGINX Ingress Controller
 resource "helm_release" "nginx_ingress" {
   name             = "nginx-ingress"
   repository       = "https://kubernetes.github.io/ingress-nginx"
@@ -21,10 +16,7 @@ resource "helm_release" "nginx_ingress" {
   depends_on = [module.aks]
 }
 
-# =============================================================================
 # cert-manager
-# =============================================================================
-
 resource "helm_release" "cert_manager" {
   name             = "cert-manager"
   repository       = "https://charts.jetstack.io"
@@ -41,10 +33,7 @@ resource "helm_release" "cert_manager" {
   depends_on = [module.aks]
 }
 
-# =============================================================================
 # ArgoCD
-# =============================================================================
-
 resource "helm_release" "argocd" {
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
@@ -63,10 +52,7 @@ resource "helm_release" "argocd" {
   ]
 }
 
-# =============================================================================
 # KServe (Model Serving)
-# =============================================================================
-
 # KServe CRDs
 resource "helm_release" "kserve_crd" {
   name             = "kserve-crd"
@@ -97,10 +83,7 @@ resource "helm_release" "kserve" {
   ]
 }
 
-# =============================================================================
 # MLflow
-# =============================================================================
-
 resource "helm_release" "mlflow" {
   name             = "mlflow"
   repository       = "https://community-charts.github.io/helm-charts"
@@ -125,10 +108,7 @@ resource "helm_release" "mlflow" {
   ]
 }
 
-# =============================================================================
 # Argo Workflows
-# =============================================================================
-
 resource "helm_release" "argo_workflows" {
   name             = "argo-workflows"
   repository       = "https://argoproj.github.io/argo-helm"
@@ -158,10 +138,7 @@ resource "helm_release" "argo_workflows" {
   ]
 }
 
-# =============================================================================
 # MinIO (S3-compatible storage for Argo Workflows artifacts)
-# =============================================================================
-
 resource "helm_release" "minio" {
   name             = "minio"
   repository       = "https://charts.min.io/"

@@ -1,7 +1,4 @@
-# =============================================================================
-# NGINX Ingress Controller Helm Values - Azure
-# =============================================================================
-
+# NGINX Ingress Controller - Azure AKS
 controller:
   replicaCount: 2
 

@@ -1,13 +1,6 @@
-# =============================================================================
 # AKS Module - Azure Kubernetes Service for MLOps Platform
-# =============================================================================
-# Creates:
-#   - Resource Group
-#   - Virtual Network with subnets
-#   - AKS Cluster with OIDC and Workload Identity
-#   - Node Pools: System, Training (Spot), GPU (Spot)
-#   - Azure CNI + Calico network policy
-# =============================================================================
+# Creates: Resource Group, VNet, AKS Cluster with Workload Identity,
+# Node Pools (System, Training/Spot, GPU/Spot), Azure CNI + Calico
 
 terraform {
   required_version = ">= 1.0"
@@ -28,17 +21,11 @@ terraform {
   }
 }
 
-# =============================================================================
 # Data Sources
-# =============================================================================
-
 data "azurerm_subscription" "current" {}
 data "azurerm_client_config" "current" {}
 
-# =============================================================================
 # Resource Group
-# =============================================================================
-
 resource "azurerm_resource_group" "main" {
   name     = "${var.cluster_name}-rg"
   location = var.azure_location
@@ -46,10 +33,7 @@ resource "azurerm_resource_group" "main" {
   tags = var.tags
 }
 
-# =============================================================================
 # Virtual Network
-# =============================================================================
-
 resource "azurerm_virtual_network" "main" {
   name                = "${var.cluster_name}-vnet"
   location            = azurerm_resource_group.main.location
@@ -83,10 +67,7 @@ resource "azurerm_subnet" "postgresql" {
   }
 }
 
-# =============================================================================
 # AKS Cluster
-# =============================================================================
-
 resource "azurerm_kubernetes_cluster" "main" {
   name                = var.cluster_name
   location            = azurerm_resource_group.main.location
@@ -163,9 +144,7 @@ resource "azurerm_kubernetes_cluster" "main" {
   tags = var.tags
 }
 
-# =============================================================================
 # Additional Node Pools
-# =============================================================================
 
 # Training Node Pool - CPU workloads with Spot instances
 resource "azurerm_kubernetes_cluster_node_pool" "training" {
@@ -220,10 +199,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "gpu" {
   tags = var.tags
 }
 
-# =============================================================================
 # Log Analytics Workspace (optional)
-# =============================================================================
-
 resource "azurerm_log_analytics_workspace" "main" {
   count               = var.enable_azure_monitor ? 1 : 0
   name                = "${var.cluster_name}-logs"

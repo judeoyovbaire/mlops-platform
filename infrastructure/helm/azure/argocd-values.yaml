@@ -1,9 +1,4 @@
-# =============================================================================
-# ArgoCD Helm Values - Azure AKS
-# Compatible with ArgoCD Helm chart v7.x
-# =============================================================================
-
-# Global configuration (required for v7.x)
+# ArgoCD Helm Values - Azure AKS (chart v7.x)
 global:
   domain: argocd.local
 

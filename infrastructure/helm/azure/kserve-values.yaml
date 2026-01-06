@@ -1,8 +1,4 @@
-# =============================================================================
-# KServe Helm Values - Azure AKS
-# =============================================================================
-
-# KServe mode - RawDeployment (no Knative required)
+# KServe Helm Values - Azure AKS (RawDeployment mode, no Knative)
 kserve:
   controller:
     deploymentMode: "RawDeployment"

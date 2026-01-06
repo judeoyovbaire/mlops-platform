@@ -1,9 +1,5 @@
-# =============================================================================
-# MLflow Helm Values - Azure AKS
-# =============================================================================
-# Uses Azure Blob Storage and PostgreSQL Flexible Server
-# Chart: community-charts/mlflow version 1.8.1
-
+# MLflow Helm Values - Azure AKS (community-charts/mlflow v1.8.1)
+# Backend: Azure PostgreSQL Flexible Server, Artifacts: Azure Blob Storage
 replicaCount: 1
 
 # Use chart's default image which includes psycopg2 for PostgreSQL

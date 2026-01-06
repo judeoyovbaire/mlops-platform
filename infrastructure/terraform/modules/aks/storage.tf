@@ -1,17 +1,7 @@
-# =============================================================================
 # Azure Storage Resources - Data Services for MLOps Platform
-# =============================================================================
-# Creates:
-#   - Storage Account for MLflow artifacts (Blob Storage)
-#   - Azure Key Vault for secrets
-#   - Azure Database for PostgreSQL Flexible Server
-#   - Azure Container Registry (ACR)
-# =============================================================================
+# Creates: Storage Account, Key Vault, PostgreSQL Flexible Server, ACR
 
-# =============================================================================
 # Storage Account for MLflow Artifacts
-# =============================================================================
-
 resource "random_string" "storage_suffix" {
   length  = 8
   special = false
@@ -53,10 +43,7 @@ resource "azurerm_storage_container" "mlflow_artifacts" {
   container_access_type = "private"
 }
 
-# =============================================================================
 # Azure Key Vault
-# =============================================================================
-
 resource "azurerm_key_vault" "main" {
   # Azure Key Vault names: 3-24 chars, alphanumeric and dashes only
   name                = "mlops-kv-${random_string.storage_suffix.result}"
@@ -88,10 +75,7 @@ resource "azurerm_role_assignment" "keyvault_admin" {
   principal_id         = data.azurerm_client_config.current.object_id
 }
 
-# =============================================================================
 # Private DNS Zone for PostgreSQL
-# =============================================================================
-
 resource "azurerm_private_dns_zone" "postgresql" {
   name                = "${var.cluster_name}.private.postgres.database.azure.com"
   resource_group_name = azurerm_resource_group.main.name
@@ -107,10 +91,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "postgresql" {
   registration_enabled  = false
 }
 
-# =============================================================================
 # Azure Database for PostgreSQL Flexible Server
-# =============================================================================
-
 resource "random_password" "postgresql" {
   length           = 32
   special          = true
@@ -181,10 +162,7 @@ resource "azurerm_key_vault_secret" "postgresql_password" {
   depends_on = [azurerm_role_assignment.keyvault_admin]
 }
 
-# =============================================================================
 # Azure Container Registry
-# =============================================================================
-
 resource "azurerm_container_registry" "main" {
   # ACR names: 5-50 chars, alphanumeric only
   name                = "mlopsacr${random_string.storage_suffix.result}"
