@@ -14,6 +14,7 @@ output "cluster_name" {
 output "cluster_endpoint" {
   description = "Endpoint for the AKS cluster API server"
   value       = module.aks.cluster_endpoint
+  sensitive   = true
 }
 
 output "configure_kubectl" {
