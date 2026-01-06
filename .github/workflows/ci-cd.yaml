@@ -589,6 +589,13 @@ jobs:
           mkdir -p ~/.terraform.d/plugin-cache
           echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
 
+      - name: Install kubelogin
+        run: |
+          curl -LO https://github.com/Azure/kubelogin/releases/download/v0.1.4/kubelogin-linux-amd64.zip
+          unzip kubelogin-linux-amd64.zip -d kubelogin
+          sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
+          kubelogin --version
+
       - name: Terraform Init
         working-directory: infrastructure/terraform/environments/azure/dev
         env:
@@ -624,15 +631,9 @@ jobs:
       - name: Configure kubectl
         run: |
           az aks get-credentials \
-            --resource-group rg-mlops-platform-dev \
+            --resource-group mlops-platform-dev-rg \
             --name mlops-platform-dev \
             --overwrite-existing
-
-      - name: Install kubelogin
-        run: |
-          curl -LO https://github.com/Azure/kubelogin/releases/download/v0.1.0/kubelogin-linux-amd64.zip
-          unzip kubelogin-linux-amd64.zip -d kubelogin
-          sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
           kubelogin convert-kubeconfig -l azurecli
 
       - name: Verify Cluster
@@ -715,18 +716,19 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Install kubelogin
+        run: |
+          curl -LO https://github.com/Azure/kubelogin/releases/download/v0.1.4/kubelogin-linux-amd64.zip
+          unzip kubelogin-linux-amd64.zip -d kubelogin
+          sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
+          kubelogin --version
+
       - name: Configure kubectl
         run: |
           az aks get-credentials \
-            --resource-group rg-mlops-platform-dev \
+            --resource-group mlops-platform-dev-rg \
             --name mlops-platform-dev \
             --overwrite-existing
-
-      - name: Install kubelogin
-        run: |
-          curl -LO https://github.com/Azure/kubelogin/releases/download/v0.1.0/kubelogin-linux-amd64.zip
-          unzip kubelogin-linux-amd64.zip -d kubelogin
-          sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
           kubelogin convert-kubeconfig -l azurecli
 
       - name: Deploy to KServe
