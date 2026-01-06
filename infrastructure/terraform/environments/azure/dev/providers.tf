@@ -30,6 +30,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.9"
+    }
   }
 
   # Remote state backend - created by bootstrap module

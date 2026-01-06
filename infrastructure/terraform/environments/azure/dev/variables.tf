@@ -11,7 +11,7 @@ variable "cluster_name" {
 variable "azure_location" {
   description = "Azure region for resources"
   type        = string
-  default     = "westeurope"
+  default     = "northeurope" # westeurope has PostgreSQL restrictions
 }
 
 variable "kubernetes_version" {
@@ -71,7 +71,7 @@ variable "dns_service_ip" {
 variable "system_vm_size" {
   description = "VM size for system node pool"
   type        = string
-  default     = "Standard_D4s_v3"
+  default     = "Standard_D2s_v3" # 2 vCPUs to fit free tier quota
 }
 
 variable "system_min_count" {
