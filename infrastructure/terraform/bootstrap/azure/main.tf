@@ -69,7 +69,8 @@ resource "random_string" "storage_suffix" {
 }
 
 resource "azurerm_storage_account" "tfstate" {
-  name                     = "${replace(var.project_name, "-", "")}tfstate${random_string.storage_suffix.result}"
+  # Azure storage account names: 3-24 chars, lowercase + numbers only
+  name                     = "mlopstf${random_string.storage_suffix.result}"
   resource_group_name      = azurerm_resource_group.bootstrap.name
   location                 = azurerm_resource_group.bootstrap.location
   account_tier             = "Standard"

@@ -36,7 +36,7 @@ terraform {
   # Update these values after running bootstrap/azure
   backend "azurerm" {
     resource_group_name  = "mlops-platform-bootstrap"
-    storage_account_name = "mlopsplatformtfstate" # Update after bootstrap
+    storage_account_name = "mlopstfo9g9kzzx"
     container_name       = "tfstate"
     key                  = "mlops-platform/azure/dev/terraform.tfstate"
   }
