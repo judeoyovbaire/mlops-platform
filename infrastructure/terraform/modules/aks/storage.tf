@@ -157,7 +157,15 @@ resource "azurerm_postgresql_flexible_server_database" "mlflow" {
   collation = "en_US.utf8"
 }
 
-# Store PostgreSQL password in Key Vault
+# Store PostgreSQL credentials in Key Vault
+resource "azurerm_key_vault_secret" "postgresql_username" {
+  name         = "mlflow-db-username"
+  value        = azurerm_postgresql_flexible_server.mlflow.administrator_login
+  key_vault_id = azurerm_key_vault.main.id
+
+  depends_on = [azurerm_role_assignment.keyvault_admin]
+}
+
 resource "azurerm_key_vault_secret" "postgresql_password" {
   name         = "mlflow-db-password"
   value        = random_password.postgresql.result

@@ -54,7 +54,7 @@ logging:
     level: info
     format: console
   metricServer:
-    level: info
+    level: "0"  # Integer required for --v flag
 
 # Webhook configuration
 webhooks:

@@ -2,12 +2,14 @@
 # MLflow Helm Values - Azure AKS
 # =============================================================================
 # Uses Azure Blob Storage and PostgreSQL Flexible Server
+# Chart: community-charts/mlflow version 1.8.1
 
 replicaCount: 1
 
+# Use chart's default image which includes psycopg2 for PostgreSQL
 image:
-  repository: ghcr.io/mlflow/mlflow
-  tag: "v2.10.0"
+  repository: burakince/mlflow
+  tag: "3.7.0"
   pullPolicy: IfNotPresent
 
 # Service account with Workload Identity
@@ -17,36 +19,42 @@ serviceAccount:
   annotations:
     azure.workload.identity/client-id: "${mlflow_identity_client_id}"
 
-# Pod labels for Workload Identity
-podLabels:
-  azure.workload.identity/use: "true"
-
 # Backend store - Azure PostgreSQL
 backendStore:
+  databaseMigration: true
   postgres:
     enabled: true
     host: "${postgresql_host}"
     port: 5432
     database: "mlflow"
     user: "mlflow"
-    # Password from External Secret
-    existingSecret: "mlflow-db-credentials"
-    existingSecretPasswordKey: "password"
+  # Use existing K8s secret for database credentials
+  existingDatabaseSecret:
+    name: "mlflow-db-credentials"
+    usernameKey: "username"
+    passwordKey: "password"
 
 # Artifact store - Azure Blob Storage
 artifactRoot:
   azureBlob:
     enabled: true
-    storageAccount: "${storage_account_name}"
+    connectionString: ""
     container: "mlflow-artifacts"
-    # Uses Workload Identity - no connection string needed
 
-# Environment variables
+# Environment variables (chart 1.8.1 expects object, not array)
 extraEnvVars:
-  - name: AZURE_STORAGE_ACCOUNT
-    value: "${storage_account_name}"
-  - name: MLFLOW_ARTIFACT_UPLOAD_DOWNLOAD_TIMEOUT
-    value: "600"
+  AZURE_STORAGE_ACCOUNT: "${storage_account_name}"
+  MLFLOW_ARTIFACT_UPLOAD_DOWNLOAD_TIMEOUT: "600"
+
+# MLflow 3.x security settings
+extraArgs:
+  host: "0.0.0.0"
+  allowed-hosts: "*"
+  workers: "1"
+
+# Disable chart's gunicorn logging
+log:
+  enabled: false
 
 # Service configuration
 service:
@@ -62,6 +70,35 @@ resources:
     cpu: 500m
     memory: 512Mi
 
+# Pod security
+podSecurityContext:
+  runAsNonRoot: true
+  fsGroup: 1001
+  fsGroupChangePolicy: "OnRootMismatch"
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  capabilities:
+    drop:
+      - ALL
+
+# Probes
+livenessProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
 # Ingress configuration (NGINX)
 ingress:
   enabled: true
@@ -75,18 +112,3 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
-
-# Liveness and readiness probes
-livenessProbe:
-  httpGet:
-    path: /health
-    port: 5000
-  initialDelaySeconds: 30
-  periodSeconds: 10
-
-readinessProbe:
-  httpGet:
-    path: /health
-    port: 5000
-  initialDelaySeconds: 10
-  periodSeconds: 5

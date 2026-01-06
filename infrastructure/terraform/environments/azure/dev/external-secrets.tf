@@ -25,6 +25,13 @@ resource "helm_release" "external_secrets" {
   depends_on = [module.aks]
 }
 
+# Wait for External Secrets CRDs to be available
+resource "time_sleep" "wait_for_external_secrets_crds" {
+  depends_on = [helm_release.external_secrets]
+
+  create_duration = "30s"
+}
+
 # =============================================================================
 # ClusterSecretStore for Azure Key Vault
 # =============================================================================
@@ -45,7 +52,7 @@ resource "kubectl_manifest" "cluster_secret_store_azure" {
             namespace: external-secrets
   YAML
 
-  depends_on = [helm_release.external_secrets]
+  depends_on = [time_sleep.wait_for_external_secrets_crds]
 }
 
 # =============================================================================
@@ -69,6 +76,9 @@ resource "kubectl_manifest" "mlflow_db_external_secret" {
         name: mlflow-db-credentials
         creationPolicy: Owner
       data:
+        - secretKey: username
+          remoteRef:
+            key: mlflow-db-username
         - secretKey: password
           remoteRef:
             key: mlflow-db-password

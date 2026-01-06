@@ -100,6 +100,7 @@ resource "azurerm_kubernetes_cluster" "main" {
     vm_size                     = var.system_vm_size
     min_count                   = var.system_min_count
     max_count                   = var.system_max_count
+    max_pods                    = 110 # Increased from default 30 for Azure CNI
     vnet_subnet_id              = azurerm_subnet.aks.id
     enable_auto_scaling         = true
     os_disk_size_gb             = 100
