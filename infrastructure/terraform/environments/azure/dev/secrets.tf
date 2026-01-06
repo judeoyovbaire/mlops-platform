@@ -16,11 +16,6 @@ resource "random_password" "argocd_admin" {
   special = false
 }
 
-resource "random_password" "minio" {
-  length  = 24
-  special = false
-}
-
 # =============================================================================
 # Wait for RBAC propagation
 # =============================================================================
