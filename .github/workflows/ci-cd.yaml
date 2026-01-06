@@ -605,14 +605,27 @@ jobs:
           ARM_USE_OIDC: true
         run: terraform init
 
-      - name: Terraform Apply
+      - name: Terraform Apply - Stage 1 (AKS Infrastructure)
         working-directory: infrastructure/terraform/environments/azure/dev
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           ARM_USE_OIDC: true
-        run: terraform apply -auto-approve
+        run: |
+          echo "Stage 1: Deploying AKS cluster and infrastructure..."
+          terraform apply -auto-approve -target=module.aks
+
+      - name: Terraform Apply - Stage 2 (Kubernetes Resources)
+        working-directory: infrastructure/terraform/environments/azure/dev
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        run: |
+          echo "Stage 2: Deploying Helm releases and Kubernetes resources..."
+          terraform apply -auto-approve
 
       - name: Get Outputs
         working-directory: infrastructure/terraform/environments/azure/dev
