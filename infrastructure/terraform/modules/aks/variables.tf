@@ -70,7 +70,7 @@ variable "dns_service_ip" {
 variable "system_vm_size" {
   description = "VM size for system node pool"
   type        = string
-  default     = "Standard_D4s_v3"
+  default     = "Standard_D2s_v3" # 2 vCPUs - fits free tier quota
 }
 
 variable "system_min_count" {

@@ -19,7 +19,8 @@ resource "random_string" "storage_suffix" {
 }
 
 resource "azurerm_storage_account" "mlflow" {
-  name                     = "${replace(var.cluster_name, "-", "")}mlflow${random_string.storage_suffix.result}"
+  # Azure storage account names: 3-24 chars, lowercase + numbers only
+  name                     = "mlops${random_string.storage_suffix.result}mlf"
   resource_group_name      = azurerm_resource_group.main.name
   location                 = azurerm_resource_group.main.location
   account_tier             = "Standard"
@@ -57,7 +58,8 @@ resource "azurerm_storage_container" "mlflow_artifacts" {
 # =============================================================================
 
 resource "azurerm_key_vault" "main" {
-  name                = "${var.cluster_name}-kv-${random_string.storage_suffix.result}"
+  # Azure Key Vault names: 3-24 chars, alphanumeric and dashes only
+  name                = "mlops-kv-${random_string.storage_suffix.result}"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
   tenant_id           = data.azurerm_client_config.current.tenant_id
@@ -128,6 +130,9 @@ resource "azurerm_postgresql_flexible_server" "mlflow" {
   storage_mb             = var.postgresql_storage_mb
   sku_name               = var.postgresql_sku
 
+  # Disable public access when using VNet integration
+  public_network_access_enabled = false
+
   backup_retention_days        = var.postgresql_backup_retention_days
   geo_redundant_backup_enabled = false # Enable for production
 
@@ -166,7 +171,8 @@ resource "azurerm_key_vault_secret" "postgresql_password" {
 # =============================================================================
 
 resource "azurerm_container_registry" "main" {
-  name                = "${replace(var.cluster_name, "-", "")}acr${random_string.storage_suffix.result}"
+  # ACR names: 5-50 chars, alphanumeric only
+  name                = "mlopsacr${random_string.storage_suffix.result}"
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   sku                 = var.acr_sku
