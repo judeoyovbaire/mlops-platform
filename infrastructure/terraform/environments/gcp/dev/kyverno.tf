@@ -161,12 +161,13 @@ resource "kubectl_manifest" "disallow_privileged" {
                     - argo
                     - kserve
           validate:
-            message: "Privileged mode is not allowed"
-            pattern:
-              spec:
-                containers:
-                  - securityContext:
-                      privileged: false
+            message: "Privileged mode is not allowed. Set securityContext.privileged to false or omit it."
+            deny:
+              conditions:
+                any:
+                  - key: "{{ request.object.spec.containers[].securityContext.privileged || 'false' }}"
+                    operator: AnyIn
+                    value: ["true"]
   YAML
 
   depends_on = [time_sleep.wait_for_kyverno]
