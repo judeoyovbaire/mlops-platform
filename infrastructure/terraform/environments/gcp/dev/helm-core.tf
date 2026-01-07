@@ -263,6 +263,67 @@ resource "helm_release" "minio" {
     value = "false"
   }
 
+  # Post-job security context for Kyverno compliance
+  set {
+    name  = "postJob.securityContext.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "postJob.securityContext.runAsUser"
+    value = "1000"
+  }
+
+  set {
+    name  = "postJob.securityContext.runAsGroup"
+    value = "1000"
+  }
+
+  set {
+    name  = "postJob.securityContext.fsGroup"
+    value = "1000"
+  }
+
+  set {
+    name  = "postJob.containerSecurityContext.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "postJob.containerSecurityContext.runAsNonRoot"
+    value = "true"
+  }
+
+  set {
+    name  = "postJob.containerSecurityContext.privileged"
+    value = "false"
+  }
+
+  set {
+    name  = "postJob.containerSecurityContext.allowPrivilegeEscalation"
+    value = "false"
+  }
+
+  set {
+    name  = "postJob.resources.requests.cpu"
+    value = "50m"
+  }
+
+  set {
+    name  = "postJob.resources.requests.memory"
+    value = "64Mi"
+  }
+
+  set {
+    name  = "postJob.resources.limits.cpu"
+    value = "100m"
+  }
+
+  set {
+    name  = "postJob.resources.limits.memory"
+    value = "128Mi"
+  }
+
   depends_on = [
     kubernetes_namespace.argo,
     kubectl_manifest.minio_credentials
