@@ -79,24 +79,8 @@ resource "kubernetes_namespace" "monitoring" {
 # Service Accounts with Workload Identity
 # =============================================================================
 
-# MLflow service account with Workload Identity annotation
-# Includes Helm labels so the Helm chart can adopt this SA
-resource "kubernetes_service_account" "mlflow" {
-  metadata {
-    name      = "mlflow"
-    namespace = kubernetes_namespace.mlflow.metadata[0].name
-    labels = {
-      "app.kubernetes.io/managed-by" = "Helm"
-    }
-    annotations = {
-      "iam.gke.io/gcp-service-account" = module.gke.mlflow_service_account_email
-      "meta.helm.sh/release-name"      = "mlflow"
-      "meta.helm.sh/release-namespace" = "mlflow"
-    }
-  }
-
-  depends_on = [kubernetes_namespace.mlflow]
-}
+# Note: MLflow ServiceAccount is managed by the Helm chart (helm-core.tf)
+# with Workload Identity annotation set in mlflow-values.yaml
 
 # KServe inference service account
 resource "kubernetes_service_account" "kserve_inference" {

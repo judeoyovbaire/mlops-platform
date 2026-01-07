@@ -128,7 +128,6 @@ resource "helm_release" "mlflow" {
 
   depends_on = [
     kubernetes_namespace.mlflow,
-    kubernetes_service_account.mlflow,
     helm_release.nginx_ingress,
     kubectl_manifest.mlflow_db_credentials
   ]

@@ -5,14 +5,16 @@
 controller:
   replicas: 1
 
-  # Security context - disable privileged mode for Kyverno compliance
+  # Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 8737
+    fsGroup: 8737
+
+  # Container security context - disable privileged mode for Kyverno compliance
   securityContext:
     runAsNonRoot: true
-    runAsUser: 1000
-    fsGroup: 1000
-
-  containerSecurityContext:
-    runAsNonRoot: true
+    runAsUser: 8737
     privileged: false
     allowPrivilegeEscalation: false
     readOnlyRootFilesystem: true
@@ -52,17 +54,19 @@ controller:
 server:
   replicas: 1
 
-  # Security context - disable privileged mode for Kyverno compliance
+  # Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 8737
+    fsGroup: 8737
+
+  # Container security context - disable privileged mode for Kyverno compliance
   securityContext:
     runAsNonRoot: true
-    runAsUser: 1000
-    fsGroup: 1000
-
-  containerSecurityContext:
-    runAsNonRoot: true
+    runAsUser: 8737
     privileged: false
     allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: true
+    readOnlyRootFilesystem: false  # Server needs write access
     capabilities:
       drop:
         - ALL
