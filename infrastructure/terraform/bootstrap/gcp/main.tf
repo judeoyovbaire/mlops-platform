@@ -263,6 +263,13 @@ resource "google_project_iam_member" "project_iam_admin" {
   member  = "serviceAccount:${google_service_account.github_actions.email}"
 }
 
+# Service Networking (for private VPC peering with Cloud SQL)
+resource "google_project_iam_member" "servicenetworking_admin" {
+  project = local.project_id
+  role    = "roles/servicenetworking.networksAdmin"
+  member  = "serviceAccount:${google_service_account.github_actions.email}"
+}
+
 # =============================================================================
 # Enable Required APIs
 # =============================================================================

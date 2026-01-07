@@ -195,12 +195,12 @@ resource "google_container_cluster" "main" {
     }
   }
 
-  # Maintenance window
+  # Maintenance window - daily 03:00-07:00 UTC (GKE requires 48h availability per 32 days)
   maintenance_policy {
     recurring_window {
       start_time = "2024-01-01T03:00:00Z"
       end_time   = "2024-01-01T07:00:00Z"
-      recurrence = "FREQ=WEEKLY;BYDAY=SU"
+      recurrence = "FREQ=DAILY"
     }
   }
 
