@@ -57,7 +57,7 @@ output "github_actions_service_account_id" {
 
 output "project_id" {
   description = "GCP project ID"
-  value       = var.project_id
+  value       = local.project_id
 }
 
 output "project_number" {
@@ -93,7 +93,7 @@ output "github_actions_secrets" {
     # Add these secrets to your GitHub repository:
     # Settings > Secrets and variables > Actions > New repository secret
 
-    GCP_PROJECT_ID: ${var.project_id}
+    GCP_PROJECT_ID: ${local.project_id}
     GCP_WORKLOAD_IDENTITY_PROVIDER: ${google_iam_workload_identity_pool_provider.github.name}
     GCP_SERVICE_ACCOUNT: ${google_service_account.github_actions.email}
   EOT
@@ -114,7 +114,7 @@ output "github_actions_config" {
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
       with:
-        project_id: ${var.project_id}
+        project_id: ${local.project_id}
   EOT
 }
 
@@ -122,7 +122,7 @@ output "github_actions_config" {
 output "github_secrets_json" {
   description = "GitHub secrets in JSON format for automation"
   value = {
-    GCP_PROJECT_ID                 = var.project_id
+    GCP_PROJECT_ID                 = local.project_id
     GCP_WORKLOAD_IDENTITY_PROVIDER = google_iam_workload_identity_pool_provider.github.name
     GCP_SERVICE_ACCOUNT            = google_service_account.github_actions.email
   }

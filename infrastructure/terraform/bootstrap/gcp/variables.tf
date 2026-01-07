@@ -3,9 +3,39 @@
 # These variables configure the initial GCP resources needed before
 # deploying the main MLOps platform infrastructure.
 
+variable "create_project" {
+  description = "Whether to create a new GCP project (true) or use an existing one (false)"
+  type        = bool
+  default     = true
+}
+
 variable "project_id" {
-  description = "GCP project ID"
+  description = "GCP project ID (will be created if create_project=true)"
   type        = string
+}
+
+variable "project_name" {
+  description = "Display name for the project (used if create_project=true)"
+  type        = string
+  default     = "MLOps Platform"
+}
+
+variable "billing_account" {
+  description = "Billing account ID (required if create_project=true)"
+  type        = string
+  default     = ""
+}
+
+variable "org_id" {
+  description = "Organization ID (optional, for org-level project creation)"
+  type        = string
+  default     = ""
+}
+
+variable "folder_id" {
+  description = "Folder ID (optional, for folder-level project creation)"
+  type        = string
+  default     = ""
 }
 
 variable "region" {
@@ -14,8 +44,8 @@ variable "region" {
   default     = "europe-west4"
 }
 
-variable "project_name" {
-  description = "Project name used for resource naming"
+variable "resource_prefix" {
+  description = "Prefix for resource naming"
   type        = string
   default     = "mlops-platform"
 }
