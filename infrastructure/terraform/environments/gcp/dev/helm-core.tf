@@ -213,6 +213,47 @@ resource "helm_release" "minio" {
     value = "minio-credentials"
   }
 
+  # Security context - disable privileged mode for Kyverno compliance
+  set {
+    name  = "securityContext.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "securityContext.runAsUser"
+    value = "1000"
+  }
+
+  set {
+    name  = "securityContext.runAsGroup"
+    value = "1000"
+  }
+
+  set {
+    name  = "securityContext.fsGroup"
+    value = "1000"
+  }
+
+  set {
+    name  = "containerSecurityContext.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "containerSecurityContext.runAsNonRoot"
+    value = "true"
+  }
+
+  set {
+    name  = "containerSecurityContext.privileged"
+    value = "false"
+  }
+
+  set {
+    name  = "containerSecurityContext.allowPrivilegeEscalation"
+    value = "false"
+  }
+
   depends_on = [
     kubernetes_namespace.argo,
     kubectl_manifest.minio_credentials

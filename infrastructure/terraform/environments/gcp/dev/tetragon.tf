@@ -17,9 +17,10 @@ resource "helm_release" "tetragon" {
     value = "true"
   }
 
+  # ServiceMonitor disabled - CRD not available until prometheus-stack installs
   set {
     name  = "tetragon.prometheus.serviceMonitor.enabled"
-    value = "true"
+    value = "false"
   }
 
   # Resource limits

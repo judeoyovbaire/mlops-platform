@@ -41,8 +41,9 @@ controller:
   metrics:
     enabled: true
     serviceMonitor:
-      enabled: true
-      namespace: monitoring
+      # Disabled - ServiceMonitor CRD not available until prometheus-stack installs
+      # Create ServiceMonitor separately in monitoring.tf after prometheus-stack
+      enabled: false
 
   # Config
   config:
