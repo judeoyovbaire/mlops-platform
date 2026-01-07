@@ -445,12 +445,8 @@ resource "google_container_node_pool" "gpu" {
       "nvidia.com/gpu.present" = "true"
     })
 
-    taint {
-      key    = "nvidia.com/gpu"
-      value  = "true"
-      effect = "NO_SCHEDULE"
-    }
-
+    # Note: nvidia.com/gpu taint is automatically applied by GKE for GPU nodes
+    # Only add the spot taint if using spot instances
     dynamic "taint" {
       for_each = var.gpu_use_spot ? [1] : []
       content {
