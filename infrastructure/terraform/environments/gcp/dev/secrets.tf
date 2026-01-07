@@ -58,9 +58,9 @@ resource "kubernetes_config_map" "mlflow_config" {
   }
 
   data = {
-    MLFLOW_TRACKING_URI     = "http://mlflow.mlflow.svc.cluster.local:5000"
-    MLFLOW_ARTIFACT_ROOT    = "gs://${module.gke.mlflow_artifacts_bucket}"
-    GOOGLE_CLOUD_PROJECT    = var.project_id
+    MLFLOW_TRACKING_URI  = "http://mlflow.mlflow.svc.cluster.local:5000"
+    MLFLOW_ARTIFACT_ROOT = "gs://${module.gke.mlflow_artifacts_bucket}"
+    GOOGLE_CLOUD_PROJECT = var.project_id
   }
 
   depends_on = [kubernetes_namespace.mlflow]

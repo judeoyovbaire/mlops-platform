@@ -60,9 +60,9 @@ resource "google_storage_bucket" "terraform_state" {
   # Lifecycle rule to clean up old versions
   lifecycle_rule {
     condition {
-      age                   = 90
-      num_newer_versions    = 3
-      with_state            = "ARCHIVED"
+      age                = 90
+      num_newer_versions = 3
+      with_state         = "ARCHIVED"
     }
     action {
       type = "Delete"
@@ -228,15 +228,15 @@ resource "google_project_iam_member" "project_iam_admin" {
 
 resource "google_project_service" "required_apis" {
   for_each = toset([
-    "container.googleapis.com",          # GKE
-    "compute.googleapis.com",             # Compute Engine (VPC, etc.)
-    "sqladmin.googleapis.com",            # Cloud SQL
-    "secretmanager.googleapis.com",       # Secret Manager
-    "artifactregistry.googleapis.com",    # Artifact Registry
-    "iam.googleapis.com",                 # IAM
-    "iamcredentials.googleapis.com",      # IAM Credentials
+    "container.googleapis.com",            # GKE
+    "compute.googleapis.com",              # Compute Engine (VPC, etc.)
+    "sqladmin.googleapis.com",             # Cloud SQL
+    "secretmanager.googleapis.com",        # Secret Manager
+    "artifactregistry.googleapis.com",     # Artifact Registry
+    "iam.googleapis.com",                  # IAM
+    "iamcredentials.googleapis.com",       # IAM Credentials
     "cloudresourcemanager.googleapis.com", # Resource Manager
-    "servicenetworking.googleapis.com",   # Service Networking (Private Service Access)
+    "servicenetworking.googleapis.com",    # Service Networking (Private Service Access)
   ])
 
   project = var.project_id

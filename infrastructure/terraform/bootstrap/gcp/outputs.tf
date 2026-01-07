@@ -122,8 +122,8 @@ output "github_actions_config" {
 output "github_secrets_json" {
   description = "GitHub secrets in JSON format for automation"
   value = {
-    GCP_PROJECT_ID                  = var.project_id
-    GCP_WORKLOAD_IDENTITY_PROVIDER  = google_iam_workload_identity_pool_provider.github.name
-    GCP_SERVICE_ACCOUNT             = google_service_account.github_actions.email
+    GCP_PROJECT_ID                 = var.project_id
+    GCP_WORKLOAD_IDENTITY_PROVIDER = google_iam_workload_identity_pool_provider.github.name
+    GCP_SERVICE_ACCOUNT            = google_service_account.github_actions.email
   }
 }
