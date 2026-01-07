@@ -76,6 +76,7 @@ resource "google_sql_database_instance" "mlflow" {
 
   settings {
     tier              = var.cloudsql_tier
+    edition           = "ENTERPRISE" # Use ENTERPRISE edition for db-f1-micro tier
     availability_type = var.cloudsql_high_availability ? "REGIONAL" : "ZONAL"
     disk_size         = var.cloudsql_disk_size
     disk_type         = "PD_SSD"

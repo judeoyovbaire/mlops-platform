@@ -270,6 +270,13 @@ resource "google_project_iam_member" "servicenetworking_admin" {
   member  = "serviceAccount:${google_service_account.github_actions.email}"
 }
 
+# Service Account User (for GKE to use compute service account)
+resource "google_project_iam_member" "service_account_user" {
+  project = local.project_id
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:${google_service_account.github_actions.email}"
+}
+
 # =============================================================================
 # Enable Required APIs
 # =============================================================================
