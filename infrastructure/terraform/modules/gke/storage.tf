@@ -187,8 +187,11 @@ resource "google_secret_manager_secret" "mlflow_db_password" {
 }
 
 resource "google_secret_manager_secret_version" "mlflow_db_password" {
-  secret      = google_secret_manager_secret.mlflow_db_password.id
-  secret_data = random_password.mlflow_db.result
+  secret = google_secret_manager_secret.mlflow_db_password.id
+  secret_data = jsonencode({
+    username = "mlflow"
+    password = random_password.mlflow_db.result
+  })
 }
 
 # MinIO Root Password
@@ -210,8 +213,11 @@ resource "google_secret_manager_secret" "minio_root_password" {
 }
 
 resource "google_secret_manager_secret_version" "minio_root_password" {
-  secret      = google_secret_manager_secret.minio_root_password.id
-  secret_data = random_password.minio_root.result
+  secret = google_secret_manager_secret.minio_root_password.id
+  secret_data = jsonencode({
+    accesskey = "minioadmin"
+    secretkey = random_password.minio_root.result
+  })
 }
 
 # ArgoCD Admin Password
@@ -256,6 +262,9 @@ resource "google_secret_manager_secret" "grafana_admin_password" {
 }
 
 resource "google_secret_manager_secret_version" "grafana_admin_password" {
-  secret      = google_secret_manager_secret.grafana_admin_password.id
-  secret_data = random_password.grafana_admin.result
+  secret = google_secret_manager_secret.grafana_admin_password.id
+  secret_data = jsonencode({
+    username = "admin"
+    password = random_password.grafana_admin.result
+  })
 }

@@ -7,16 +7,14 @@ kserve:
     # Deployment mode: RawDeployment (not Serverless)
     deploymentMode: RawDeployment
 
-    # Gateway configuration for NGINX
-    gateway:
-      ingressGateway:
-        className: nginx
-        gateway: ""
-        # Disable Gateway API (use Ingress instead)
-        enableGatewayApi: false
-      localGateway:
-        gateway: ""
-        gatewayService: ""
+    # Ingress configuration
+    ingress:
+      ingressClassName: nginx
+      domainTemplate: "{{ .Name }}-{{ .Namespace }}.{{ .IngressDomain }}"
+      ingressDomain: "local"
+      ingressGateway: "knative-serving/knative-ingress-gateway"
+      localGateway: "knative-serving/knative-local-gateway"
+      urlScheme: http
 
     # Resource limits
     resources:
