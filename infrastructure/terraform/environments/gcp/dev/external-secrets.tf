@@ -166,7 +166,7 @@ resource "kubectl_manifest" "argocd_admin_credentials" {
 
   depends_on = [
     kubectl_manifest.cluster_secret_store,
-    helm_release.argocd
+    kubernetes_namespace.argocd
   ]
 }
 

@@ -75,6 +75,20 @@ resource "kubernetes_namespace" "monitoring" {
   depends_on = [module.gke]
 }
 
+# ArgoCD namespace - for GitOps
+resource "kubernetes_namespace" "argocd" {
+  metadata {
+    name = "argocd"
+    labels = {
+      "pod-security.kubernetes.io/enforce" = "baseline"
+      "pod-security.kubernetes.io/warn"    = "restricted"
+      "pod-security.kubernetes.io/audit"   = "restricted"
+    }
+  }
+
+  depends_on = [module.gke]
+}
+
 # =============================================================================
 # Service Accounts with Workload Identity
 # =============================================================================

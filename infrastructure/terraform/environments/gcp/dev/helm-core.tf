@@ -57,7 +57,7 @@ resource "helm_release" "argocd" {
   chart            = "argo-cd"
   version          = var.helm_argocd_version
   namespace        = "argocd"
-  create_namespace = true
+  create_namespace = false
 
   values = [
     templatefile("${path.module}/../../../../helm/gcp/argocd-values.yaml", {
@@ -67,7 +67,7 @@ resource "helm_release" "argocd" {
 
   depends_on = [
     helm_release.nginx_ingress,
-    module.gke
+    kubectl_manifest.argocd_admin_credentials
   ]
 }
 
