@@ -9,12 +9,14 @@ kserve:
 
     # Gateway configuration for NGINX
     gateway:
-      ingressGateway: nginx
-      ingressService: ingress-nginx-controller
-      ingressServiceNamespace: ingress-nginx
-      localGateway: cluster-local-gateway
-      localGatewayService: cluster-local-gateway
-      localGatewayServiceNamespace: istio-system
+      ingressGateway:
+        className: nginx
+        gateway: ""
+        # Disable Gateway API (use Ingress instead)
+        enableGatewayApi: false
+      localGateway:
+        gateway: ""
+        gatewayService: ""
 
     # Resource limits
     resources:

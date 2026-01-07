@@ -80,12 +80,18 @@ resource "kubernetes_namespace" "monitoring" {
 # =============================================================================
 
 # MLflow service account with Workload Identity annotation
+# Includes Helm labels so the Helm chart can adopt this SA
 resource "kubernetes_service_account" "mlflow" {
   metadata {
     name      = "mlflow"
     namespace = kubernetes_namespace.mlflow.metadata[0].name
+    labels = {
+      "app.kubernetes.io/managed-by" = "Helm"
+    }
     annotations = {
-      "iam.gke.io/gcp-service-account" = module.gke.mlflow_service_account_email
+      "iam.gke.io/gcp-service-account"  = module.gke.mlflow_service_account_email
+      "meta.helm.sh/release-name"       = "mlflow"
+      "meta.helm.sh/release-namespace"  = "mlflow"
     }
   }
 

@@ -5,6 +5,21 @@
 controller:
   replicas: 1
 
+  # Security context - disable privileged mode for Kyverno compliance
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+  containerSecurityContext:
+    runAsNonRoot: true
+    privileged: false
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
   # Service account with GKE Workload Identity
   serviceAccount:
     annotations:
@@ -36,6 +51,21 @@ controller:
 # Server configuration
 server:
   replicas: 1
+
+  # Security context - disable privileged mode for Kyverno compliance
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+  containerSecurityContext:
+    runAsNonRoot: true
+    privileged: false
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
 
   serviceAccount:
     annotations:
