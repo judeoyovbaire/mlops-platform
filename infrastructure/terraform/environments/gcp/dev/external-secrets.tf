@@ -86,11 +86,10 @@ resource "kubectl_manifest" "mlflow_db_credentials" {
           remoteRef:
             key: ${module.gke.mlflow_db_password_secret}
             property: username
-            decodingStrategy: None
-            conversionStrategy: Default
         - secretKey: password
           remoteRef:
             key: ${module.gke.mlflow_db_password_secret}
+            property: password
   YAML
 
   depends_on = [
@@ -119,15 +118,14 @@ resource "kubectl_manifest" "grafana_admin_credentials" {
         name: grafana-admin-credentials
         creationPolicy: Owner
       data:
-        - secretKey: username
+        - secretKey: admin-user
           remoteRef:
             key: ${module.gke.grafana_admin_password_secret}
             property: username
-            decodingStrategy: None
-            conversionStrategy: Default
-        - secretKey: password
+        - secretKey: admin-password
           remoteRef:
             key: ${module.gke.grafana_admin_password_secret}
+            property: password
   YAML
 
   depends_on = [
@@ -192,15 +190,14 @@ resource "kubectl_manifest" "minio_credentials" {
         name: minio-credentials
         creationPolicy: Owner
       data:
-        - secretKey: accesskey
+        - secretKey: rootUser
           remoteRef:
             key: ${module.gke.minio_root_password_secret}
             property: accesskey
-            decodingStrategy: None
-            conversionStrategy: Default
-        - secretKey: secretkey
+        - secretKey: rootPassword
           remoteRef:
             key: ${module.gke.minio_root_password_secret}
+            property: secretkey
   YAML
 
   depends_on = [

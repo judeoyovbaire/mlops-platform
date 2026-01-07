@@ -188,8 +188,18 @@ resource "helm_release" "minio" {
   }
 
   set {
+    name  = "resources.requests.cpu"
+    value = "100m"
+  }
+
+  set {
     name  = "resources.requests.memory"
     value = "256Mi"
+  }
+
+  set {
+    name  = "resources.limits.cpu"
+    value = "500m"
   }
 
   set {
