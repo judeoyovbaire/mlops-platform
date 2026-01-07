@@ -1,0 +1,109 @@
+# ArgoCD Helm Values - GCP GKE (argo/argo-cd v7.9.0)
+# GitOps continuous delivery for Kubernetes
+
+global:
+  domain: argocd.local
+
+# Server configuration
+server:
+  replicas: 1
+
+  # Service account with GKE Workload Identity
+  serviceAccount:
+    annotations:
+      iam.gke.io/gcp-service-account: "${argocd_service_account_email}"
+
+  # Ingress configuration (NGINX)
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    hosts:
+      - argocd.local
+    tls:
+      - secretName: argocd-server-tls
+        hosts:
+          - argocd.local
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Controller configuration
+controller:
+  replicas: 1
+
+  serviceAccount:
+    annotations:
+      iam.gke.io/gcp-service-account: "${argocd_service_account_email}"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Repo server configuration
+repoServer:
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Redis configuration
+redis:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Notifications (disabled)
+notifications:
+  enabled: false
+
+# ApplicationSet controller
+applicationSet:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Dex (SSO - disabled for dev)
+dex:
+  enabled: false
+
+# Config
+configs:
+  # Use bcrypt hashed password from Secret Manager
+  secret:
+    createSecret: false
+
+  params:
+    server.insecure: true
+
+  cm:
+    url: https://argocd.local
+    application.instanceLabelKey: argocd.argoproj.io/instance
+    admin.enabled: true

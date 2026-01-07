@@ -1,0 +1,117 @@
+# KServe Helm Values - GCP GKE (kserve v0.16.0)
+# Model serving with RawDeployment mode (no Knative required)
+
+# Use RawDeployment mode - simpler, no Knative dependency
+kserve:
+  controller:
+    # Deployment mode: RawDeployment (not Serverless)
+    deploymentMode: RawDeployment
+
+    # Gateway configuration for NGINX
+    gateway:
+      ingressGateway: nginx
+      ingressService: ingress-nginx-controller
+      ingressServiceNamespace: ingress-nginx
+      localGateway: cluster-local-gateway
+      localGatewayService: cluster-local-gateway
+      localGatewayServiceNamespace: istio-system
+
+    # Resource limits
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  # Modelmesh (disabled - using KServe native)
+  modelmesh:
+    enabled: false
+
+  # Agent configuration
+  agent:
+    image: kserve/agent
+    tag: v0.16.0
+
+  # Storage initializer
+  storageInitializer:
+    image: kserve/storage-initializer
+    tag: v0.16.0
+
+# CRDs installation
+crds:
+  install: true
+
+# RBAC
+rbac:
+  create: true
+
+# Service account with GKE Workload Identity
+serviceAccount:
+  create: true
+  name: kserve-controller-manager
+  annotations:
+    iam.gke.io/gcp-service-account: "${kserve_service_account_email}"
+
+# Inference service defaults
+inferenceService:
+  # Default predictor configuration
+  predictorDefault:
+    # Container resources
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+  # Transformer defaults
+  transformerDefault:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  # Explainer defaults
+  explainerDefault:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# Ingress configuration
+ingress:
+  # Use NGINX ingress class
+  ingressClassName: nginx
+
+  # Domain suffix for inference services
+  ingressDomain: local
+
+  # Path template
+  pathTemplate: /v1/models/{{ .Name }}
+
+  # Disable TLS for dev
+  disableIstioVirtualHost: true
+
+# Logger configuration (disabled for dev)
+logger:
+  enabled: false
+
+# Batcher configuration
+batcher:
+  enabled: true
+  image: kserve/batcher
+  tag: v0.16.0
+
+# Router configuration (for multi-model serving)
+router:
+  image: kserve/router
+  tag: v0.16.0

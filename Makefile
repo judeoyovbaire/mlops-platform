@@ -1,13 +1,15 @@
 # MLOps Platform Makefile
-# Multi-Cloud Deployment (AWS EKS / Azure AKS)
+# Multi-Cloud Deployment (AWS EKS / Azure AKS / GCP GKE)
 
-.PHONY: help deploy deploy-aws deploy-azure status status-aws status-azure destroy destroy-aws destroy-azure \
+.PHONY: help deploy deploy-aws deploy-azure deploy-gcp status status-aws status-azure status-gcp \
+        destroy destroy-aws destroy-azure destroy-gcp secrets secrets-aws secrets-azure secrets-gcp \
         validate lint test test-unit test-cov clean deps \
         terraform-init terraform-plan terraform-apply terraform-destroy \
         terraform-init-aws terraform-plan-aws terraform-apply-aws terraform-destroy-aws \
         terraform-init-azure terraform-plan-azure terraform-apply-azure terraform-destroy-azure \
+        terraform-init-gcp terraform-plan-gcp terraform-apply-gcp terraform-destroy-gcp \
         port-forward-mlflow port-forward-argocd port-forward-grafana port-forward-prometheus \
-        port-forward-argo-wf validate-workflow deploy-example secrets secrets-aws secrets-azure
+        port-forward-argo-wf validate-workflow deploy-example
 
 # Default target
 help:
@@ -32,11 +34,19 @@ help:
 	@echo "  make destroy-azure      - Destroy Azure resources"
 	@echo "  make secrets-azure      - Retrieve secrets from Azure Key Vault"
 	@echo ""
+	@echo "GCP GKE Deployment:"
+	@echo "  make deploy-gcp         - Deploy to GCP GKE (~15-25 min)"
+	@echo "  make status-gcp         - Check GCP deployment status"
+	@echo "  make destroy-gcp        - Destroy GCP resources"
+	@echo "  make secrets-gcp        - Retrieve secrets from GCP Secret Manager"
+	@echo ""
 	@echo "Terraform (Advanced):"
 	@echo "  make terraform-init-aws     - Initialize AWS Terraform"
 	@echo "  make terraform-plan-aws     - Plan AWS infrastructure"
 	@echo "  make terraform-init-azure   - Initialize Azure Terraform"
 	@echo "  make terraform-plan-azure   - Plan Azure infrastructure"
+	@echo "  make terraform-init-gcp     - Initialize GCP Terraform"
+	@echo "  make terraform-plan-gcp     - Plan GCP infrastructure"
 	@echo ""
 	@echo "Validation & Testing:"
 	@echo "  make validate           - Validate all manifests"
@@ -62,6 +72,7 @@ PYTHON ?= python3
 
 TERRAFORM_DIR_AWS = infrastructure/terraform/environments/aws/dev
 TERRAFORM_DIR_AZURE = infrastructure/terraform/environments/azure/dev
+TERRAFORM_DIR_GCP = infrastructure/terraform/environments/gcp/dev
 PIPELINE_DIR = pipelines/training
 
 # =============================================================================
@@ -117,6 +128,26 @@ secrets-azure:
 	./scripts/deploy-azure.sh secrets
 
 # =============================================================================
+# GCP GKE Deployment
+# =============================================================================
+
+deploy-gcp:
+	@echo "Deploying MLOps Platform to GCP GKE..."
+	./scripts/deploy-gcp.sh deploy
+
+status-gcp:
+	@echo "Checking GCP deployment status..."
+	./scripts/deploy-gcp.sh status
+
+destroy-gcp:
+	@echo "Destroying GCP GKE deployment..."
+	./scripts/destroy-gcp.sh
+
+secrets-gcp:
+	@echo "Retrieving secrets from GCP Secret Manager..."
+	./scripts/deploy-gcp.sh secrets
+
+# =============================================================================
 # Terraform - AWS (Advanced)
 # =============================================================================
 
@@ -165,10 +196,30 @@ terraform-destroy-azure:
 	cd $(TERRAFORM_DIR_AZURE) && $(TERRAFORM) destroy
 
 # =============================================================================
+# Terraform - GCP (Advanced)
+# =============================================================================
+
+terraform-init-gcp:
+	@echo "Initializing GCP Terraform..."
+	cd $(TERRAFORM_DIR_GCP) && $(TERRAFORM) init
+
+terraform-plan-gcp:
+	@echo "Planning GCP Terraform changes..."
+	cd $(TERRAFORM_DIR_GCP) && $(TERRAFORM) plan
+
+terraform-apply-gcp:
+	@echo "Applying GCP Terraform changes..."
+	cd $(TERRAFORM_DIR_GCP) && $(TERRAFORM) apply
+
+terraform-destroy-gcp:
+	@echo "Destroying GCP Terraform resources..."
+	cd $(TERRAFORM_DIR_GCP) && $(TERRAFORM) destroy
+
+# =============================================================================
 # Validation & Testing
 # =============================================================================
 
-validate: validate-terraform-aws validate-terraform-azure validate-python
+validate: validate-terraform-aws validate-terraform-azure validate-terraform-gcp validate-python
 	@echo "All validations passed!"
 
 validate-terraform-aws:
@@ -181,6 +232,11 @@ validate-terraform-azure:
 	@echo "Validating Azure Terraform..."
 	@cd $(TERRAFORM_DIR_AZURE) && $(TERRAFORM) init -backend=false > /dev/null 2>&1 || true
 	@cd $(TERRAFORM_DIR_AZURE) && $(TERRAFORM) validate 2>/dev/null || echo "Azure Terraform validation skipped (bootstrap required)"
+
+validate-terraform-gcp:
+	@echo "Validating GCP Terraform..."
+	@cd $(TERRAFORM_DIR_GCP) && $(TERRAFORM) init -backend=false > /dev/null 2>&1 || true
+	@cd $(TERRAFORM_DIR_GCP) && $(TERRAFORM) validate 2>/dev/null || echo "GCP Terraform validation skipped (bootstrap required)"
 
 validate-python:
 	@echo "Validating Python code..."
@@ -239,7 +295,7 @@ port-forward-grafana:
 	@echo "Forwarding Grafana to localhost:3000..."
 	@echo "Access Grafana at http://localhost:3000"
 	@echo "Username: admin"
-	@echo "Password: Check 'make secrets-aws' or 'make secrets-azure'"
+	@echo "Password: Check 'make secrets-aws', 'make secrets-azure', or 'make secrets-gcp'"
 	$(KUBECTL) port-forward svc/prometheus-grafana 3000:80 -n monitoring
 
 port-forward-prometheus:
@@ -275,6 +331,7 @@ clean:
 	find . -type f -name "*.pyc" -delete
 	rm -f $(TERRAFORM_DIR_AWS)/tfplan
 	rm -f $(TERRAFORM_DIR_AZURE)/tfplan
+	rm -f $(TERRAFORM_DIR_GCP)/tfplan
 	@echo "Clean complete"
 
 logs-mlflow:

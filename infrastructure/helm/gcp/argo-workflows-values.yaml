@@ -1,0 +1,106 @@
+# Argo Workflows Helm Values - GCP GKE (argo/argo-workflows v0.46.1)
+# ML pipeline orchestration with GCS artifact storage
+
+# Controller configuration
+controller:
+  replicas: 1
+
+  # Service account with GKE Workload Identity
+  serviceAccount:
+    annotations:
+      iam.gke.io/gcp-service-account: "${argo_workflows_service_account_email}"
+
+  # Workflow defaults
+  workflowDefaults:
+    spec:
+      serviceAccountName: argo-workflow
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      podGC:
+        strategy: OnWorkflowSuccess
+        deleteDelayDuration: 5m
+
+  # Parallelism limits
+  parallelism: 10
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Server configuration
+server:
+  replicas: 1
+
+  serviceAccount:
+    annotations:
+      iam.gke.io/gcp-service-account: "${argo_workflows_service_account_email}"
+
+  # Authentication (disabled for dev)
+  authModes:
+    - server
+
+  # Ingress configuration (NGINX)
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - argo.local
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Use Emissary executor (modern executor)
+executor:
+  image:
+    registry: quay.io
+    repository: argoproj/argoexec
+    tag: v3.7.2
+
+# Artifact repository - MinIO (S3-compatible)
+# GCS artifacts are configured via workflow templates
+artifactRepository:
+  archiveLogs: true
+  s3:
+    bucket: argo-artifacts
+    endpoint: minio.argo.svc:9000
+    insecure: true
+    accessKeySecret:
+      name: minio-credentials
+      key: accesskey
+    secretKeySecret:
+      name: minio-credentials
+      key: secretkey
+
+# Workflow RBAC
+workflow:
+  serviceAccount:
+    create: true
+    name: argo-workflow
+    annotations:
+      iam.gke.io/gcp-service-account: "${argo_workflows_service_account_email}"
+  rbac:
+    create: true
+
+# Use PostgreSQL for large workflows (disabled, using default)
+useDefaultArtifactRepo: true
+useStaticCredentials: true
+
+# Main container configuration
+mainContainer:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi

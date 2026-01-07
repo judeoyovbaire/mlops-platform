@@ -1,6 +1,6 @@
 # MLOps Platform on Kubernetes
 
-A production-ready, multi-cloud MLOps platform for model training, versioning, and deployment on **AWS EKS** or **Azure AKS**. Enables data science teams to go from experiment to production with self-service workflows.
+A production-ready, multi-cloud MLOps platform for model training, versioning, and deployment on **AWS EKS**, **Azure AKS**, or **GCP GKE**. Enables data science teams to go from experiment to production with self-service workflows.
 
 [![CI/CD](https://github.com/judeoyovbaire/mlops-platform/actions/workflows/ci-cd.yaml/badge.svg)](https://github.com/judeoyovbaire/mlops-platform/actions/workflows/ci-cd.yaml)
 
@@ -44,7 +44,7 @@ Data Scientist                    Platform (Automated)
 
 ## Multi-Cloud Architecture
 
-Deploy to **AWS** or **Azure** - same MLOps capabilities, cloud-native implementations:
+Deploy to **AWS**, **Azure**, or **GCP** - same MLOps capabilities, cloud-native implementations:
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────┐
@@ -59,7 +59,7 @@ Deploy to **AWS** or **Azure** - same MLOps capabilities, cloud-native implement
 │         │                   │                   │                         │
 │         ▼                   ▼                   ▼                         │
 │  ┌────────────────────────────────────────────────────────────────────┐   │
-│  │                    Kubernetes (EKS / AKS)                          │   │
+│  │                 Kubernetes (EKS / AKS / GKE)                        │   │
 │  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐   │   │
 │  │  │ GPU     │  │ Storage │  │ Ingress │  │ Prom/   │  │ ArgoCD  │   │   │
 │  │  │ Nodes   │  │ Backend │  │         │  │ Grafana │  │ GitOps  │   │   │
@@ -68,29 +68,29 @@ Deploy to **AWS** or **Azure** - same MLOps capabilities, cloud-native implement
 │                                                                           │
 └───────────────────────────────────────────────────────────────────────────┘
 
-AWS EKS                              │  Azure AKS
-─────────────────────────────────────│──────────────────────────────────────
-• Karpenter (GPU autoscaling)        │  • KEDA (event-driven autoscaling)
-• S3 + RDS PostgreSQL                │  • Blob Storage + PostgreSQL Flexible
-• ALB Ingress Controller             │  • NGINX Ingress Controller
-• IRSA (pod identity)                │  • Workload Identity
-• SSM Parameter Store                │  • Azure Key Vault
+AWS EKS                       │  Azure AKS                   │  GCP GKE
+──────────────────────────────│──────────────────────────────│───────────────────────────
+• Karpenter (GPU scaling)     │  • KEDA (event-driven)       │  • Node Auto-provisioning
+• S3 + RDS PostgreSQL         │  • Blob + PostgreSQL Flex    │  • GCS + Cloud SQL
+• ALB Ingress Controller      │  • NGINX Ingress             │  • NGINX Ingress
+• IRSA (pod identity)         │  • Workload Identity         │  • Workload Identity Fed
+• SSM Parameter Store         │  • Azure Key Vault           │  • Secret Manager
 ```
 
 ## Features
 
-| Feature | AWS | Azure |
-|---------|-----|-------|
-| **Pipeline Orchestration** | Argo Workflows | Argo Workflows |
-| **Experiment Tracking** | MLflow + S3 + RDS | MLflow + Blob + PostgreSQL |
-| **Model Serving** | KServe (RawDeployment) | KServe (RawDeployment) |
-| **GitOps** | ArgoCD | ArgoCD |
-| **GPU Autoscaling** | Karpenter | KEDA + Cluster Autoscaler |
-| **Ingress** | AWS ALB Controller | NGINX Ingress |
-| **Pod Identity** | IRSA | Workload Identity |
-| **Secrets** | External Secrets + SSM | External Secrets + Key Vault |
-| **Security** | PSA, Kyverno, Tetragon | PSA, Kyverno, Tetragon |
-| **Monitoring** | Prometheus + Grafana | Prometheus + Grafana |
+| Feature | AWS | Azure | GCP |
+|---------|-----|-------|-----|
+| **Pipeline Orchestration** | Argo Workflows | Argo Workflows | Argo Workflows |
+| **Experiment Tracking** | MLflow + S3 + RDS | MLflow + Blob + PostgreSQL | MLflow + GCS + Cloud SQL |
+| **Model Serving** | KServe (RawDeployment) | KServe (RawDeployment) | KServe (RawDeployment) |
+| **GitOps** | ArgoCD | ArgoCD | ArgoCD |
+| **GPU Autoscaling** | Karpenter | KEDA + Cluster Autoscaler | Node Auto-provisioning |
+| **Ingress** | AWS ALB Controller | NGINX Ingress | NGINX Ingress |
+| **Pod Identity** | IRSA | Workload Identity | Workload Identity Federation |
+| **Secrets** | External Secrets + SSM | External Secrets + Key Vault | External Secrets + Secret Manager |
+| **Security** | PSA, Kyverno, Tetragon | PSA, Kyverno, Tetragon | PSA, Kyverno, Tetragon |
+| **Monitoring** | Prometheus + Grafana | Prometheus + Grafana | Prometheus + Grafana |
 
 ## Tech Stack
 
@@ -101,12 +101,13 @@ AWS EKS                              │  Azure AKS
 | Model Serving | KServe | 0.16.0 | Production inference (CNCF) |
 | GPU Autoscaling (AWS) | Karpenter | 1.8.0 | Dynamic GPU node provisioning |
 | Event Autoscaling (Azure) | KEDA | 2.18.3 | Event-driven pod scaling |
+| GPU Autoscaling (GCP) | GKE NAP | - | Node Auto-provisioning |
 | GitOps | ArgoCD | 7.9.0 | Declarative deployments |
 | Ingress (AWS) | AWS ALB Controller | 1.16.0 | External load balancing |
-| Ingress (Azure) | NGINX Ingress | 4.14.1 | External load balancing |
+| Ingress (Azure/GCP) | NGINX Ingress | 4.14.1 | External load balancing |
 | TLS | cert-manager | 1.19.1 | Certificate management |
 | Monitoring | Prometheus + Grafana | 72.6.2 | Observability |
-| Infrastructure | Terraform | 1.6+ | IaC for EKS/AKS |
+| Infrastructure | Terraform | 1.6+ | IaC for EKS/AKS/GKE |
 | CI/CD | GitHub Actions | - | Automated testing |
 
 ## Project Structure
@@ -123,22 +124,28 @@ mlops-platform/
 │   ├── terraform/
 │   │   ├── bootstrap/
 │   │   │   ├── aws/            # AWS prerequisites (S3, GitHub OIDC)
-│   │   │   └── azure/          # Azure prerequisites (Storage, GitHub OIDC)
+│   │   │   ├── azure/          # Azure prerequisites (Storage, GitHub OIDC)
+│   │   │   └── gcp/            # GCP prerequisites (GCS, Workload Identity)
 │   │   ├── modules/
 │   │   │   ├── eks/            # AWS EKS module
-│   │   │   └── aks/            # Azure AKS module
+│   │   │   ├── aks/            # Azure AKS module
+│   │   │   └── gke/            # GCP GKE module
 │   │   └── environments/
 │   │       ├── aws/dev/        # AWS deployment configuration
-│   │       └── azure/dev/      # Azure deployment configuration
+│   │       ├── azure/dev/      # Azure deployment configuration
+│   │       └── gcp/dev/        # GCP deployment configuration
 │   └── helm/
 │       ├── aws/                # AWS-specific Helm values
-│       └── azure/              # Azure-specific Helm values
+│       ├── azure/              # Azure-specific Helm values
+│       └── gcp/                # GCP-specific Helm values
 ├── pipelines/training/         # Argo Workflow pipeline definitions
 ├── scripts/
 │   ├── deploy-aws.sh           # AWS deployment script
 │   ├── deploy-azure.sh         # Azure deployment script
+│   ├── deploy-gcp.sh           # GCP deployment script
 │   ├── destroy-aws.sh          # AWS cleanup script
-│   └── destroy-azure.sh        # Azure cleanup script
+│   ├── destroy-azure.sh        # Azure cleanup script
+│   └── destroy-gcp.sh          # GCP cleanup script
 ├── tests/                      # Unit tests
 ├── docs/architecture.md        # Architecture documentation
 └── Makefile                    # Common operations
@@ -155,6 +162,11 @@ mlops-platform/
 **For Azure:**
 - Azure subscription
 - Azure CLI configured (`az login`)
+
+**For GCP:**
+- GCP project with billing enabled
+- Google Cloud SDK configured (`gcloud auth login && gcloud config set project <PROJECT_ID>`)
+- gke-gcloud-auth-plugin (`gcloud components install gke-gcloud-auth-plugin`)
 
 **Common:**
 - Terraform 1.6+
@@ -200,6 +212,25 @@ make port-forward-mlflow   # MLflow at localhost:5000
 make port-forward-argocd   # ArgoCD at localhost:8080
 ```
 
+### Quick Start - GCP
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/judeoyovbaire/mlops-platform.git
+cd mlops-platform
+
+# 2. Bootstrap GCP resources (GCS state bucket, Workload Identity)
+cd infrastructure/terraform/bootstrap/gcp
+terraform init && terraform apply
+
+# 3. Deploy the platform (~15-25 minutes)
+make deploy-gcp
+
+# 4. Access the dashboards
+make port-forward-mlflow   # MLflow at localhost:5000
+make port-forward-argocd   # ArgoCD at localhost:8080
+```
+
 ### Using the Makefile
 
 ```bash
@@ -217,12 +248,18 @@ make status-azure          # Check Azure deployment status
 make secrets-azure         # Retrieve secrets from Azure Key Vault
 make destroy-azure         # Destroy Azure resources
 
+# GCP Deployment
+make deploy-gcp            # Deploy to GCP GKE
+make status-gcp            # Check GCP deployment status
+make secrets-gcp           # Retrieve secrets from GCP Secret Manager
+make destroy-gcp           # Destroy GCP resources
+
 # Validation & Testing
 make validate              # Validate Terraform and Python
 make lint                  # Lint Python and Terraform code
 make test                  # Run unit tests
 
-# Development (after deployment - works with either cloud)
+# Development (after deployment - works with any cloud)
 make port-forward-mlflow   # Forward MLflow to localhost:5000
 make port-forward-argocd   # Forward ArgoCD to localhost:8080
 make port-forward-grafana  # Forward Grafana to localhost:3000
@@ -262,13 +299,14 @@ argo logs -n argo <workflow-name>
 
 ## CI/CD Pipeline
 
-Single unified pipeline with OIDC authentication for both clouds (no static credentials):
+Single unified pipeline with OIDC authentication for all clouds (no static credentials):
 
 | Trigger | What Happens |
 |---------|--------------|
-| **Push/PR** | Validate code, run tests, security scan, show terraform plan for both clouds |
+| **Push/PR** | Validate code, run tests, security scan, show terraform plan for all clouds |
 | **Manual: `aws` + `deploy-infra`** | Deploy AWS EKS infrastructure via Terraform |
 | **Manual: `azure` + `deploy-infra`** | Deploy Azure AKS infrastructure via Terraform |
+| **Manual: `gcp` + `deploy-infra`** | Deploy GCP GKE infrastructure via Terraform |
 | **Manual: `deploy-model`** | Deploy example InferenceServices to KServe |
 | **Local: `make destroy-*`** | Destroy infrastructure (safety - not in pipeline) |
 
@@ -281,15 +319,15 @@ Single unified pipeline with OIDC authentication for both clouds (no static cred
 │                                                                             │
 │  ON PUSH/PR (automatic):                                                    │
 │  ├── Lint Python (ruff)                                                     │
-│  ├── Validate Terraform (AWS + Azure)                                       │
+│  ├── Validate Terraform (AWS + Azure + GCP)                                 │
 │  ├── Validate Kubernetes manifests                                          │
 │  ├── Security scan (Trivy)                                                  │
 │  ├── Run tests (pytest)                                                     │
-│  └── Terraform plan (parallel: AWS and Azure)                               │
+│  └── Terraform plan (parallel: AWS, Azure, and GCP)                         │
 │                                                                             │
 │  MANUAL TRIGGER (Actions → CI/CD → Run workflow):                           │
-│  ├── Cloud: aws/azure                                                       │
-│  ├── deploy-infra  → Creates EKS/AKS cluster (~15-25 min)                   │
+│  ├── Cloud: aws/azure/gcp                                                   │
+│  ├── deploy-infra  → Creates EKS/AKS/GKE cluster (~15-25 min)               │
 │  └── deploy-model  → Deploys example InferenceServices                      │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -307,6 +345,12 @@ terraform -chdir=infrastructure/terraform/bootstrap/aws output github_actions_ro
 ```bash
 terraform -chdir=infrastructure/terraform/bootstrap/azure output -json
 # Add to GitHub: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
+```
+
+**For GCP:**
+```bash
+terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
+# Add to GitHub: GCP_PROJECT_ID, GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_SERVICE_ACCOUNT
 ```
 
 ## Cloud Resources
@@ -337,6 +381,20 @@ terraform -chdir=infrastructure/terraform/bootstrap/azure output -json
 | Managed Identities | Workload Identity for pod authentication |
 | Key Vault | Secrets management |
 
+### GCP Resources
+
+| Resource | Purpose |
+|----------|---------|
+| VPC Network | Networking with Cloud NAT for egress |
+| GKE Standard Cluster | Managed Kubernetes (v1.32, Stable channel) |
+| Node Pools | System (e2-standard-4), Training (Spot), GPU (T4, Spot) |
+| GCS Bucket | MLflow artifact storage |
+| Cloud SQL PostgreSQL | MLflow metadata backend (v17) |
+| Artifact Registry | Container images for ML models |
+| Workload Identity Federation | Pod authentication |
+| Secret Manager | Secrets management |
+| Node Auto-provisioning | Dynamic GPU node scaling |
+
 ### Cost Estimation
 
 **AWS (eu-west-1):**
@@ -365,29 +423,44 @@ terraform -chdir=infrastructure/terraform/bootstrap/azure output -json
 | Key Vault + Load Balancer | Standard | ~$23 |
 | **Total** | | **~$400-470/month** |
 
+**GCP (europe-west4):**
+
+| Resource | Configuration | Monthly Cost |
+|----------|---------------|--------------|
+| GKE Control Plane | Zonal (free tier) | $0 |
+| System Nodes | 2x e2-standard-4 | ~$100 |
+| Training Nodes | c2-standard-8 (Spot, scale-to-zero) | ~$30-50 |
+| GPU Nodes | n1-standard-8 + T4 (Spot, scale-to-zero) | ~$50-100 |
+| Cloud SQL | db-f1-micro | ~$10 |
+| GCS Storage | Standard | ~$5 |
+| Cloud NAT + Artifact Registry | Minimal | ~$10-20 |
+| **Total** | | **~$200-350/month** |
+
 **Cost Optimization:**
-- SPOT instances for training/GPU: 60-70% savings
+- SPOT/Preemptible instances for training/GPU: 60-70% savings
 - Scale-to-zero: Training and GPU nodes only run when needed
-- Single NAT Gateway (AWS) / Standard LB (Azure)
+- Single NAT Gateway (AWS) / Standard LB (Azure) / Cloud NAT (GCP)
+- GKE Zonal cluster for dev (free control plane)
 
 ## Roadmap
 
 ### Completed
 - [x] AWS EKS cluster with GPU support (Terraform)
 - [x] Azure AKS cluster with GPU support (Terraform)
+- [x] GCP GKE cluster with GPU support (Terraform)
 - [x] MLflow 3.x with cloud-native storage backends
 - [x] KServe for model serving
 - [x] ArgoCD for GitOps
 - [x] Argo Workflows for ML pipelines
 - [x] Karpenter for GPU autoscaling (AWS)
 - [x] KEDA for event-driven autoscaling (Azure)
+- [x] GKE Node Auto-provisioning for GPU autoscaling (GCP)
 - [x] CI/CD pipeline with multi-cloud support
 - [x] Security hardening (PSA, Kyverno policies, Tetragon runtime security)
 - [x] Observability (Prometheus, Grafana, alerts)
-- [x] External Secrets integration (SSM / Key Vault)
+- [x] External Secrets integration (SSM / Key Vault / Secret Manager)
 
 ### Future Enhancements
-- [ ] GCP GKE support
 - [ ] Distributed training support
 - [ ] Data versioning with DVC
 - [ ] Production environment configuration
@@ -413,10 +486,11 @@ terraform -chdir=infrastructure/terraform/bootstrap/azure output -json
 - Serverless inference with scale-to-zero
 
 ### Multi-Cloud Architecture
-- Same MLOps capabilities on AWS or Azure
-- Cloud-native implementations (IRSA vs Workload Identity, Karpenter vs KEDA)
+- Same MLOps capabilities on AWS, Azure, or GCP
+- Cloud-native implementations (IRSA vs Workload Identity vs WIF, Karpenter vs KEDA vs NAP)
 - Demonstrates enterprise-grade infrastructure patterns
 - Flexibility to deploy where your data resides
+- OIDC authentication throughout (no static credentials)
 
 ## Documentation
 

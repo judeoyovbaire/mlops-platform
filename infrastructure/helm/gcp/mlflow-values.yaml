@@ -1,0 +1,109 @@
+# MLflow Helm Values - GCP GKE (community-charts/mlflow v1.8.1)
+# Backend: Cloud SQL PostgreSQL, Artifacts: GCS Bucket
+replicaCount: 1
+
+# Use chart's default image which includes psycopg2 for PostgreSQL
+image:
+  repository: burakince/mlflow
+  tag: "3.7.0"
+  pullPolicy: IfNotPresent
+
+# Service account with GKE Workload Identity
+serviceAccount:
+  create: true
+  name: mlflow
+  annotations:
+    iam.gke.io/gcp-service-account: "${mlflow_service_account_email}"
+
+# Backend store - Cloud SQL PostgreSQL
+backendStore:
+  databaseMigration: true
+  postgres:
+    enabled: true
+    host: "${cloudsql_private_ip}"
+    port: 5432
+    database: "mlflow"
+    user: "mlflow"
+  # Use existing K8s secret for database credentials
+  existingDatabaseSecret:
+    name: "mlflow-db-credentials"
+    usernameKey: "username"
+    passwordKey: "password"
+
+# Artifact store - GCS Bucket
+artifactRoot:
+  gcs:
+    enabled: true
+    bucket: "${gcs_bucket_name}"
+
+# Environment variables
+extraEnvVars:
+  GOOGLE_CLOUD_PROJECT: "${project_id}"
+  MLFLOW_ARTIFACT_UPLOAD_DOWNLOAD_TIMEOUT: "600"
+
+# MLflow 3.x security settings
+extraArgs:
+  host: "0.0.0.0"
+  allowed-hosts: "*"
+  workers: "1"
+
+# Disable chart's gunicorn logging
+log:
+  enabled: false
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 5000
+
+# Resource configuration
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Pod security
+podSecurityContext:
+  runAsNonRoot: true
+  fsGroup: 1001
+  fsGroupChangePolicy: "OnRootMismatch"
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  capabilities:
+    drop:
+      - ALL
+
+# Probes
+livenessProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Ingress configuration (NGINX)
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+  hosts:
+    - host: mlflow.local
+      paths:
+        - path: /
+          pathType: Prefix

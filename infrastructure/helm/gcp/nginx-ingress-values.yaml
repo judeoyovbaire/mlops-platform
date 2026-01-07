@@ -1,0 +1,103 @@
+# NGINX Ingress Controller Helm Values - GCP GKE (ingress-nginx v4.14.1)
+# External LoadBalancer for ingress traffic
+
+controller:
+  # Replica count
+  replicaCount: 2
+
+  # Use GKE LoadBalancer
+  service:
+    enabled: true
+    type: LoadBalancer
+    annotations:
+      # GCP LoadBalancer annotations
+      cloud.google.com/load-balancer-type: "External"
+    externalTrafficPolicy: Local
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Pod anti-affinity for HA
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                    - ingress-nginx
+            topologyKey: kubernetes.io/hostname
+
+  # Metrics for Prometheus
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      namespace: monitoring
+
+  # Config
+  config:
+    # Enable proxy protocol for getting real client IP
+    use-proxy-protocol: "false"
+    # Increase body size for ML model uploads
+    proxy-body-size: "0"
+    # Timeouts
+    proxy-read-timeout: "600"
+    proxy-send-timeout: "600"
+    # Keep alive
+    keep-alive: "75"
+    # Enable HSTS
+    hsts: "true"
+    hsts-include-subdomains: "true"
+    hsts-max-age: "31536000"
+
+  # Pod security
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 101
+    fsGroup: 101
+
+  # Update strategy
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+
+  # Admission webhooks
+  admissionWebhooks:
+    enabled: true
+    failurePolicy: Fail
+
+# Default backend
+defaultBackend:
+  enabled: true
+  resources:
+    requests:
+      cpu: 10m
+      memory: 20Mi
+    limits:
+      cpu: 50m
+      memory: 50Mi
+
+# RBAC
+rbac:
+  create: true
+
+# Service account
+serviceAccount:
+  create: true
+  name: ingress-nginx
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
