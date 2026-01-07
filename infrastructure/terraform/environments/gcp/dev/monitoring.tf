@@ -11,7 +11,7 @@ resource "helm_release" "prometheus_stack" {
   namespace  = "monitoring"
 
   values = [
-    templatefile("${path.module}/../../../helm/gcp/prometheus-stack-values.yaml", {
+    templatefile("${path.module}/../../../../helm/gcp/prometheus-stack-values.yaml", {
       prometheus_service_account_email = module.gke.prometheus_service_account_email
     })
   ]

@@ -16,7 +16,7 @@ resource "helm_release" "nginx_ingress" {
   create_namespace = true
 
   values = [
-    file("${path.module}/../../../helm/gcp/nginx-ingress-values.yaml")
+    file("${path.module}/../../../../helm/gcp/nginx-ingress-values.yaml")
   ]
 
   depends_on = [module.gke]
@@ -60,7 +60,7 @@ resource "helm_release" "argocd" {
   create_namespace = true
 
   values = [
-    templatefile("${path.module}/../../../helm/gcp/argocd-values.yaml", {
+    templatefile("${path.module}/../../../../helm/gcp/argocd-values.yaml", {
       argocd_service_account_email = module.gke.argocd_service_account_email
     })
   ]
@@ -95,7 +95,7 @@ resource "helm_release" "kserve" {
   namespace  = "kserve"
 
   values = [
-    templatefile("${path.module}/../../../helm/gcp/kserve-values.yaml", {
+    templatefile("${path.module}/../../../../helm/gcp/kserve-values.yaml", {
       kserve_service_account_email = module.gke.kserve_service_account_email
     })
   ]
@@ -118,7 +118,7 @@ resource "helm_release" "mlflow" {
   namespace  = "mlflow"
 
   values = [
-    templatefile("${path.module}/../../../helm/gcp/mlflow-values.yaml", {
+    templatefile("${path.module}/../../../../helm/gcp/mlflow-values.yaml", {
       mlflow_service_account_email = module.gke.mlflow_service_account_email
       cloudsql_private_ip          = module.gke.cloudsql_private_ip
       gcs_bucket_name              = module.gke.mlflow_artifacts_bucket
@@ -146,7 +146,7 @@ resource "helm_release" "argo_workflows" {
   namespace  = "argo"
 
   values = [
-    templatefile("${path.module}/../../../helm/gcp/argo-workflows-values.yaml", {
+    templatefile("${path.module}/../../../../helm/gcp/argo-workflows-values.yaml", {
       argo_workflows_service_account_email = module.gke.argo_workflows_service_account_email
     })
   ]
