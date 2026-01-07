@@ -6,9 +6,8 @@ terraform {
   required_version = ">= 1.0"
 
   # GCS Backend for Terraform State
-  # Update bucket name after running bootstrap
   backend "gcs" {
-    bucket = "mlops-platform-tfstate-YOUR_PROJECT_ID"
+    bucket = "mlops-platform-tfstate-mlops-platform-dev-001"
     prefix = "mlops-platform/gcp/dev"
   }
 

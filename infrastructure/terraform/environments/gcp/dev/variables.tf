@@ -5,6 +5,7 @@
 variable "project_id" {
   description = "GCP project ID"
   type        = string
+  default     = "mlops-platform-dev-001"
 }
 
 variable "cluster_name" {

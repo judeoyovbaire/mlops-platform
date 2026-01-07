@@ -15,10 +15,13 @@ resource "google_service_account" "mlflow" {
 }
 
 # Allow Kubernetes SA to use this Google SA
+# Note: depends_on cluster because the workload identity pool is created with the cluster
 resource "google_service_account_iam_member" "mlflow_workload_identity" {
   service_account_id = google_service_account.mlflow.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[mlflow/mlflow]"
+
+  depends_on = [google_container_cluster.main]
 }
 
 # GCS access for MLflow artifacts
@@ -40,7 +43,7 @@ resource "google_project_iam_member" "mlflow_cloudsql" {
 # =============================================================================
 
 resource "google_service_account" "external_secrets" {
-  account_id   = "${var.cluster_name}-external-secrets"
+  account_id   = "${var.cluster_name}-eso"
   display_name = "External Secrets Operator Service Account"
   description  = "Service account for ESO to access Secret Manager"
   project      = var.project_id
@@ -51,6 +54,8 @@ resource "google_service_account_iam_member" "external_secrets_workload_identity
   service_account_id = google_service_account.external_secrets.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[external-secrets/external-secrets]"
+
+  depends_on = [google_container_cluster.main]
 }
 
 # Secret Manager access for ESO
@@ -65,7 +70,7 @@ resource "google_project_iam_member" "external_secrets_secretmanager" {
 # =============================================================================
 
 resource "google_service_account" "argo_workflows" {
-  account_id   = "${var.cluster_name}-argo-workflows"
+  account_id   = "${var.cluster_name}-argo"
   display_name = "Argo Workflows Service Account"
   description  = "Service account for Argo Workflows to access GCS artifacts"
   project      = var.project_id
@@ -76,6 +81,8 @@ resource "google_service_account_iam_member" "argo_server_workload_identity" {
   service_account_id = google_service_account.argo_workflows.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[argo/argo-workflows-server]"
+
+  depends_on = [google_container_cluster.main]
 }
 
 # Allow Kubernetes SA (controller) to use this Google SA
@@ -83,6 +90,8 @@ resource "google_service_account_iam_member" "argo_controller_workload_identity"
   service_account_id = google_service_account.argo_workflows.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[argo/argo-workflows-workflow-controller]"
+
+  depends_on = [google_container_cluster.main]
 }
 
 # GCS access for Argo artifacts (using MLflow artifacts bucket for simplicity)
@@ -108,12 +117,16 @@ resource "google_service_account_iam_member" "argocd_server_workload_identity" {
   service_account_id = google_service_account.argocd.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[argocd/argocd-server]"
+
+  depends_on = [google_container_cluster.main]
 }
 
 resource "google_service_account_iam_member" "argocd_controller_workload_identity" {
   service_account_id = google_service_account.argocd.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[argocd/argocd-application-controller]"
+
+  depends_on = [google_container_cluster.main]
 }
 
 # =============================================================================
@@ -132,6 +145,8 @@ resource "google_service_account_iam_member" "kserve_workload_identity" {
   service_account_id = google_service_account.kserve.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[kserve/kserve-controller-manager]"
+
+  depends_on = [google_container_cluster.main]
 }
 
 # Allow inference namespace default SA to use this Google SA
@@ -139,6 +154,8 @@ resource "google_service_account_iam_member" "kserve_inference_workload_identity
   service_account_id = google_service_account.kserve.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[mlops/default]"
+
+  depends_on = [google_container_cluster.main]
 }
 
 # GCS access for model artifacts
@@ -173,6 +190,8 @@ resource "google_service_account_iam_member" "prometheus_workload_identity" {
   service_account_id = google_service_account.prometheus.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[monitoring/prometheus-kube-prometheus-prometheus]"
+
+  depends_on = [google_container_cluster.main]
 }
 
 # Monitoring viewer for GCP metrics
