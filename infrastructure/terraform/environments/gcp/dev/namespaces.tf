@@ -89,9 +89,9 @@ resource "kubernetes_service_account" "mlflow" {
       "app.kubernetes.io/managed-by" = "Helm"
     }
     annotations = {
-      "iam.gke.io/gcp-service-account"  = module.gke.mlflow_service_account_email
-      "meta.helm.sh/release-name"       = "mlflow"
-      "meta.helm.sh/release-namespace"  = "mlflow"
+      "iam.gke.io/gcp-service-account" = module.gke.mlflow_service_account_email
+      "meta.helm.sh/release-name"      = "mlflow"
+      "meta.helm.sh/release-namespace" = "mlflow"
     }
   }
 
