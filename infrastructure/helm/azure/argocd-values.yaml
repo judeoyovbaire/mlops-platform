@@ -62,11 +62,11 @@ redis:
       cpu: 200m
       memory: 256Mi
 
-# Dex (SSO) - disabled for simplicity
+# Dex (SSO) - enable for production with Azure AD/OIDC
 dex:
   enabled: false
 
-# Notifications - disabled for simplicity
+# Notifications - enable for Slack/email alerts in production
 notifications:
   enabled: false
 

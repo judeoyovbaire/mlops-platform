@@ -97,7 +97,11 @@ grafana:
   enabled: true
   replicas: 1
   adminUser: admin
-  # Password from External Secret
+  # Password from Azure Key Vault via External Secrets
+  admin:
+    existingSecret: grafana-admin-credentials
+    userKey: username
+    passwordKey: password
 
   persistence:
     enabled: true

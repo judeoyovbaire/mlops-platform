@@ -87,14 +87,8 @@ alertmanager:
     receivers:
       - name: 'null'
       - name: 'critical-alerts'
-        # Configure Slack, PagerDuty, etc. here
-        # slack_configs:
-        #   - api_url: 'https://hooks.slack.com/services/xxx'
-        #     channel: '#alerts-critical'
+        # Configure notification channels (Slack, PagerDuty, etc.) for production
       - name: 'warning-alerts'
-        # slack_configs:
-        #   - api_url: 'https://hooks.slack.com/services/xxx'
-        #     channel: '#alerts-warning'
     inhibit_rules:
       - source_match:
           severity: 'critical'
@@ -106,7 +100,12 @@ alertmanager:
 grafana:
   enabled: true
   replicas: 1
-  adminPassword: admin  # Change in production or use external secrets
+  adminUser: admin
+  # Password from AWS Secrets Manager via External Secrets
+  admin:
+    existingSecret: grafana-admin-credentials
+    userKey: username
+    passwordKey: password
 
   persistence:
     enabled: true

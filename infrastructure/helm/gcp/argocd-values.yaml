@@ -74,7 +74,7 @@ redis:
       cpu: 100m
       memory: 128Mi
 
-# Notifications (disabled)
+# Notifications - enable for Slack/email alerts in production
 notifications:
   enabled: false
 
@@ -90,7 +90,7 @@ applicationSet:
       cpu: 100m
       memory: 128Mi
 
-# Dex (SSO - disabled for dev)
+# Dex (SSO) - enable for production with Google/OIDC
 dex:
   enabled: false
 

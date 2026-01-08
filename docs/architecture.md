@@ -2,7 +2,7 @@
 
 ## Overview
 
-The MLOps Platform is designed to provide a complete ML lifecycle management solution on **AWS EKS** or **Azure AKS**. It follows cloud-native principles and enables teams to build, train, deploy, and monitor ML models at scale with the same capabilities on either cloud.
+The MLOps Platform is designed to provide a complete ML lifecycle management solution on **AWS EKS**, **Azure AKS**, or **GCP GKE**. It follows cloud-native principles and enables teams to build, train, deploy, and monitor ML models at scale with the same capabilities on any cloud.
 
 ## Multi-Cloud Design
 
@@ -212,14 +212,15 @@ All platform configurations are managed through Git, enabling:
 
 ## Cloud Providers
 
-The platform supports both AWS and Azure with production-ready Terraform modules:
+The platform supports AWS, Azure, and GCP with production-ready Terraform modules:
 
 | Cloud | Module         | Status             | Key Services                            |
 |-------|----------------|--------------------|-----------------------------------------|
 | AWS   | `modules/eks`  | **Production Ready** | EKS, S3, RDS, ALB, IRSA               |
 | Azure | `modules/aks`  | **Production Ready** | AKS, Blob, PostgreSQL, Key Vault, ACR |
+| GCP   | `modules/gke`  | **Production Ready** | GKE, GCS, Cloud SQL, Secret Manager   |
 
-The Kubernetes layer (KServe, MLflow, ArgoCD) is cloud-agnostic and works identically on both providers.
+The Kubernetes layer (KServe, MLflow, ArgoCD) is cloud-agnostic and works identically on all providers.
 
 ## Infrastructure
 
