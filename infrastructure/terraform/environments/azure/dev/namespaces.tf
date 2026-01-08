@@ -1,6 +1,10 @@
 # =============================================================================
 # Kubernetes Namespaces with Pod Security Admission
 # =============================================================================
+# Enforcement strategy:
+# - mlops, kserve: restricted (inference workloads should be hardened)
+# - mlflow: restricted (tracking server is stateless)
+# - keda, monitoring: baseline/privileged (system components)
 
 # MLOps namespace for inference services
 resource "kubernetes_namespace" "mlops" {
@@ -9,7 +13,7 @@ resource "kubernetes_namespace" "mlops" {
 
     labels = {
       "app.kubernetes.io/managed-by"       = "terraform"
-      "pod-security.kubernetes.io/enforce" = "baseline"
+      "pod-security.kubernetes.io/enforce" = "restricted"
       "pod-security.kubernetes.io/warn"    = "restricted"
     }
   }
@@ -24,7 +28,7 @@ resource "kubernetes_namespace" "mlflow" {
 
     labels = {
       "app.kubernetes.io/managed-by"       = "terraform"
-      "pod-security.kubernetes.io/enforce" = "baseline"
+      "pod-security.kubernetes.io/enforce" = "restricted"
       "pod-security.kubernetes.io/warn"    = "restricted"
     }
   }

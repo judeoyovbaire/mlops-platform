@@ -1,7 +1,7 @@
 # ArgoCD Helm Chart Values for AWS EKS
 
 global:
-  domain: ""
+  domain: argocd.mlops.local
 
 # Server configuration
 server:
@@ -14,13 +14,18 @@ server:
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/backend-protocol: HTTPS
-      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
-      alb.ingress.kubernetes.io/ssl-redirect: "443"
-    hosts: []
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/certificate-arn: ""  # Add ACM cert ARN for production
+    hosts:
+      - argocd.mlops.local
+    tls:
+      - hosts:
+          - argocd.mlops.local
+        secretName: argocd-server-tls
 
-  # Insecure mode for ALB (ALB handles TLS)
-  extraArgs:
-    - --insecure
+  # TLS Configuration - ArgoCD handles TLS internally
+  # For production: Use cert-manager with Let's Encrypt or ACM certificates
+  extraArgs: []
 
   resources:
     requests:

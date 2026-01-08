@@ -1,20 +1,24 @@
 # ArgoCD Helm Values - Azure AKS (chart v7.x)
 global:
-  domain: argocd.local
+  domain: argocd.mlops.local
 
 # Server configuration
 server:
   replicas: 1
 
-  # NGINX Ingress
+  # NGINX Ingress with TLS
   ingress:
     enabled: true
     ingressClassName: nginx
     annotations:
       nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+      nginx.ingress.kubernetes.io/ssl-passthrough: "true"
     hosts:
-      - argocd.local
-    tls: []  # Disabled - using --insecure mode
+      - argocd.mlops.local
+    tls:
+      - hosts:
+          - argocd.mlops.local
+        secretName: argocd-server-tls
 
   # Resource configuration
   resources:
@@ -25,9 +29,9 @@ server:
       cpu: 500m
       memory: 512Mi
 
-  # Extra arguments
-  extraArgs:
-    - --insecure
+  # TLS Configuration - ArgoCD handles TLS internally
+  # For production: Use cert-manager with Let's Encrypt or Azure DNS integration
+  extraArgs: []
 
 # Repo server
 repoServer:
@@ -78,7 +82,7 @@ applicationSet:
 # Configs
 configs:
   params:
-    server.insecure: true
+    server.insecure: false
 
   # Resource customizations for KServe InferenceService
   cm:

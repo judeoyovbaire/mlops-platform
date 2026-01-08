@@ -3,13 +3,18 @@
 # =============================================================================
 # Creates namespaces with Pod Security Admission (PSA) labels
 # https://kubernetes.io/docs/concepts/security/pod-security-standards/
+#
+# Enforcement strategy:
+# - mlops, kserve, mlflow: restricted (workloads should be hardened)
+# - argo, argocd: baseline (workflow executors need elevated permissions)
+# - monitoring: privileged (node-exporter requires host access)
 
 # MLOps namespace - for model serving and inference
 resource "kubernetes_namespace" "mlops" {
   metadata {
     name = "mlops"
     labels = {
-      "pod-security.kubernetes.io/enforce" = "baseline"
+      "pod-security.kubernetes.io/enforce" = "restricted"
       "pod-security.kubernetes.io/warn"    = "restricted"
       "pod-security.kubernetes.io/audit"   = "restricted"
     }
@@ -23,7 +28,7 @@ resource "kubernetes_namespace" "mlflow" {
   metadata {
     name = "mlflow"
     labels = {
-      "pod-security.kubernetes.io/enforce" = "baseline"
+      "pod-security.kubernetes.io/enforce" = "restricted"
       "pod-security.kubernetes.io/warn"    = "restricted"
       "pod-security.kubernetes.io/audit"   = "restricted"
     }
@@ -51,7 +56,7 @@ resource "kubernetes_namespace" "kserve" {
   metadata {
     name = "kserve"
     labels = {
-      "pod-security.kubernetes.io/enforce" = "baseline"
+      "pod-security.kubernetes.io/enforce" = "restricted"
       "pod-security.kubernetes.io/warn"    = "restricted"
       "pod-security.kubernetes.io/audit"   = "restricted"
     }

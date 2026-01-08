@@ -101,7 +101,7 @@ configs:
     createSecret: false
 
   params:
-    server.insecure: true
+    server.insecure: false
 
   cm:
     url: https://argocd.local

@@ -56,6 +56,17 @@ variable "tags" {
   }
 }
 
+variable "kserve_ingress_domain" {
+  description = "Domain for KServe inference services ingress"
+  type        = string
+  default     = "inference.mlops.local"
+
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9.-]*[a-z0-9]$", var.kserve_ingress_domain))
+    error_message = "Domain must be a valid DNS name."
+  }
+}
+
 # =============================================================================
 # Helm Chart Versions
 # Centralized version management for all Helm releases

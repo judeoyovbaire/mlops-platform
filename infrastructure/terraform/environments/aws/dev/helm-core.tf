@@ -128,7 +128,7 @@ resource "helm_release" "kserve_controller" {
 
   set {
     name  = "kserve.controller.ingress.ingressDomain"
-    value = "example.com"
+    value = var.kserve_ingress_domain
   }
 
   depends_on = [helm_release.kserve]

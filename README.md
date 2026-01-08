@@ -59,7 +59,7 @@ Deploy to **AWS**, **Azure**, or **GCP** - same MLOps capabilities, cloud-native
 │         │                   │                   │                         │
 │         ▼                   ▼                   ▼                         │
 │  ┌────────────────────────────────────────────────────────────────────┐   │
-│  │                 Kubernetes (EKS / AKS / GKE)                        │   │
+│  │                 Kubernetes (EKS / AKS / GKE)                       │   │
 │  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐   │   │
 │  │  │ GPU     │  │ Storage │  │ Ingress │  │ Prom/   │  │ ArgoCD  │   │   │
 │  │  │ Nodes   │  │ Backend │  │         │  │ Grafana │  │ GitOps  │   │   │

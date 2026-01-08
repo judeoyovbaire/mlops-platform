@@ -271,11 +271,11 @@ spec:
 ---
 # KServe namespace policies
 ---
-# Allow KServe controller webhook and management traffic
-# Note: We allow all ingress to kserve namespace because:
-# 1. Webhook server needs to receive admission requests from API server
-# 2. Controller needs to be accessible for health checks
-# In production, this can be tightened based on specific requirements
+# KServe controller network policy
+# Restricts traffic to only necessary ports and sources:
+# - Webhook server (9443): Receives admission requests from API server
+# - Metrics (8443): Prometheus scraping
+# - Health checks (8081): Readiness/liveness probes
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -289,10 +289,20 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow webhook calls from any namespace (API server proxies these)
-    - ports:
+    # Webhook calls from API server (proxied through kube-system)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
         - protocol: TCP
           port: 9443
+    # Metrics and health checks from monitoring namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
         - protocol: TCP
           port: 8443
         - protocol: TCP

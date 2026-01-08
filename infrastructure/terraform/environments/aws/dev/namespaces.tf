@@ -2,12 +2,15 @@
 # Kubernetes Namespaces with Pod Security Standards (PSA)
 # =============================================================================
 # PSA enforcement levels:
-# - restricted: Highly restricted, follows Pod hardening best practices (mlops, mlflow, kserve)
-# - baseline: Minimally restrictive, prevents known privilege escalations (argo, monitoring)
+# - restricted: Highly restricted, follows Pod hardening best practices
+# - baseline: Minimally restrictive, prevents known privilege escalations
 # - privileged: Unrestricted (system namespaces only)
 #
-# Using "warn" mode initially to identify violations without blocking deployments
-# Change to "enforce" after validating all workloads comply
+# Enforcement strategy:
+# - mlops, kserve: restricted (inference workloads should be hardened)
+# - mlflow: restricted (tracking server is stateless)
+# - argo: baseline (workflow executor needs some elevated permissions)
+# - monitoring, kyverno, tetragon: privileged (system components)
 
 resource "kubernetes_namespace" "mlops" {
   metadata {
@@ -15,7 +18,7 @@ resource "kubernetes_namespace" "mlops" {
     labels = {
       "app.kubernetes.io/name"                     = "mlops-platform"
       "app.kubernetes.io/part-of"                  = "mlops-platform"
-      "pod-security.kubernetes.io/enforce"         = "baseline"
+      "pod-security.kubernetes.io/enforce"         = "restricted"
       "pod-security.kubernetes.io/enforce-version" = "latest"
       "pod-security.kubernetes.io/warn"            = "restricted"
       "pod-security.kubernetes.io/warn-version"    = "latest"
@@ -33,7 +36,7 @@ resource "kubernetes_namespace" "mlflow" {
     labels = {
       "app.kubernetes.io/name"                     = "mlops-platform"
       "app.kubernetes.io/part-of"                  = "mlops-platform"
-      "pod-security.kubernetes.io/enforce"         = "baseline"
+      "pod-security.kubernetes.io/enforce"         = "restricted"
       "pod-security.kubernetes.io/enforce-version" = "latest"
       "pod-security.kubernetes.io/warn"            = "restricted"
       "pod-security.kubernetes.io/warn-version"    = "latest"
@@ -70,7 +73,7 @@ resource "kubernetes_namespace" "kserve" {
     labels = {
       "app.kubernetes.io/name"                     = "mlops-platform"
       "app.kubernetes.io/part-of"                  = "mlops-platform"
-      "pod-security.kubernetes.io/enforce"         = "baseline"
+      "pod-security.kubernetes.io/enforce"         = "restricted"
       "pod-security.kubernetes.io/enforce-version" = "latest"
       "pod-security.kubernetes.io/warn"            = "restricted"
       "pod-security.kubernetes.io/warn-version"    = "latest"
@@ -101,21 +104,8 @@ resource "kubernetes_secret" "mlflow_postgres" {
   depends_on = [kubernetes_namespace.mlflow]
 }
 
-resource "kubernetes_secret" "mlflow_s3" {
-  metadata {
-    name      = "mlflow-s3"
-    namespace = kubernetes_namespace.mlflow.metadata[0].name
-  }
-
-  # Using IRSA, so no need for static credentials
-  # These are placeholders - actual auth uses service account
-  data = {
-    access-key = "use-irsa"
-    secret-key = "use-irsa"
-  }
-
-  depends_on = [kubernetes_namespace.mlflow]
-}
+# Note: S3 credentials not needed - MLflow uses IRSA (IAM Roles for Service Accounts)
+# The service account below is annotated with the IAM role ARN
 
 # Service account for MLflow with IRSA
 resource "kubernetes_service_account" "mlflow" {
