@@ -1,0 +1,168 @@
+# Canary Deployment Example for KServe
+# Demonstrates progressive rollout with traffic splitting
+#
+# Usage:
+#   1. Deploy base model: kubectl apply -f canary-inferenceservice.yaml
+#   2. Update canaryTrafficPercent to gradually shift traffic
+#   3. Monitor metrics in Grafana before promoting
+#   4. Promote: set canaryTrafficPercent to 0 and update default to new version
+
+---
+# Canary InferenceService with traffic splitting
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: sklearn-iris-canary
+  namespace: mlops
+  labels:
+    app.kubernetes.io/name: sklearn-iris-canary
+    app.kubernetes.io/component: inference
+    app.kubernetes.io/part-of: mlops-platform
+    deployment-strategy: canary
+  annotations:
+    # Track model versions for audit
+    mlops.platform/model-version: "v2"
+    mlops.platform/previous-version: "v1"
+spec:
+  predictor:
+    # Canary: 10% traffic to new model version
+    # Increase gradually: 10 -> 25 -> 50 -> 100
+    canaryTrafficPercent: 10
+    serviceAccountName: kserve-inference
+    minReplicas: 1
+    maxReplicas: 5
+    scaleTarget: 10  # requests per second per replica
+    scaleMetric: concurrency
+    model:
+      modelFormat:
+        name: sklearn
+      # New model version (v2)
+      storageUri: gs://kfserving-examples/models/sklearn/1.0/model
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    # Readiness probe for health checks
+    readinessProbe:
+      httpGet:
+        path: /v1/models/sklearn-iris-canary
+        port: 8080
+      initialDelaySeconds: 10
+      periodSeconds: 5
+
+---
+# PrometheusRule for canary-specific alerting
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: canary-deployment-alerts
+  namespace: mlops
+  labels:
+    release: prometheus
+    app.kubernetes.io/part-of: mlops-platform
+spec:
+  groups:
+    - name: canary.rules
+      rules:
+        # Alert if canary has higher error rate than stable
+        - alert: CanaryHigherErrorRate
+          expr: |
+            (
+              sum(rate(revision_request_count{response_code!="200",revision_name=~".*canary.*"}[5m])) by (service_name)
+              /
+              sum(rate(revision_request_count{revision_name=~".*canary.*"}[5m])) by (service_name)
+            )
+            >
+            (
+              sum(rate(revision_request_count{response_code!="200",revision_name!~".*canary.*"}[5m])) by (service_name)
+              /
+              sum(rate(revision_request_count{revision_name!~".*canary.*"}[5m])) by (service_name)
+            ) * 1.5
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Canary {{ $labels.service_name }} has 50% higher error rate"
+            description: "Consider rolling back the canary deployment"
+
+        # Alert if canary latency is significantly higher
+        - alert: CanaryHigherLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(revision_request_latencies_bucket{revision_name=~".*canary.*"}[5m])) by (le, service_name)
+            )
+            >
+            histogram_quantile(0.95,
+              sum(rate(revision_request_latencies_bucket{revision_name!~".*canary.*"}[5m])) by (le, service_name)
+            ) * 1.3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Canary {{ $labels.service_name }} has 30% higher latency"
+            description: "P95 latency for canary is significantly higher than stable"
+
+---
+# Rollback script as ConfigMap (for reference)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: canary-rollback-script
+  namespace: mlops
+  labels:
+    app.kubernetes.io/part-of: mlops-platform
+data:
+  rollback.sh: |
+    #!/bin/bash
+    # Canary Rollback Script
+    # Usage: ./rollback.sh <inferenceservice-name>
+
+    SERVICE_NAME=${1:-sklearn-iris-canary}
+    NAMESPACE=${NAMESPACE:-mlops}
+
+    echo "Rolling back canary for $SERVICE_NAME in $NAMESPACE..."
+
+    # Set canary traffic to 0
+    kubectl patch inferenceservice $SERVICE_NAME -n $NAMESPACE \
+      --type=merge \
+      -p '{"spec":{"predictor":{"canaryTrafficPercent": 0}}}'
+
+    echo "Canary traffic set to 0%. Stable version receiving 100% traffic."
+    echo ""
+    echo "Next steps:"
+    echo "1. Investigate issues with canary version"
+    echo "2. Update storageUri to previous version if needed"
+    echo "3. Monitor metrics in Grafana"
+
+  promote.sh: |
+    #!/bin/bash
+    # Canary Promotion Script
+    # Usage: ./promote.sh <inferenceservice-name>
+
+    SERVICE_NAME=${1:-sklearn-iris-canary}
+    NAMESPACE=${NAMESPACE:-mlops}
+
+    echo "Promoting canary for $SERVICE_NAME in $NAMESPACE..."
+
+    # Get current canary traffic
+    CURRENT=$(kubectl get inferenceservice $SERVICE_NAME -n $NAMESPACE \
+      -o jsonpath='{.spec.predictor.canaryTrafficPercent}')
+
+    case $CURRENT in
+      10) NEW=25 ;;
+      25) NEW=50 ;;
+      50) NEW=100 ;;
+      100) echo "Already at 100%"; exit 0 ;;
+      *) echo "Unknown state: $CURRENT"; exit 1 ;;
+    esac
+
+    kubectl patch inferenceservice $SERVICE_NAME -n $NAMESPACE \
+      --type=merge \
+      -p "{\"spec\":{\"predictor\":{\"canaryTrafficPercent\": $NEW}}}"
+
+    echo "Canary traffic increased from $CURRENT% to $NEW%"
+    echo ""
+    echo "Monitor metrics for 5-10 minutes before next promotion."

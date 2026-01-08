@@ -469,6 +469,8 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 
 | Example | Description | Complexity |
 |---------|-------------|------------|
+| [KServe Basic](examples/kserve/) | sklearn model with production config | Beginner |
+| [Canary Deployment](examples/canary-deployment/) | Progressive rollout with traffic splitting | Intermediate |
 | [LLM Inference](examples/llm-inference/) | Mistral-7B with vLLM on GPU | Advanced |
 
 ## Why These Tools?

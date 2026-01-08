@@ -154,6 +154,72 @@ spec:
             summary: "Low GPU utilization for {{ $labels.pod }}"
             description: "GPU utilization is below 20% for pod {{ $labels.pod }}. Consider scaling down."
 
+        # GPU memory exhaustion
+        - alert: HighGPUMemoryUsage
+          expr: |
+            avg(DCGM_FI_DEV_FB_USED / DCGM_FI_DEV_FB_TOTAL * 100) by (pod) > 90
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High GPU memory usage for {{ $labels.pod }}"
+            description: "GPU memory usage is above 90% for pod {{ $labels.pod }}. Risk of OOM."
+
+        # Inference service not ready
+        - alert: InferenceServiceNotReady
+          expr: |
+            kube_deployment_status_replicas_available{namespace="mlops"} < kube_deployment_spec_replicas{namespace="mlops"}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Inference service {{ $labels.deployment }} not fully available"
+            description: "{{ $labels.deployment }} has only {{ $value }} of {{ $labels.replicas }} replicas available"
+
+        # Persistent Volume usage high
+        - alert: HighPVUsage
+          expr: |
+            kubelet_volume_stats_used_bytes{namespace=~"mlflow|argo"} / kubelet_volume_stats_capacity_bytes * 100 > 85
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High storage usage on {{ $labels.persistentvolumeclaim }}"
+            description: "PVC {{ $labels.persistentvolumeclaim }} is {{ $value | printf \"%.1f\" }}% full"
+
+        # Certificate expiring soon
+        - alert: TLSCertificateExpiringSoon
+          expr: |
+            certmanager_certificate_expiration_timestamp_seconds - time() < 604800
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "TLS certificate {{ $labels.name }} expiring soon"
+            description: "Certificate {{ $labels.name }} in namespace {{ $labels.namespace }} expires in less than 7 days"
+
+        # Kyverno policy violations
+        - alert: KyvernoPolicyViolations
+          expr: |
+            increase(kyverno_policy_results_total{rule_result="fail"}[1h]) > 0
+          for: 5m
+          labels:
+            severity: info
+          annotations:
+            summary: "Kyverno policy violation detected"
+            description: "Policy {{ $labels.policy_name }} has been violated. Check resources for compliance."
+
+        # Model prediction queue depth (for batch inference)
+        - alert: HighPredictionQueueDepth
+          expr: |
+            sum(revision_queue_depth{namespace="mlops"}) by (revision_name) > 100
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High queue depth for {{ $labels.revision_name }}"
+            description: "Prediction queue depth is {{ $value }} for {{ $labels.revision_name }}. Consider scaling up."
+
 ---
 # Grafana Dashboard ConfigMap (for auto-provisioning)
 apiVersion: v1
