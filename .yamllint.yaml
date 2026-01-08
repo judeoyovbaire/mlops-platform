@@ -1,0 +1,47 @@
+# YAML Lint Configuration for MLOps Platform
+
+extends: default
+
+rules:
+  # Allow long lines in Kubernetes manifests
+  line-length:
+    max: 200
+    level: warning
+
+  # Kubernetes uses both true/false and "true"/"false"
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no']
+    check-keys: false
+
+  # Allow inline comments
+  comments:
+    min-spaces-from-content: 1
+
+  # Indentation
+  indentation:
+    spaces: 2
+    indent-sequences: consistent
+
+  # Don't require document start marker
+  document-start: disable
+
+  # Allow empty values (common in Helm)
+  empty-values:
+    forbid-in-block-mappings: false
+    forbid-in-flow-mappings: false
+
+  # Brackets style
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # Braces style
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+ignore: |
+  .terraform/
+  node_modules/
+  .git/
+  infrastructure/terraform/**/.terraform.lock.hcl
