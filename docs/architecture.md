@@ -4,6 +4,74 @@
 
 The MLOps Platform is designed to provide a complete ML lifecycle management solution on **AWS EKS**, **Azure AKS**, or **GCP GKE**. It follows cloud-native principles and enables teams to build, train, deploy, and monitor ML models at scale with the same capabilities on any cloud.
 
+## System Architecture
+
+```mermaid
+flowchart TB
+    subgraph Users["Users & CI/CD"]
+        DS[Data Scientists]
+        CI[GitHub Actions]
+    end
+
+    subgraph GitOps["GitOps Layer"]
+        ArgoCD[ArgoCD]
+        Git[(Git Repository)]
+    end
+
+    subgraph MLPlatform["ML Platform Layer"]
+        direction TB
+        Argo[Argo Workflows]
+        MLflow[MLflow 3.x]
+        KServe[KServe]
+    end
+
+    subgraph Security["Security Layer"]
+        PSA[Pod Security Admission]
+        Kyverno[Kyverno Policies]
+        Tetragon[Tetragon Runtime]
+    end
+
+    subgraph Observability["Observability"]
+        Prometheus[Prometheus]
+        Grafana[Grafana]
+    end
+
+    subgraph K8s["Kubernetes Cluster"]
+        direction TB
+        subgraph CloudSpecific["Cloud-Specific"]
+            AWS["AWS EKS<br/>Karpenter + ALB + IRSA"]
+            Azure["Azure AKS<br/>KEDA + NGINX + Workload ID"]
+            GCP["GCP GKE<br/>NAP + NGINX + WIF"]
+        end
+        subgraph Storage["Storage Backend"]
+            S3["S3 / Blob / GCS"]
+            DB["RDS / PostgreSQL / Cloud SQL"]
+        end
+    end
+
+    DS -->|git push| Git
+    CI -->|terraform apply| K8s
+    Git -->|sync| ArgoCD
+    ArgoCD -->|deploy| MLPlatform
+
+    Argo -->|track experiments| MLflow
+    MLflow -->|register models| KServe
+    Argo -->|store artifacts| S3
+    MLflow -->|metadata| DB
+
+    PSA -.->|enforce| MLPlatform
+    Kyverno -.->|validate| MLPlatform
+    Tetragon -.->|monitor| MLPlatform
+
+    Prometheus -->|scrape| MLPlatform
+    Prometheus -->|scrape| K8s
+    Grafana -->|visualize| Prometheus
+
+    style AWS fill:#ff9900
+    style Azure fill:#0078d4
+    style GCP fill:#4285f4
+```
+
 ## Multi-Cloud Design
 
 The platform uses a layered architecture that maximizes code reuse while leveraging cloud-native services:
@@ -388,10 +456,10 @@ Native Kubernetes pod security using namespace labels:
 
 | Namespace | Enforce Level | Warn Level | Audit Level | Rationale |
 |-----------|---------------|------------|-------------|-----------|
-| `mlops` | baseline | restricted | restricted | ML inference workloads |
-| `mlflow` | baseline | restricted | restricted | Experiment tracking |
-| `kserve` | baseline | restricted | restricted | Model serving |
-| `argo` | baseline | baseline | restricted | Pipeline execution |
+| `mlops` | **restricted** | restricted | restricted | ML inference workloads (hardened) |
+| `mlflow` | **restricted** | restricted | restricted | Experiment tracking (stateless) |
+| `kserve` | **restricted** | restricted | restricted | Model serving controller |
+| `argo` | baseline | restricted | restricted | Pipeline executor needs elevated perms |
 | `monitoring` | privileged | - | - | Node-exporter needs hostPath |
 | `kyverno` | privileged | - | - | Admission controller |
 | `tetragon` | privileged | - | - | eBPF runtime security |

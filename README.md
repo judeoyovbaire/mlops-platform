@@ -494,8 +494,10 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 
 ## Documentation
 
-- [Architecture Deep Dive](docs/architecture.md)
-- [LLM Inference Example](examples/llm-inference/README.md)
+- [Quick Start Guide](docs/QUICKSTART.md) - Deploy your first model in 5 minutes
+- [Architecture Deep Dive](docs/architecture.md) - System design and component details
+- [Secrets Management](docs/secrets-management.md) - Credential rotation and security
+- [LLM Inference Example](examples/llm-inference/README.md) - GPU-based model serving
 
 ## License
 
