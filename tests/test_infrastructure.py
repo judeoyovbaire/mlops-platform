@@ -44,8 +44,10 @@ class TestTerraformConfiguration:
             capture_output=True,
             text=True
         )
-        # Accept either success or skip if not initialized
-        assert result.returncode == 0 or "Could not satisfy plugin requirements" in result.stderr
+        # Accept success or skip if not initialized (missing providers)
+        not_initialized = ("Could not satisfy plugin requirements" in result.stderr or
+                          "Missing required provider" in result.stderr)
+        assert result.returncode == 0 or not_initialized
 
     @pytest.mark.skipif(not TERRAFORM_AVAILABLE, reason="terraform not installed")
     def test_azure_terraform_valid(self, azure_tf_dir):
@@ -59,7 +61,9 @@ class TestTerraformConfiguration:
             capture_output=True,
             text=True
         )
-        assert result.returncode == 0 or "Could not satisfy plugin requirements" in result.stderr
+        not_initialized = ("Could not satisfy plugin requirements" in result.stderr or
+                          "Missing required provider" in result.stderr)
+        assert result.returncode == 0 or not_initialized
 
     @pytest.mark.skipif(not TERRAFORM_AVAILABLE, reason="terraform not installed")
     def test_gcp_terraform_valid(self, gcp_tf_dir):
@@ -73,7 +77,9 @@ class TestTerraformConfiguration:
             capture_output=True,
             text=True
         )
-        assert result.returncode == 0 or "Could not satisfy plugin requirements" in result.stderr
+        not_initialized = ("Could not satisfy plugin requirements" in result.stderr or
+                          "Missing required provider" in result.stderr)
+        assert result.returncode == 0 or not_initialized
 
     def test_all_environments_have_required_files(self):
         """Verify all environments have required Terraform files."""
