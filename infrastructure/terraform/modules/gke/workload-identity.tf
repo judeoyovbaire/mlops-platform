@@ -158,6 +158,15 @@ resource "google_service_account_iam_member" "kserve_inference_workload_identity
   depends_on = [google_container_cluster.main]
 }
 
+# Allow kserve-inference SA to use this Google SA (used by InferenceServices)
+resource "google_service_account_iam_member" "kserve_inference_sa_workload_identity" {
+  service_account_id = google_service_account.kserve.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[mlops/kserve-inference]"
+
+  depends_on = [google_container_cluster.main]
+}
+
 # GCS access for model artifacts
 resource "google_storage_bucket_iam_member" "kserve_gcs" {
   bucket = google_storage_bucket.mlflow_artifacts.name
