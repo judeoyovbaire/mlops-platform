@@ -115,8 +115,7 @@ AWS EKS                       │  Azure AKS                   │  GCP GKE
 ```
 mlops-platform/
 ├── .github/workflows/          # CI/CD pipeline (multi-cloud)
-├── components/
-│   └── kserve/                 # KServe InferenceService examples
+├── docs/                       # Documentation and runbooks
 ├── examples/
 │   └── llm-inference/          # LLM with vLLM (advanced)
 ├── infrastructure/
@@ -270,7 +269,7 @@ make deploy-example        # Deploy example inference service
 
 ```bash
 # Deploy example inference services
-kubectl apply -f components/kserve/inferenceservice-examples.yaml
+kubectl apply -f examples/kserve/inferenceservice-examples.yaml
 
 # Check status
 kubectl get inferenceservice -n mlops
@@ -459,11 +458,11 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 - [x] Security hardening (PSA, Kyverno policies, Tetragon runtime security)
 - [x] Observability (Prometheus, Grafana, alerts)
 - [x] External Secrets integration (SSM / Key Vault / Secret Manager)
+- [x] Distributed training examples (Kubeflow Training Operator)
+- [x] Data versioning examples (DVC integration)
 
 ### Future Enhancements
-- [ ] Distributed training support
-- [ ] Data versioning with DVC
-- [ ] Production environment configuration
+- [ ] Production environment configuration (multi-cloud)
 
 ## Examples
 
@@ -471,7 +470,10 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 |---------|-------------|------------|
 | [KServe Basic](examples/kserve/) | sklearn model with production config | Beginner |
 | [Canary Deployment](examples/canary-deployment/) | Progressive rollout with traffic splitting | Intermediate |
+| [Data Versioning](examples/data-versioning/) | DVC integration for dataset management | Intermediate |
+| [Distributed Training](examples/distributed-training/) | PyTorch DDP with Kubeflow Training Operator | Advanced |
 | [LLM Inference](examples/llm-inference/) | Mistral-7B with vLLM on GPU | Advanced |
+| [Drift Detection](examples/drift-detection/) | Model monitoring with Evidently | Advanced |
 
 ## Why These Tools?
 
