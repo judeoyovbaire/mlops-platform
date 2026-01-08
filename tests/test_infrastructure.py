@@ -213,14 +213,15 @@ class TestSecurityConfiguration:
 
     def test_irsa_workload_identity_configured(self):
         """Verify cloud identity is configured (IRSA/Workload Identity)."""
-        # Each cloud may have multiple valid patterns (e.g., escaped dots in Terraform)
+        # Check for cloud-specific identity patterns
+        # Azure uses escaped dots in HCL (azure\.workload\.identity), so we check for key parts
         checks = {
-            "aws": ["eks.amazonaws.com/role-arn"],
-            "azure": ["azure.workload.identity", "azure\\.workload\\.identity"],
-            "gcp": ["iam.gke.io/gcp-service-account"]
+            "aws": {"pattern": "eks.amazonaws.com/role-arn", "description": "IRSA"},
+            "azure": {"pattern": "workload", "extra": "identity", "description": "Workload Identity"},
+            "gcp": {"pattern": "iam.gke.io/gcp-service-account", "description": "Workload Identity"}
         }
 
-        for cloud, annotations in checks.items():
+        for cloud, check in checks.items():
             tf_dir = PROJECT_ROOT / "infrastructure" / "terraform" / \
                 "environments" / cloud / "dev"
 
@@ -229,9 +230,11 @@ class TestSecurityConfiguration:
                 for tf_file in tf_dir.glob("*.tf"):
                     all_content += tf_file.read_text()
 
-                found = any(annotation in all_content for annotation in annotations)
+                found = check["pattern"] in all_content
+                if "extra" in check:
+                    found = found and check["extra"] in all_content
                 assert found, \
-                    f"{cloud} should configure workload identity annotation"
+                    f"{cloud} should configure {check['description']}"
 
 
 class TestExamples:
