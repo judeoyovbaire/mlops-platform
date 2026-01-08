@@ -58,8 +58,8 @@ variable "general_node_group" {
   })
   default = {
     instance_types = ["m5.xlarge", "m5.2xlarge"] # Larger instances for production
-    capacity_type  = "ON_DEMAND"                  # On-demand for stability
-    min_size       = 3                            # HA: minimum 3 nodes
+    capacity_type  = "ON_DEMAND"                 # On-demand for stability
+    min_size       = 3                           # HA: minimum 3 nodes
     max_size       = 10
     desired_size   = 3
   }
@@ -205,17 +205,17 @@ variable "helm_chart_versions" {
   description = "Helm chart versions for production"
   type        = map(string)
   default = {
-    argocd              = "7.9.0"
-    argo_workflows      = "0.46.1"
-    kserve_crd          = "0.16.0"
-    kserve              = "0.16.0"
-    mlflow              = "1.8.1"
-    prometheus_stack    = "72.6.2"
-    cert_manager        = "1.19.1"
-    external_secrets    = "1.1.1"
-    kyverno             = "3.3.4"
-    tetragon            = "1.3.0"
-    aws_lb_controller   = "1.16.0"
-    karpenter           = "1.8.0"
+    argocd            = "7.9.0"
+    argo_workflows    = "0.46.1"
+    kserve_crd        = "0.16.0"
+    kserve            = "0.16.0"
+    mlflow            = "1.8.1"
+    prometheus_stack  = "72.6.2"
+    cert_manager      = "1.19.1"
+    external_secrets  = "1.1.1"
+    kyverno           = "3.3.4"
+    tetragon          = "1.3.0"
+    aws_lb_controller = "1.16.0"
+    karpenter         = "1.8.0"
   }
 }
