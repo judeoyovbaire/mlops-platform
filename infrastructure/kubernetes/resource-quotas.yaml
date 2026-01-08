@@ -1,0 +1,188 @@
+# Resource Quotas for MLOps Platform Namespaces
+# Prevents resource exhaustion and ensures fair allocation
+#
+# Usage: kubectl apply -f resource-quotas.yaml
+
+---
+# MLOps namespace - Model inference workloads
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: mlops-quota
+  namespace: mlops
+spec:
+  hard:
+    # Compute resources
+    requests.cpu: "20"
+    requests.memory: 40Gi
+    limits.cpu: "40"
+    limits.memory: 80Gi
+    # GPU resources
+    requests.nvidia.com/gpu: "4"
+    limits.nvidia.com/gpu: "4"
+    # Object counts
+    pods: "50"
+    services: "20"
+    secrets: "50"
+    configmaps: "50"
+    persistentvolumeclaims: "10"
+
+---
+# MLflow namespace - Experiment tracking
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: mlflow-quota
+  namespace: mlflow
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    pods: "10"
+    services: "5"
+    secrets: "20"
+    configmaps: "20"
+    persistentvolumeclaims: "5"
+
+---
+# Argo namespace - Workflow orchestration
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: argo-quota
+  namespace: argo
+spec:
+  hard:
+    requests.cpu: "30"
+    requests.memory: 60Gi
+    limits.cpu: "60"
+    limits.memory: 120Gi
+    # Allow more pods for parallel workflow steps
+    pods: "100"
+    services: "10"
+    secrets: "50"
+    configmaps: "50"
+    persistentvolumeclaims: "20"
+
+---
+# KServe namespace - Model serving controller
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: kserve-quota
+  namespace: kserve
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    pods: "10"
+    services: "5"
+    secrets: "20"
+    configmaps: "20"
+
+---
+# LimitRange for mlops namespace
+# Sets default resource requests/limits for containers
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: mlops-limits
+  namespace: mlops
+spec:
+  limits:
+    # Default container limits
+    - type: Container
+      default:
+        cpu: "1"
+        memory: 2Gi
+      defaultRequest:
+        cpu: 100m
+        memory: 256Mi
+      max:
+        cpu: "8"
+        memory: 32Gi
+        nvidia.com/gpu: "1"
+      min:
+        cpu: 50m
+        memory: 64Mi
+    # Pod limits
+    - type: Pod
+      max:
+        cpu: "16"
+        memory: 64Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+
+---
+# LimitRange for mlflow namespace
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: mlflow-limits
+  namespace: mlflow
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 1Gi
+      defaultRequest:
+        cpu: 100m
+        memory: 256Mi
+      max:
+        cpu: "4"
+        memory: 8Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+
+---
+# LimitRange for argo namespace
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: argo-limits
+  namespace: argo
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      max:
+        cpu: "4"
+        memory: 16Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+
+---
+# LimitRange for kserve namespace
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: kserve-limits
+  namespace: kserve
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 1Gi
+      defaultRequest:
+        cpu: 100m
+        memory: 256Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      min:
+        cpu: 50m
+        memory: 64Mi

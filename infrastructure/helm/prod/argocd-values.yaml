@@ -1,0 +1,148 @@
+# ArgoCD Production Values
+# High availability configuration with security hardening
+
+global:
+  domain: argocd.mlops.example.com  # Replace with actual domain
+
+# HA Configuration
+controller:
+  replicas: 2
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+  # Pod anti-affinity for HA
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: argocd-application-controller
+          topologyKey: kubernetes.io/hostname
+
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+server:
+  replicas: 2
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: argocd-server
+          topologyKey: kubernetes.io/hostname
+
+  # Ingress with TLS
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/backend-protocol: HTTPS
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/certificate-arn: ""  # Add ACM cert ARN
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    hosts:
+      - argocd.mlops.example.com
+    tls:
+      - hosts:
+          - argocd.mlops.example.com
+        secretName: argocd-server-tls
+
+  # Security - no insecure mode
+  extraArgs: []
+
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+repoServer:
+  replicas: 2
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: argocd-repo-server
+          topologyKey: kubernetes.io/hostname
+
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+redis-ha:
+  enabled: true
+
+  haproxy:
+    enabled: true
+    replicas: 3
+
+applicationSet:
+  replicas: 2
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+notifications:
+  enabled: true
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+configs:
+  params:
+    server.insecure: false
+
+  cm:
+    # Enable status badge
+    statusbadge.enabled: "true"
+    # Resource tracking
+    resource.compareoptions: |
+      ignoreAggregatedRoles: true
+
+  rbac:
+    policy.default: role:readonly
+    policy.csv: |
+      p, role:admin, applications, *, */*, allow
+      p, role:admin, clusters, *, *, allow
+      p, role:admin, repositories, *, *, allow
+      g, admin, role:admin

@@ -5,4 +5,5 @@ resources:
   - monitoring.yaml
   - network-policies.yaml
   - pod-disruption-budgets.yaml
+  - resource-quotas.yaml
   - dashboards/mlops-overview-dashboard.yaml
