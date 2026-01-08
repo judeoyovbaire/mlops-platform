@@ -496,10 +496,14 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 
 ## Documentation
 
-- [Quick Start Guide](docs/QUICKSTART.md) - Deploy your first model in 5 minutes
-- [Architecture Deep Dive](docs/architecture.md) - System design and component details
-- [Secrets Management](docs/secrets-management.md) - Credential rotation and security
-- [LLM Inference Example](examples/llm-inference/README.md) - GPU-based model serving
+| Category | Documents |
+|----------|-----------|
+| **Getting Started** | [Quick Start Guide](docs/QUICKSTART.md) - Deploy your first model in 5 minutes |
+| **Architecture** | [Architecture Deep Dive](docs/architecture.md) - System design and components |
+| **Security** | [Secrets Management](docs/secrets-management.md) - Credential rotation |
+| **Operations** | [Operations Runbook](docs/runbooks/operations.md) - Day-to-day procedures |
+| **Troubleshooting** | [Troubleshooting Guide](docs/runbooks/troubleshooting.md) - Common issues |
+| **Examples** | [LLM Inference](examples/llm-inference/README.md) - GPU-based model serving |
 
 ## License
 
