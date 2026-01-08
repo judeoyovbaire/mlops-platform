@@ -7,10 +7,14 @@ Tests that verify Terraform and Kubernetes configurations are valid and follow b
 import pytest
 import json
 import yaml
+import shutil
 import subprocess
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent
+
+# Check if terraform is available
+TERRAFORM_AVAILABLE = shutil.which("terraform") is not None
 
 
 class TestTerraformConfiguration:
@@ -28,6 +32,7 @@ class TestTerraformConfiguration:
     def gcp_tf_dir(self):
         return PROJECT_ROOT / "infrastructure" / "terraform" / "environments" / "gcp" / "dev"
 
+    @pytest.mark.skipif(not TERRAFORM_AVAILABLE, reason="terraform not installed")
     def test_aws_terraform_valid(self, aws_tf_dir):
         """Verify AWS Terraform configuration is syntactically valid."""
         if not aws_tf_dir.exists():
@@ -42,6 +47,7 @@ class TestTerraformConfiguration:
         # Accept either success or skip if not initialized
         assert result.returncode == 0 or "Could not satisfy plugin requirements" in result.stderr
 
+    @pytest.mark.skipif(not TERRAFORM_AVAILABLE, reason="terraform not installed")
     def test_azure_terraform_valid(self, azure_tf_dir):
         """Verify Azure Terraform configuration is syntactically valid."""
         if not azure_tf_dir.exists():
@@ -55,6 +61,7 @@ class TestTerraformConfiguration:
         )
         assert result.returncode == 0 or "Could not satisfy plugin requirements" in result.stderr
 
+    @pytest.mark.skipif(not TERRAFORM_AVAILABLE, reason="terraform not installed")
     def test_gcp_terraform_valid(self, gcp_tf_dir):
         """Verify GCP Terraform configuration is syntactically valid."""
         if not gcp_tf_dir.exists():
@@ -206,13 +213,14 @@ class TestSecurityConfiguration:
 
     def test_irsa_workload_identity_configured(self):
         """Verify cloud identity is configured (IRSA/Workload Identity)."""
+        # Each cloud may have multiple valid patterns (e.g., escaped dots in Terraform)
         checks = {
-            "aws": "eks.amazonaws.com/role-arn",
-            "azure": "azure.workload.identity",
-            "gcp": "iam.gke.io/gcp-service-account"
+            "aws": ["eks.amazonaws.com/role-arn"],
+            "azure": ["azure.workload.identity", "azure\\.workload\\.identity"],
+            "gcp": ["iam.gke.io/gcp-service-account"]
         }
 
-        for cloud, annotation in checks.items():
+        for cloud, annotations in checks.items():
             tf_dir = PROJECT_ROOT / "infrastructure" / "terraform" / \
                 "environments" / cloud / "dev"
 
@@ -221,8 +229,9 @@ class TestSecurityConfiguration:
                 for tf_file in tf_dir.glob("*.tf"):
                     all_content += tf_file.read_text()
 
-                assert annotation in all_content, \
-                    f"{cloud} should configure {annotation} for workload identity"
+                found = any(annotation in all_content for annotation in annotations)
+                assert found, \
+                    f"{cloud} should configure workload identity annotation"
 
 
 class TestExamples:
