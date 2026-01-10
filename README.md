@@ -142,7 +142,13 @@ mlops-platform/
 │       ├── aws/                # AWS-specific Helm values
 │       ├── azure/              # Azure-specific Helm values
 │       └── gcp/                # GCP-specific Helm values
+│       ├── azure/              # Azure-specific Helm values
+│       └── gcp/                # GCP-specific Helm values
 ├── pipelines/training/         # Argo Workflow pipeline definitions
+│   ├── src/                    # Pipeline Python scripts (load_data, train_model, etc)
+│   ├── kustomization.yaml      # ConfigMap generator
+│   ├── ml-training-workflow.yaml # Workflow definition
+│   └── requirements.txt        # Python dependencies
 ├── scripts/
 │   ├── deploy-aws.sh           # AWS deployment script
 │   ├── deploy-azure.sh         # Azure deployment script

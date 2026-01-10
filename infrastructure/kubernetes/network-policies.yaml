@@ -14,6 +14,38 @@ spec:
     - Ingress
 
 ---
+# Default deny all egress traffic in mlops namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: mlops
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow HTTPS (S3, public internet for dependencies if needed)
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow MLflow access
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mlflow
+      ports:
+        - protocol: TCP
+          port: 5000
+
+
+---
 # Allow ingress to inference services from kube-system (AWS ALB Controller)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

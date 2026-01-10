@@ -315,6 +315,11 @@ deploy-example:
 	$(KUBECTL) wait --for=condition=Ready inferenceservice/sklearn-iris -n mlops --timeout=300s || true
 	$(KUBECTL) get inferenceservice -n mlops
 
+deploy-pipeline:
+	@echo "Deploying ML training pipeline..."
+	$(KUBECTL) apply -k pipelines/training
+	@echo "Pipeline templates updated."
+
 # =============================================================================
 # Utilities
 # =============================================================================
