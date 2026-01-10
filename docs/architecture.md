@@ -321,6 +321,8 @@ infrastructure/terraform/
 - RDS PostgreSQL for MLflow metadata
 - IAM roles with IRSA for secure pod authentication
 - AWS Load Balancer Controller for ALB Ingress
+- VPC Flow Logs with CloudWatch integration
+- AWS Backup vault with daily/weekly backup plans
 
 ### Azure Infrastructure
 
@@ -356,6 +358,8 @@ infrastructure/terraform/
 - Azure Container Registry (ACR)
 - Managed Identities with federated credentials
 - NGINX Ingress Controller with Azure Load Balancer
+- NSG Flow Logs with Traffic Analytics
+- Network Watcher for network diagnostics
 
 ### Helm Releases (via Terraform)
 
@@ -527,6 +531,80 @@ eBPF-based runtime security from the Cilium project:
 
 ## Observability
 
+### Network Observability
+
+The platform provides comprehensive network visibility across all cloud providers:
+
+**AWS: VPC Flow Logs**
+```hcl
+resource "aws_flow_log" "main" {
+  vpc_id                   = module.vpc.vpc_id
+  traffic_type             = "ALL"
+  log_destination_type     = "cloud-watch-logs"
+  log_destination          = aws_cloudwatch_log_group.flow_logs.arn
+  max_aggregation_interval = 60  # 1-minute granularity
+}
+```
+
+Flow logs are stored in CloudWatch with configurable retention (default: 30 days) and can be analyzed using CloudWatch Logs Insights for:
+- Network traffic patterns
+- Security incident investigation
+- Connection troubleshooting
+- Compliance auditing
+
+**Azure: NSG Flow Logs with Traffic Analytics**
+```hcl
+resource "azurerm_network_watcher_flow_log" "aks" {
+  network_security_group_id = azurerm_network_security_group.aks.id
+  storage_account_id        = azurerm_storage_account.flow_logs.id
+  version                   = 2
+
+  traffic_analytics {
+    enabled               = true
+    workspace_id          = azurerm_log_analytics_workspace.main.workspace_id
+    interval_in_minutes   = 10
+  }
+}
+```
+
+Traffic Analytics provides:
+- Visual traffic flow maps
+- Geo-mapped traffic sources
+- Bandwidth utilization insights
+- Security threat detection
+
+**GCP: VPC Flow Logs**
+```hcl
+log_config {
+  aggregation_interval = "INTERVAL_5_SEC"
+  flow_sampling        = 0.5
+  metadata             = "INCLUDE_ALL_METADATA"
+}
+```
+
+GCP flow logs capture packet samples with configurable sampling rates for cost optimization.
+
+### Cost Dashboard
+
+A comprehensive Grafana dashboard for cloud cost monitoring is included:
+
+**Dashboard Panels:**
+| Panel | Metric | Description |
+|-------|--------|-------------|
+| Estimated Monthly Cost | `sum(kube_pod_container_resource_requests)` | Projected monthly spend |
+| Cost by Namespace | Resource requests × pricing | Breakdown by team/project |
+| CPU Efficiency | Usage ÷ Requests | Optimization opportunities |
+| Memory Efficiency | Usage ÷ Requests | Over-provisioning detection |
+| GPU Utilization | `DCGM_FI_DEV_GPU_UTIL` | GPU cost optimization |
+| Resource Waste | Requests - Usage | Wasted capacity costs |
+
+**Location:** `infrastructure/kubernetes/dashboards/cloud-cost-dashboard.yaml`
+
+The dashboard uses node labels and resource pricing to estimate costs:
+- CPU: $0.048/core/hour
+- Memory: $0.006/GB/hour
+- GPU: $0.526/GPU/hour
+
 ### Prometheus Monitoring
 
 The platform includes ServiceMonitors for metrics collection:
@@ -680,6 +758,72 @@ make port-forward-argocd   # ArgoCD at localhost:8080
 make port-forward-grafana  # Grafana at localhost:3000
 ```
 
+## Resilience Testing
+
+### Chaos Mesh
+
+The platform includes Chaos Mesh for chaos engineering and resilience testing. Chaos Mesh is a CNCF Incubating project that provides comprehensive fault injection capabilities.
+
+**Installation:**
+```bash
+helm install chaos-mesh chaos-mesh/chaos-mesh \
+  -n chaos-testing --create-namespace \
+  --version 2.8.1 \
+  -f infrastructure/helm/common/chaos-mesh-values.yaml
+```
+
+**Experiment Types:**
+
+| Experiment | Kind | Purpose |
+|------------|------|---------|
+| Pod Failure | `PodChaos` | Test pod restart and recovery |
+| Network Delay | `NetworkChaos` | Simulate latency issues |
+| Network Partition | `NetworkChaos` | Test isolation handling |
+| CPU Stress | `StressChaos` | Trigger autoscaling |
+| Memory Stress | `StressChaos` | Test OOM handling |
+
+**Example Experiments:**
+
+```yaml
+# Pod failure test for inference services
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: inference-pod-failure
+  namespace: chaos-testing
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - kserve
+    labelSelectors:
+      component: predictor
+  duration: "30s"
+```
+
+**Pre-built Experiments:**
+- `examples/chaos-testing/pod-failure.yaml` - Pod kill and failure tests
+- `examples/chaos-testing/network-delay.yaml` - Latency injection
+- `examples/chaos-testing/network-partition.yaml` - Network isolation
+- `examples/chaos-testing/cpu-stress.yaml` - CPU load testing
+- `examples/chaos-testing/memory-stress.yaml` - Memory pressure testing
+
+**Chaos Dashboard:**
+
+Access the Chaos Mesh dashboard for visual experiment management:
+```bash
+kubectl port-forward -n chaos-testing svc/chaos-dashboard 2333:2333
+# Open http://localhost:2333
+```
+
+**Best Practices:**
+- Always run experiments in non-production first
+- Use `mode: one` to limit blast radius
+- Set appropriate `duration` limits
+- Monitor metrics during experiments
+- Have rollback procedures ready
+
 ## Component Versions
 
 Current versions deployed by the platform (aligned across both clouds):
@@ -699,4 +843,5 @@ Current versions deployed by the platform (aligned across both clouds):
 | External Secrets | 1.1.1 | SSM / Key Vault integration |
 | Kyverno | 3.3.4 | Policy engine |
 | Tetragon | 1.3.0 | Runtime security |
+| Chaos Mesh | 2.8.1 | Chaos engineering and resilience testing |
 | vLLM | 0.8.0 | High-throughput LLM inference |

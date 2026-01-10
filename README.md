@@ -91,6 +91,10 @@ AWS EKS                       │  Azure AKS                   │  GCP GKE
 | **Secrets** | External Secrets + SSM | External Secrets + Key Vault | External Secrets + Secret Manager |
 | **Security** | PSA, Kyverno, Tetragon | PSA, Kyverno, Tetragon | PSA, Kyverno, Tetragon |
 | **Monitoring** | Prometheus + Grafana | Prometheus + Grafana | Prometheus + Grafana |
+| **Network Observability** | VPC Flow Logs | NSG Flow Logs + Traffic Analytics | VPC Flow Logs |
+| **Backup** | AWS Backup (RDS) | Built-in PostgreSQL Backup | Cloud SQL Backup |
+| **Cost Management** | Cost Dashboard (Grafana) | Cost Dashboard (Grafana) | Cost Dashboard (Grafana) |
+| **Resilience Testing** | Chaos Mesh | Chaos Mesh | Chaos Mesh |
 
 ## Tech Stack
 
@@ -107,6 +111,7 @@ AWS EKS                       │  Azure AKS                   │  GCP GKE
 | Ingress (Azure/GCP) | NGINX Ingress | 4.14.1 | External load balancing |
 | TLS | cert-manager | 1.19.1 | Certificate management |
 | Monitoring | Prometheus + Grafana | 72.6.2 | Observability |
+| Resilience Testing | Chaos Mesh | 2.7.0 | Chaos engineering |
 | Infrastructure | Terraform | 1.6+ | IaC for EKS/AKS/GKE |
 | CI/CD | GitHub Actions | - | Automated testing |
 
@@ -366,6 +371,8 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 | ECR Repository | Container images for ML models |
 | IAM Roles | IRSA for secure pod authentication |
 | ALB | External access to services |
+| VPC Flow Logs | Network traffic logging to CloudWatch |
+| AWS Backup | Automated RDS backups (daily/weekly) |
 
 ### Azure Resources
 
@@ -379,6 +386,8 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 | Container Registry | Container images for ML models |
 | Managed Identities | Workload Identity for pod authentication |
 | Key Vault | Secrets management |
+| NSG Flow Logs | Network traffic logging with Traffic Analytics |
+| Network Watcher | Network monitoring and diagnostics |
 
 ### GCP Resources
 
@@ -460,6 +469,10 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 - [x] External Secrets integration (SSM / Key Vault / Secret Manager)
 - [x] Distributed training examples (Kubeflow Training Operator)
 - [x] Data versioning examples (DVC integration)
+- [x] AWS Backup for RDS with daily/weekly schedules
+- [x] VPC Flow Logs (AWS, Azure NSG, GCP)
+- [x] Grafana cost dashboard for resource optimization
+- [x] Chaos Mesh for resilience testing
 
 ### Future Enhancements
 - [ ] Production environment configuration (multi-cloud)
@@ -474,6 +487,7 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 | [Distributed Training](examples/distributed-training/) | PyTorch DDP with Kubeflow Training Operator | Advanced |
 | [LLM Inference](examples/llm-inference/) | Mistral-7B with vLLM on GPU | Advanced |
 | [Drift Detection](examples/drift-detection/) | Model monitoring with Evidently | Advanced |
+| [Chaos Testing](examples/chaos-testing/) | Resilience testing with Chaos Mesh | Advanced |
 
 ## Why These Tools?
 

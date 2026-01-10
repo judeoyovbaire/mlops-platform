@@ -13,7 +13,7 @@ This document outlines disaster recovery procedures for the MLOps Platform.
 
 | Component | Data Criticality | Backup Strategy | Recovery Priority |
 |-----------|-----------------|-----------------|-------------------|
-| MLflow RDS | High | Automated snapshots | P1 |
+| MLflow RDS | High | AWS Backup (daily/weekly) + RDS snapshots | P1 |
 | S3 Artifacts | High | Versioning + Cross-region | P1 |
 | Terraform State | Critical | S3 versioning | P0 |
 | EKS Cluster | Medium | Recreate from Terraform | P2 |
@@ -21,15 +21,72 @@ This document outlines disaster recovery procedures for the MLOps Platform.
 
 ## Backup Configuration
 
+### AWS Backup (Centralized Backup)
+
+The platform uses AWS Backup for centralized, policy-based backup management. This provides automated, scheduled backups with configurable retention policies.
+
+**Terraform Configuration:**
+```hcl
+# Enable AWS Backup
+enable_aws_backup     = true
+backup_retention_days = 30
+```
+
+**Backup Schedule:**
+
+| Schedule | Frequency | Retention | Window |
+|----------|-----------|-----------|--------|
+| Daily Backup | Every day at 05:00 UTC | 30 days | `cron(0 5 ? * * *)` |
+| Weekly Backup | Every Sunday at 05:00 UTC | 120 days (4x daily) | `cron(0 5 ? * SUN *)` |
+
+**Resources Backed Up:**
+- RDS PostgreSQL database (tagged with `backup = true`)
+- EBS volumes attached to persistent workloads
+
+**Backup Vault:**
+
+All backups are stored in an encrypted vault:
+```hcl
+resource "aws_backup_vault" "mlops" {
+  name        = "${var.cluster_name}-mlops-backup-vault"
+  kms_key_arn = aws_kms_key.mlops.arn  # Customer-managed KMS key
+}
+```
+
+**Manual Backup via AWS Backup:**
+```bash
+# Start an on-demand backup job
+aws backup start-backup-job \
+  --backup-vault-name mlops-platform-dev-mlops-backup-vault \
+  --resource-arn arn:aws:rds:eu-west-1:123456789012:db:mlops-platform-dev-mlflow \
+  --iam-role-arn arn:aws:iam::123456789012:role/mlops-platform-dev-backup-role
+```
+
+**Restore from AWS Backup:**
+```bash
+# List recovery points
+aws backup list-recovery-points-by-backup-vault \
+  --backup-vault-name mlops-platform-dev-mlops-backup-vault \
+  --query 'RecoveryPoints[*].{ARN:RecoveryPointArn,Created:CreationDate,Status:Status}' \
+  --output table
+
+# Start restore job
+aws backup start-restore-job \
+  --recovery-point-arn <recovery-point-arn> \
+  --iam-role-arn arn:aws:iam::123456789012:role/mlops-platform-dev-backup-role \
+  --metadata '{"DBInstanceIdentifier":"mlops-platform-dev-mlflow-restored"}'
+```
+
 ### RDS Automated Backups
 
-Configured in Terraform:
+In addition to AWS Backup, RDS maintains its own automated snapshots:
+
 ```hcl
 backup_retention_period = 7  # days
 backup_window          = "03:00-04:00"  # UTC
 ```
 
-**Manual Snapshot:**
+**Manual RDS Snapshot:**
 ```bash
 aws rds create-db-snapshot \
   --db-instance-identifier mlops-platform-dev-mlflow \

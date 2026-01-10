@@ -65,6 +65,8 @@ All modules provide these outputs:
 - S3 bucket for MLflow artifacts
 - RDS PostgreSQL for MLflow metadata
 - IAM roles with IRSA
+- VPC Flow Logs with CloudWatch integration
+- AWS Backup vault with daily/weekly backup plans
 
 ### Inputs
 | Variable | Default | Description |
@@ -72,6 +74,10 @@ All modules provide these outputs:
 | `region` | `eu-west-1` | AWS region |
 | `kubernetes_version` | `1.32` | EKS version |
 | `node_instance_type` | `t3.large` | Default node type |
+| `enable_vpc_flow_logs` | `true` | Enable VPC Flow Logs |
+| `flow_logs_retention_days` | `30` | Flow logs retention in CloudWatch |
+| `enable_aws_backup` | `true` | Enable AWS Backup for RDS |
+| `backup_retention_days` | `30` | Daily backup retention period |
 
 ## AKS Module (Azure)
 
@@ -82,6 +88,8 @@ All modules provide these outputs:
 - PostgreSQL Flexible Server
 - Azure Key Vault
 - Managed Identities with Workload Identity
+- NSG Flow Logs with Traffic Analytics
+- Network Watcher for diagnostics
 
 ### Inputs
 | Variable | Default | Description |
@@ -89,6 +97,9 @@ All modules provide these outputs:
 | `location` | `westeurope` | Azure region |
 | `kubernetes_version` | `1.32` | AKS version |
 | `node_vm_size` | `Standard_D4s_v3` | Default node size |
+| `enable_nsg_flow_logs` | `true` | Enable NSG Flow Logs |
+| `flow_logs_retention_days` | `30` | Flow logs retention period |
+| `enable_traffic_analytics` | `true` | Enable Traffic Analytics |
 
 ## GKE Module (GCP)
 
@@ -99,6 +110,7 @@ All modules provide these outputs:
 - Cloud SQL PostgreSQL
 - Secret Manager secrets
 - Service Accounts with Workload Identity
+- VPC Flow Logs on subnets
 
 ### Inputs
 | Variable | Default | Description |
@@ -107,6 +119,9 @@ All modules provide these outputs:
 | `zone` | `europe-west4-a` | GCP zone |
 | `kubernetes_version` | `1.32` | GKE version |
 | `node_machine_type` | `e2-standard-4` | Default machine type |
+| `enable_vpc_flow_logs` | `true` | Enable VPC Flow Logs |
+| `flow_logs_aggregation_interval` | `INTERVAL_5_SEC` | Flow logs aggregation |
+| `flow_logs_sampling_rate` | `0.5` | Flow logs sampling rate |
 
 ## Extending Modules
 

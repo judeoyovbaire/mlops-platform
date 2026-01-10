@@ -4,7 +4,7 @@ This directory contains Chaos Mesh experiments for testing the resilience of the
 
 ## Prerequisites
 
-1. Install Chaos Mesh:
+1. Install Chaos Mesh (v2.8.1):
 ```bash
 helm repo add chaos-mesh https://charts.chaos-mesh.org
 helm repo update
@@ -13,6 +13,7 @@ kubectl create namespace chaos-testing
 
 helm install chaos-mesh chaos-mesh/chaos-mesh \
   --namespace chaos-testing \
+  --version 2.8.1 \
   --values ../../infrastructure/helm/common/chaos-mesh-values.yaml
 ```
 
