@@ -243,6 +243,42 @@ variable "enable_cluster_creator_admin_permissions" {
   default     = true
 }
 
+# AWS Backup
+variable "enable_aws_backup" {
+  description = "Enable AWS Backup for RDS and other resources"
+  type        = bool
+  default     = true
+}
+
+variable "backup_retention_days" {
+  description = "Number of days to retain backups in AWS Backup"
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.backup_retention_days >= 1 && var.backup_retention_days <= 365
+    error_message = "Backup retention days must be between 1 and 365."
+  }
+}
+
+# VPC Flow Logs
+variable "enable_vpc_flow_logs" {
+  description = "Enable VPC Flow Logs for network troubleshooting"
+  type        = bool
+  default     = true
+}
+
+variable "flow_logs_retention_days" {
+  description = "Number of days to retain VPC Flow Logs in CloudWatch"
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653], var.flow_logs_retention_days)
+    error_message = "Flow logs retention days must be a valid CloudWatch Logs retention value."
+  }
+}
+
 # Tags
 variable "tags" {
   description = "Tags to apply to all resources"

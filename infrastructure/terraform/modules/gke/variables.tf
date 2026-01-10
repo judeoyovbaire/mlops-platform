@@ -319,3 +319,35 @@ variable "artifact_registry_immutable_tags" {
   type        = bool
   default     = false
 }
+
+# =============================================================================
+# VPC Flow Logs Configuration
+# =============================================================================
+
+variable "enable_vpc_flow_logs" {
+  description = "Enable VPC Flow Logs for network troubleshooting"
+  type        = bool
+  default     = true
+}
+
+variable "flow_logs_aggregation_interval" {
+  description = "Aggregation interval for VPC Flow Logs"
+  type        = string
+  default     = "INTERVAL_5_SEC"
+
+  validation {
+    condition     = contains(["INTERVAL_5_SEC", "INTERVAL_30_SEC", "INTERVAL_1_MIN", "INTERVAL_5_MIN", "INTERVAL_10_MIN", "INTERVAL_15_MIN"], var.flow_logs_aggregation_interval)
+    error_message = "Aggregation interval must be one of: INTERVAL_5_SEC, INTERVAL_30_SEC, INTERVAL_1_MIN, INTERVAL_5_MIN, INTERVAL_10_MIN, INTERVAL_15_MIN."
+  }
+}
+
+variable "flow_logs_sampling_rate" {
+  description = "Sampling rate for VPC Flow Logs (0.0 to 1.0)"
+  type        = number
+  default     = 0.5
+
+  validation {
+    condition     = var.flow_logs_sampling_rate >= 0.0 && var.flow_logs_sampling_rate <= 1.0
+    error_message = "Sampling rate must be between 0.0 and 1.0."
+  }
+}

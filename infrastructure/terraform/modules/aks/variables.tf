@@ -188,3 +188,41 @@ variable "enable_azure_monitor" {
   type        = bool
   default     = false
 }
+
+variable "log_retention_days" {
+  description = "Number of days to retain logs in Log Analytics Workspace"
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.log_retention_days >= 7 && var.log_retention_days <= 730
+    error_message = "Log retention days must be between 7 and 730."
+  }
+}
+
+# -----------------------------------------------------------------------------
+# NSG Flow Logs
+# -----------------------------------------------------------------------------
+
+variable "enable_nsg_flow_logs" {
+  description = "Enable NSG Flow Logs for network troubleshooting"
+  type        = bool
+  default     = true
+}
+
+variable "flow_logs_retention_days" {
+  description = "Number of days to retain NSG Flow Logs"
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.flow_logs_retention_days >= 1 && var.flow_logs_retention_days <= 365
+    error_message = "Flow logs retention days must be between 1 and 365."
+  }
+}
+
+variable "enable_traffic_analytics" {
+  description = "Enable Traffic Analytics for NSG Flow Logs"
+  type        = bool
+  default     = true
+}

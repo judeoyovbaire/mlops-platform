@@ -1,0 +1,90 @@
+# Network Partition Chaos Experiment
+# Tests system behavior during network partitions
+#
+# Expected outcome:
+# - Services should handle partition gracefully
+# - Circuit breakers should trigger
+# - System should recover when partition heals
+#
+# Metrics to watch:
+# - up{} metrics for services
+# - Error rates
+# - Circuit breaker state
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: argo-mlflow-partition
+  namespace: chaos-testing
+  labels:
+    app: chaos-testing
+    experiment: network-partition
+spec:
+  action: partition
+  mode: all
+  selector:
+    namespaces:
+      - argo
+    labelSelectors:
+      app.kubernetes.io/name: argo-workflows
+  direction: both
+  target:
+    mode: all
+    selector:
+      namespaces:
+        - mlflow
+      labelSelectors:
+        app.kubernetes.io/name: mlflow
+  duration: "2m"
+
+---
+# Inference to Model Registry partition
+# Tests what happens when inference can't reach MLflow
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: inference-mlflow-partition
+  namespace: chaos-testing
+  labels:
+    app: chaos-testing
+    experiment: inference-isolation
+spec:
+  action: partition
+  mode: all
+  selector:
+    namespaces:
+      - kserve
+    labelSelectors:
+      component: predictor
+  direction: both
+  target:
+    mode: all
+    selector:
+      namespaces:
+        - mlflow
+  duration: "1m"
+
+---
+# Complete namespace isolation
+# Simulates total network failure for a namespace
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: kserve-total-isolation
+  namespace: chaos-testing
+  labels:
+    app: chaos-testing
+    experiment: total-isolation
+spec:
+  action: partition
+  mode: all
+  selector:
+    namespaces:
+      - kserve
+    labelSelectors:
+      component: predictor
+  direction: both
+  # Block all external traffic
+  externalTargets:
+    - "0.0.0.0/0"
+  duration: "30s"

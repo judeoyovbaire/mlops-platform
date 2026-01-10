@@ -62,6 +62,17 @@ resource "google_compute_subnetwork" "gke" {
   }
 
   private_ip_google_access = true
+
+  # VPC Flow Logs
+  dynamic "log_config" {
+    for_each = var.enable_vpc_flow_logs ? [1] : []
+    content {
+      aggregation_interval = var.flow_logs_aggregation_interval
+      flow_sampling        = var.flow_logs_sampling_rate
+      metadata             = "INCLUDE_ALL_METADATA"
+      filter_expr          = "true"
+    }
+  }
 }
 
 # Cloud NAT for private nodes to access internet

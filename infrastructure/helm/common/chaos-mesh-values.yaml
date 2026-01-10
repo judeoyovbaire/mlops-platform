@@ -1,0 +1,121 @@
+# Chaos Mesh Helm Values
+# Used for resilience testing in MLOps Platform
+# Chart: chaos-mesh/chaos-mesh
+# Documentation: https://chaos-mesh.org/docs/
+
+# Controller Manager Configuration
+controllerManager:
+  replicaCount: 1
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+  # Pod Security Context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+  # Enable leader election for HA
+  leaderElection:
+    enabled: true
+
+# Chaos Daemon Configuration
+chaosDaemon:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+  # Runtime: containerd for EKS/AKS/GKE
+  runtime: containerd
+  socketPath: /run/containerd/containerd.sock
+
+  # Privileged mode required for chaos injection
+  privileged: true
+
+# Dashboard Configuration
+dashboard:
+  enabled: true
+  replicaCount: 1
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+  # Security: Disable if not needed in production
+  securityMode: true
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 2333
+
+  # Ingress (disabled by default, use port-forward)
+  ingress:
+    enabled: false
+
+# DNS Server for DNS chaos
+dnsServer:
+  enabled: true
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+# Webhook Configuration
+webhook:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+  # Certificate management
+  certManager:
+    enabled: true
+
+# RBAC Configuration
+rbac:
+  create: true
+
+# Service Account
+serviceAccount:
+  create: true
+
+# Enable specific chaos types
+# All enabled by default for comprehensive testing
+enablePodChaos: true
+enableNetworkChaos: true
+enableDNSChaos: true
+enableHTTPChaos: true
+enableIOChaos: true
+enableStressChaos: true
+enableTimeChaos: true
+enableKernelChaos: false  # Requires additional setup
+
+# Prometheus metrics
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring
+    labels:
+      release: prometheus

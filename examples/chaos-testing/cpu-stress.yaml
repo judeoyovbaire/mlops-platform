@@ -1,0 +1,81 @@
+# CPU Stress Chaos Experiment
+# Tests autoscaling and resource contention handling
+#
+# Expected outcome:
+# - HPA should trigger pod scale-up
+# - Request latency may increase temporarily
+# - No service degradation after scaling
+#
+# Metrics to watch:
+# - container_cpu_usage_seconds_total
+# - kube_horizontalpodautoscaler_status_current_replicas
+# - inference_request_duration_seconds
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: inference-cpu-stress
+  namespace: chaos-testing
+  labels:
+    app: chaos-testing
+    experiment: cpu-stress
+spec:
+  mode: all
+  selector:
+    namespaces:
+      - kserve
+    labelSelectors:
+      component: predictor
+  stressors:
+    cpu:
+      workers: 2        # Number of CPU stress workers
+      load: 80          # Target CPU load percentage
+  duration: "5m"
+
+---
+# Training workload CPU stress
+# Tests Argo workflow behavior under CPU pressure
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: training-cpu-stress
+  namespace: chaos-testing
+  labels:
+    app: chaos-testing
+    experiment: training-cpu-stress
+spec:
+  mode: all
+  selector:
+    namespaces:
+      - argo
+    labelSelectors:
+      workflows.argoproj.io/workflow: ""  # Any workflow pod
+  stressors:
+    cpu:
+      workers: 4
+      load: 90
+  duration: "3m"
+
+---
+# Gradual CPU ramp-up
+# Tests system response to gradually increasing load
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: gradual-cpu-ramp
+  namespace: chaos-testing
+  labels:
+    app: chaos-testing
+    experiment: cpu-ramp
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - kserve
+    labelSelectors:
+      component: predictor
+  stressors:
+    cpu:
+      workers: 1
+      load: 95  # Near-saturation to trigger scaling
+  duration: "10m"

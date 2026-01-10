@@ -628,3 +628,169 @@ resource "aws_ecr_lifecycle_policy" "models" {
     ]
   })
 }
+
+# =============================================================================
+# AWS Backup for RDS
+# =============================================================================
+
+resource "aws_backup_vault" "mlops" {
+  count = var.enable_aws_backup ? 1 : 0
+
+  name        = "${var.cluster_name}-mlops-backup-vault"
+  kms_key_arn = var.enable_kms_encryption ? aws_kms_key.mlops[0].arn : null
+
+  tags = var.tags
+}
+
+resource "aws_backup_plan" "mlops" {
+  count = var.enable_aws_backup ? 1 : 0
+
+  name = "${var.cluster_name}-mlops-backup-plan"
+
+  rule {
+    rule_name         = "daily-backup"
+    target_vault_name = aws_backup_vault.mlops[0].name
+    schedule          = "cron(0 5 ? * * *)" # Daily at 5 AM UTC
+
+    lifecycle {
+      delete_after = var.backup_retention_days
+    }
+
+    recovery_point_tags = var.tags
+  }
+
+  rule {
+    rule_name         = "weekly-backup"
+    target_vault_name = aws_backup_vault.mlops[0].name
+    schedule          = "cron(0 5 ? * SUN *)" # Weekly on Sunday at 5 AM UTC
+
+    lifecycle {
+      delete_after = var.backup_retention_days * 4 # Keep weekly backups 4x longer
+    }
+
+    recovery_point_tags = var.tags
+  }
+
+  tags = var.tags
+}
+
+resource "aws_backup_selection" "mlops_rds" {
+  count = var.enable_aws_backup ? 1 : 0
+
+  name         = "${var.cluster_name}-mlops-rds-backup"
+  plan_id      = aws_backup_plan.mlops[0].id
+  iam_role_arn = aws_iam_role.backup[0].arn
+
+  resources = [
+    aws_db_instance.mlflow.arn
+  ]
+}
+
+resource "aws_iam_role" "backup" {
+  count = var.enable_aws_backup ? 1 : 0
+
+  name = "${var.cluster_name}-aws-backup-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "backup.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "backup" {
+  count = var.enable_aws_backup ? 1 : 0
+
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup"
+  role       = aws_iam_role.backup[0].name
+}
+
+resource "aws_iam_role_policy_attachment" "backup_restore" {
+  count = var.enable_aws_backup ? 1 : 0
+
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores"
+  role       = aws_iam_role.backup[0].name
+}
+
+# =============================================================================
+# VPC Flow Logs
+# =============================================================================
+
+resource "aws_flow_log" "main" {
+  count = var.enable_vpc_flow_logs ? 1 : 0
+
+  vpc_id                   = module.vpc.vpc_id
+  traffic_type             = "ALL"
+  log_destination_type     = "cloud-watch-logs"
+  log_destination          = aws_cloudwatch_log_group.flow_logs[0].arn
+  iam_role_arn             = aws_iam_role.flow_logs[0].arn
+  max_aggregation_interval = 60
+
+  tags = merge(var.tags, {
+    Name = "${var.cluster_name}-vpc-flow-logs"
+  })
+}
+
+resource "aws_cloudwatch_log_group" "flow_logs" {
+  count = var.enable_vpc_flow_logs ? 1 : 0
+
+  name              = "/aws/vpc-flow-logs/${var.cluster_name}"
+  retention_in_days = var.flow_logs_retention_days
+  kms_key_id        = var.enable_kms_encryption ? aws_kms_key.mlops[0].arn : null
+
+  tags = var.tags
+}
+
+resource "aws_iam_role" "flow_logs" {
+  count = var.enable_vpc_flow_logs ? 1 : 0
+
+  name = "${var.cluster_name}-vpc-flow-logs-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "vpc-flow-logs.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy" "flow_logs" {
+  count = var.enable_vpc_flow_logs ? 1 : 0
+
+  name = "${var.cluster_name}-vpc-flow-logs-policy"
+  role = aws_iam_role.flow_logs[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}

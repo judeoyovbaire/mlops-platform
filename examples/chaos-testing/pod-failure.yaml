@@ -1,0 +1,72 @@
+# Pod Failure Chaos Experiment
+# Tests KServe inference service resilience to pod failures
+#
+# Expected outcome:
+# - KServe should detect pod failure within 10-30 seconds
+# - New pod should be scheduled and ready within 60 seconds
+# - Requests should be routed to remaining replicas during recovery
+#
+# Metrics to watch:
+# - kube_pod_status_phase
+# - inference_request_total (should not drop significantly)
+# - inference_request_duration_seconds (may increase temporarily)
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: inference-pod-failure
+  namespace: chaos-testing
+  labels:
+    app: chaos-testing
+    experiment: pod-failure
+spec:
+  action: pod-kill
+  mode: one  # Kill one pod at a time
+  selector:
+    namespaces:
+      - kserve
+    labelSelectors:
+      component: predictor
+  duration: "30s"
+  scheduler:
+    cron: "@every 5m"  # Run every 5 minutes (for continuous testing)
+
+---
+# One-time pod failure (manual trigger)
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: inference-pod-failure-once
+  namespace: chaos-testing
+  labels:
+    app: chaos-testing
+    experiment: pod-failure-manual
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - kserve
+    labelSelectors:
+      component: predictor
+  # No duration = immediate one-time execution
+
+---
+# Pod failure for MLflow (test metadata service resilience)
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: mlflow-pod-failure
+  namespace: chaos-testing
+  labels:
+    app: chaos-testing
+    experiment: mlflow-failure
+spec:
+  action: pod-failure  # Marks pod as failed, doesn't kill
+  mode: one
+  selector:
+    namespaces:
+      - mlflow
+    labelSelectors:
+      app.kubernetes.io/name: mlflow
+  duration: "60s"

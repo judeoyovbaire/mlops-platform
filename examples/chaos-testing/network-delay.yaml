@@ -1,0 +1,89 @@
+# Network Delay Chaos Experiment
+# Tests system behavior with degraded network conditions
+#
+# Expected outcome:
+# - Requests should succeed but with increased latency
+# - Timeouts should not trigger for reasonable delays
+# - Prometheus should capture increased latency metrics
+#
+# Metrics to watch:
+# - inference_request_duration_seconds (P95/P99)
+# - mlflow_request_duration_seconds
+# - http_request_duration_seconds
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: inference-network-delay
+  namespace: chaos-testing
+  labels:
+    app: chaos-testing
+    experiment: network-delay
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - kserve
+    labelSelectors:
+      component: predictor
+  delay:
+    latency: "100ms"
+    correlation: "50"  # 50% correlation between consecutive packets
+    jitter: "20ms"     # Random jitter up to 20ms
+  duration: "5m"
+  direction: both
+
+---
+# MLflow to Database network delay
+# Simulates database latency issues
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: mlflow-db-delay
+  namespace: chaos-testing
+  labels:
+    app: chaos-testing
+    experiment: db-latency
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - mlflow
+    labelSelectors:
+      app.kubernetes.io/name: mlflow
+  delay:
+    latency: "200ms"
+    jitter: "50ms"
+  # Target external database traffic
+  externalTargets:
+    - "*.rds.amazonaws.com"
+    - "*.database.azure.com"
+    - "*.cloudsql.google.com"
+  duration: "3m"
+  direction: to
+
+---
+# Gradual latency increase (chaos engineering "ramp")
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: gradual-latency-increase
+  namespace: chaos-testing
+  labels:
+    app: chaos-testing
+    experiment: gradual-latency
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - kserve
+    labelSelectors:
+      component: predictor
+  delay:
+    latency: "500ms"  # Start high to find breaking point
+    correlation: "75"
+  duration: "2m"
+  direction: both

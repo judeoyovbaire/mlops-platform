@@ -199,14 +199,83 @@ resource "azurerm_kubernetes_cluster_node_pool" "gpu" {
   tags = var.tags
 }
 
-# Log Analytics Workspace (optional)
+# Log Analytics Workspace (required for flow logs and monitoring)
 resource "azurerm_log_analytics_workspace" "main" {
-  count               = var.enable_azure_monitor ? 1 : 0
+  count               = var.enable_azure_monitor || var.enable_nsg_flow_logs ? 1 : 0
   name                = "${var.cluster_name}-logs"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
   sku                 = "PerGB2018"
-  retention_in_days   = 30
+  retention_in_days   = var.log_retention_days
+
+  tags = var.tags
+}
+
+# =============================================================================
+# NSG Flow Logs (Azure VPC Flow Logs equivalent)
+# =============================================================================
+
+resource "azurerm_network_watcher" "main" {
+  count               = var.enable_nsg_flow_logs ? 1 : 0
+  name                = "${var.cluster_name}-network-watcher"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+
+  tags = var.tags
+}
+
+resource "azurerm_storage_account" "flow_logs" {
+  count                    = var.enable_nsg_flow_logs ? 1 : 0
+  name                     = "flowlogs${replace(var.cluster_name, "-", "")}${substr(md5(azurerm_resource_group.main.id), 0, 8)}"
+  resource_group_name      = azurerm_resource_group.main.name
+  location                 = azurerm_resource_group.main.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  min_tls_version          = "TLS1_2"
+
+  tags = var.tags
+}
+
+# NSG for AKS subnet (needed for flow logs)
+resource "azurerm_network_security_group" "aks" {
+  count               = var.enable_nsg_flow_logs ? 1 : 0
+  name                = "${var.cluster_name}-aks-nsg"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+
+  tags = var.tags
+}
+
+resource "azurerm_subnet_network_security_group_association" "aks" {
+  count                     = var.enable_nsg_flow_logs ? 1 : 0
+  subnet_id                 = azurerm_subnet.aks.id
+  network_security_group_id = azurerm_network_security_group.aks[0].id
+}
+
+resource "azurerm_network_watcher_flow_log" "aks" {
+  count                = var.enable_nsg_flow_logs ? 1 : 0
+  name                 = "${var.cluster_name}-aks-flow-log"
+  network_watcher_name = azurerm_network_watcher.main[0].name
+  resource_group_name  = azurerm_resource_group.main.name
+  location             = azurerm_resource_group.main.location
+
+  network_security_group_id = azurerm_network_security_group.aks[0].id
+  storage_account_id        = azurerm_storage_account.flow_logs[0].id
+  enabled                   = true
+  version                   = 2
+
+  retention_policy {
+    enabled = true
+    days    = var.flow_logs_retention_days
+  }
+
+  traffic_analytics {
+    enabled               = var.enable_traffic_analytics
+    workspace_id          = azurerm_log_analytics_workspace.main[0].workspace_id
+    workspace_region      = azurerm_log_analytics_workspace.main[0].location
+    workspace_resource_id = azurerm_log_analytics_workspace.main[0].id
+    interval_in_minutes   = 10
+  }
 
   tags = var.tags
 }

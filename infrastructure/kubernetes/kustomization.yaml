@@ -7,3 +7,4 @@ resources:
   - pod-disruption-budgets.yaml
   - resource-quotas.yaml
   - dashboards/mlops-overview-dashboard.yaml
+  - dashboards/cloud-cost-dashboard.yaml
