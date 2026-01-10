@@ -25,6 +25,7 @@ def load_data(url, output_path):
         print(f"Error downloading data: {e}", file=sys.stderr)
         sys.exit(1)
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Load data from URL")
     parser.add_argument("--url", required=True, help="URL to download data from")

@@ -20,7 +20,7 @@ def feature_engineering(input_path, output_path, target_column):
         y = df[target_column]
 
         # Scale numeric columns
-        numeric_cols = X.select_dtypes(include=['float64', 'int64']).columns
+        numeric_cols = X.select_dtypes(include=["float64", "int64"]).columns
         if len(numeric_cols) > 0:
             print(f"Scaling numeric columns: {list(numeric_cols)}")
             scaler = StandardScaler()
@@ -38,6 +38,7 @@ def feature_engineering(input_path, output_path, target_column):
     except Exception as e:
         print(f"Feature engineering error: {e}", file=sys.stderr)
         sys.exit(1)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Feature engineering")

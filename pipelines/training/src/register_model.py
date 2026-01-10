@@ -13,7 +13,7 @@ def register_model(model_name, mlflow_uri, threshold, alias, run_id):
         # Get run metrics
         run = client.get_run(run_id)
         # Handle cases where metrics might be missing or keys differ
-        accuracy = run.data.metrics.get('accuracy', 0)
+        accuracy = run.data.metrics.get("accuracy", 0)
 
         print(f"Checking model from Run ID: {run_id}")
         print(f"Model accuracy: {accuracy:.4f}, threshold: {threshold}")
@@ -34,6 +34,7 @@ def register_model(model_name, mlflow_uri, threshold, alias, run_id):
         print(f"Registration error: {e}", file=sys.stderr)
         sys.exit(1)
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Register model")
     parser.add_argument("--model-name", required=True, help="Model name")
@@ -44,6 +45,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    register_model(
-        args.model_name, args.mlflow_uri, args.threshold, args.alias, args.run_id
-    )
+    register_model(args.model_name, args.mlflow_uri, args.threshold, args.alias, args.run_id)

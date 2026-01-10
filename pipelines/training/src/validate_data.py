@@ -34,6 +34,7 @@ def validate_data(input_path, output_path):
         print(f"Validation error: {e}", file=sys.stderr)
         sys.exit(1)
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Validate data")
     parser.add_argument("--input", required=True, help="Path to input CSV")
