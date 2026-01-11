@@ -363,12 +363,28 @@ jobs:
             -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
             -backend-config="encrypt=true"
 
+      - name: Check if EKS cluster exists
+        if: steps.aws-creds.outcome == 'success'
+        id: eks-check
+        run: |
+          if aws eks describe-cluster --name mlops-platform-dev --region ${{ env.AWS_REGION }} &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Terraform Plan
         if: steps.aws-creds.outcome == 'success'
         id: plan
         working-directory: infrastructure/terraform/environments/aws/dev
         run: |
-          terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+          # If EKS cluster doesn't exist, only plan the EKS module to avoid K8s provider errors
+          if [ "${{ steps.eks-check.outputs.exists }}" == "false" ]; then
+            echo "EKS cluster not found - planning infrastructure only (module.eks)"
+            terraform plan -no-color -target=module.eks -out=tfplan 2>&1 | tee plan.txt
+          else
+            terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+          fi
 
           if grep -q "No changes" plan.txt; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
@@ -378,6 +394,11 @@ jobs:
             echo "has_changes=true" >> $GITHUB_OUTPUT
             echo "## AWS Terraform Plan" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ steps.eks-check.outputs.exists }}" == "false" ]; then
+              echo "> **Note:** EKS cluster doesn't exist yet. Showing plan for infrastructure only." >> $GITHUB_STEP_SUMMARY
+              echo "> After deploying, run again to see full plan including Kubernetes resources." >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
             echo "<details><summary>Click to expand plan</summary>" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
@@ -483,6 +504,16 @@ jobs:
           ARM_USE_OIDC: true
         run: terraform init
 
+      - name: Check if AKS cluster exists
+        if: steps.azure-creds.outcome == 'success'
+        id: aks-check
+        run: |
+          if az aks show --resource-group mlops-platform-dev-rg --name mlops-platform-dev &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Terraform Plan
         if: steps.azure-creds.outcome == 'success'
         id: plan
@@ -493,7 +524,13 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           ARM_USE_OIDC: true
         run: |
-          terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+          # If AKS cluster doesn't exist, only plan the AKS module to avoid K8s provider errors
+          if [ "${{ steps.aks-check.outputs.exists }}" == "false" ]; then
+            echo "AKS cluster not found - planning infrastructure only (module.aks)"
+            terraform plan -no-color -target=module.aks -out=tfplan 2>&1 | tee plan.txt
+          else
+            terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+          fi
 
           if grep -q "No changes" plan.txt; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
@@ -503,6 +540,11 @@ jobs:
             echo "has_changes=true" >> $GITHUB_OUTPUT
             echo "## Azure Terraform Plan" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ steps.aks-check.outputs.exists }}" == "false" ]; then
+              echo "> **Note:** AKS cluster doesn't exist yet. Showing plan for infrastructure only." >> $GITHUB_STEP_SUMMARY
+              echo "> After deploying, run again to see full plan including Kubernetes resources." >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
             echo "<details><summary>Click to expand plan</summary>" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
@@ -564,17 +606,37 @@ jobs:
           mkdir -p ~/.terraform.d/plugin-cache
           echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
 
+      - name: Set up Cloud SDK
+        if: steps.gcp-creds.outcome == 'success'
+        uses: google-github-actions/setup-gcloud@v2
+
       - name: Terraform Init
         if: steps.gcp-creds.outcome == 'success'
         working-directory: infrastructure/terraform/environments/gcp/dev
         run: terraform init
+
+      - name: Check if GKE cluster exists
+        if: steps.gcp-creds.outcome == 'success'
+        id: gke-check
+        run: |
+          if gcloud container clusters describe mlops-platform-dev --zone ${{ env.GCP_ZONE }} --project ${{ secrets.GCP_PROJECT_ID }} &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Terraform Plan
         if: steps.gcp-creds.outcome == 'success'
         id: plan
         working-directory: infrastructure/terraform/environments/gcp/dev
         run: |
-          terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+          # If GKE cluster doesn't exist, only plan the GKE module to avoid K8s provider errors
+          if [ "${{ steps.gke-check.outputs.exists }}" == "false" ]; then
+            echo "GKE cluster not found - planning infrastructure only (module.gke)"
+            terraform plan -no-color -target=module.gke -out=tfplan 2>&1 | tee plan.txt
+          else
+            terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+          fi
 
           if grep -q "No changes" plan.txt; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
@@ -584,6 +646,11 @@ jobs:
             echo "has_changes=true" >> $GITHUB_OUTPUT
             echo "## GCP Terraform Plan" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ steps.gke-check.outputs.exists }}" == "false" ]; then
+              echo "> **Note:** GKE cluster doesn't exist yet. Showing plan for infrastructure only." >> $GITHUB_STEP_SUMMARY
+              echo "> After deploying, run again to see full plan including Kubernetes resources." >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
             echo "<details><summary>Click to expand plan</summary>" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
