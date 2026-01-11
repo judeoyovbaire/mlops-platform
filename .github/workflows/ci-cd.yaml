@@ -347,10 +347,21 @@ jobs:
           mkdir -p ~/.terraform.d/plugin-cache
           echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
 
+      - name: Get AWS Account ID
+        if: steps.aws-creds.outcome == 'success'
+        id: aws-account
+        run: echo "account_id=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_OUTPUT
+
       - name: Terraform Init
         if: steps.aws-creds.outcome == 'success'
         working-directory: infrastructure/terraform/environments/aws/dev
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="bucket=mlops-platform-tfstate-${{ steps.aws-account.outputs.account_id }}" \
+            -backend-config="key=mlops-platform/dev/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
+            -backend-config="encrypt=true"
 
       - name: Terraform Plan
         if: steps.aws-creds.outcome == 'success'
@@ -629,9 +640,19 @@ jobs:
           mkdir -p ~/.terraform.d/plugin-cache
           echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
 
+      - name: Get AWS Account ID
+        id: aws-account
+        run: echo "account_id=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_OUTPUT
+
       - name: Terraform Init
         working-directory: infrastructure/terraform/environments/aws/dev
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="bucket=mlops-platform-tfstate-${{ steps.aws-account.outputs.account_id }}" \
+            -backend-config="key=mlops-platform/dev/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
+            -backend-config="encrypt=true"
 
       - name: Terraform Apply
         working-directory: infrastructure/terraform/environments/aws/dev
