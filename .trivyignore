@@ -58,6 +58,18 @@ AVD-GCP-0015
 AVD-AZU-0041
 
 # =============================================================================
+# Terraform module cache (third-party code)
+# =============================================================================
+# The .terraform directory contains downloaded modules from the Terraform registry.
+# These are third-party modules with their own example files that may trigger warnings.
+# Our actual infrastructure code is scanned; cached modules are excluded.
+#
+# NOTE: .trivyignore doesn't support directory patterns. Use --skip-dirs flag:
+#   trivy config . --skip-dirs "**/.terraform"
+#
+# The CI/CD pipeline already uses this flag in the security-scan job.
+
+# =============================================================================
 # Development environment accepted risks
 # =============================================================================
 # The following are acceptable for dev environments but should be
