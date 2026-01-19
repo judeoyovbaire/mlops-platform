@@ -9,6 +9,11 @@ Comprehensive documentation for the MLOps Platform.
 | [Quick Start](QUICKSTART.md) | Deploy your first model in 5 minutes |
 | [Architecture](architecture.md) | System design and component details |
 | [Secrets Management](secrets-management.md) | Credential rotation and security |
+| [Performance Tuning](performance-tuning.md) | Optimize inference, training, and infrastructure |
+| [Disaster Recovery](disaster-recovery.md) | Backup and recovery procedures |
+| [API Reference](api-reference.md) | MLflow and KServe API documentation |
+| [Upgrade Procedures](upgrade-procedures.md) | Component upgrade guides |
+| [Troubleshooting](troubleshooting.md) | Common issues and solutions |
 
 ## Runbooks
 
@@ -45,6 +50,9 @@ Operational guides for day-to-day platform management:
 | KServe Basic | sklearn model with production config | [examples/kserve/](../examples/kserve/) |
 | Canary Deployment | Progressive rollout with traffic splitting | [examples/canary-deployment/](../examples/canary-deployment/) |
 | LLM Inference | Mistral-7B with vLLM on GPU | [examples/llm-inference/](../examples/llm-inference/) |
+| Drift Detection | Model monitoring with Evidently | [examples/drift-detection/](../examples/drift-detection/) |
+| Distributed Training | PyTorch DDP with Kubeflow | [examples/distributed-training/](../examples/distributed-training/) |
+| Chaos Testing | Resilience testing with Chaos Mesh | [examples/chaos-testing/](../examples/chaos-testing/) |
 
 ## Architecture Diagrams
 

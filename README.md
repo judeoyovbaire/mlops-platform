@@ -142,8 +142,6 @@ mlops-platform/
 │       ├── aws/                # AWS-specific Helm values
 │       ├── azure/              # Azure-specific Helm values
 │       └── gcp/                # GCP-specific Helm values
-│       ├── azure/              # Azure-specific Helm values
-│       └── gcp/                # GCP-specific Helm values
 ├── pipelines/training/         # Argo Workflow pipeline definitions
 │   ├── src/                    # Pipeline Python scripts (load_data, train_model, etc)
 │   ├── kustomization.yaml      # ConfigMap generator
@@ -479,9 +477,17 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 - [x] VPC Flow Logs (AWS, Azure NSG, GCP)
 - [x] Grafana cost dashboard for resource optimization
 - [x] Chaos Mesh for resilience testing
+- [x] Production environment configuration (AWS, Azure, GCP)
+- [x] Comprehensive test coverage (Terraform modules, CI pipeline integration)
+- [x] Model monitoring & data drift detection (Grafana dashboards, drift detector)
+- [x] Cost optimization automation (idle resource scanner, cost report generator)
+- [x] Model registry governance (Kyverno policies for versioning, approval workflows)
+- [x] Performance tuning guide
 
 ### Future Enhancements
-- [ ] Production environment configuration (multi-cloud)
+- [ ] A/B testing framework for model comparison
+- [ ] Feature store integration (Feast)
+- [ ] Model explainability dashboards (SHAP/LIME)
 
 ## Examples
 
@@ -525,6 +531,9 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 | **Security** | [Secrets Management](docs/secrets-management.md) - Credential rotation |
 | **Operations** | [Operations Runbook](docs/runbooks/operations.md) - Day-to-day procedures |
 | **Troubleshooting** | [Troubleshooting Guide](docs/runbooks/troubleshooting.md) - Common issues |
+| **Performance** | [Performance Tuning](docs/performance-tuning.md) - Optimize inference & training |
+| **Disaster Recovery** | [DR Guide](docs/disaster-recovery.md) - Backup & recovery procedures |
+| **API Reference** | [API Reference](docs/api-reference.md) - MLflow & KServe APIs |
 | **Examples** | [LLM Inference](examples/llm-inference/README.md) - GPU-based model serving |
 
 ## License

@@ -824,6 +824,42 @@ kubectl port-forward -n chaos-testing svc/chaos-dashboard 2333:2333
 - Monitor metrics during experiments
 - Have rollback procedures ready
 
+## Model Governance
+
+The platform enforces model governance through Kyverno policies that ensure:
+
+**Required Model Metadata:**
+- Model name, version, and owner labels
+- Model stage (staging/production/archived)
+- MLflow experiment and run ID for lineage tracking
+
+**Production Approval Workflow:**
+- Models must have approval annotations before production deployment
+- Approver identity and approval ticket required
+- Production models protected from accidental deletion
+
+**Semantic Versioning:**
+- All models validated against semver format (X.Y.Z)
+- Automatic audit log generation for deployments
+
+See [governance policies](../infrastructure/kubernetes/governance/) for implementation details.
+
+## Data Drift Monitoring
+
+The platform includes automated data drift detection:
+
+**Drift Detection Component:**
+- Statistical tests: Kolmogorov-Smirnov, Population Stability Index, Jensen-Shannon divergence
+- Real-time Prometheus metrics exposure
+- Configurable alerting thresholds
+
+**Grafana Dashboards:**
+- Model performance metrics (latency, throughput, error rates)
+- Drift score visualization over time
+- Feature distribution comparisons
+
+See [drift detection component](../components/drift-detection/) for implementation.
+
 ## Component Versions
 
 Current versions deployed by the platform (aligned across both clouds):

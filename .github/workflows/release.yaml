@@ -33,14 +33,21 @@ jobs:
           # Build Kustomize manifests
           kustomize build infrastructure/kubernetes/ > release/mlops-platform.yaml
 
-          # Package Terraform module
+          # Package Terraform modules (all clouds)
           tar -czvf release/terraform-eks-module.tar.gz -C infrastructure/terraform/modules eks
+          tar -czvf release/terraform-aks-module.tar.gz -C infrastructure/terraform/modules aks
+          tar -czvf release/terraform-gke-module.tar.gz -C infrastructure/terraform/modules gke
 
           # Package examples
           tar -czvf release/examples.tar.gz examples/
 
-          # Package deploy script
+          # Package deploy scripts (all clouds)
           cp scripts/deploy-aws.sh release/
+          cp scripts/deploy-azure.sh release/
+          cp scripts/deploy-gcp.sh release/
+
+          # Package documentation
+          tar -czvf release/docs.tar.gz docs/
 
       - name: Generate changelog
         id: changelog
@@ -68,13 +75,22 @@ jobs:
 
             ### Installation
 
+            **AWS:**
             ```bash
-            # Deploy using the deploy script
             ./deploy-aws.sh deploy
+            # Or: cd infrastructure/terraform/environments/aws/dev && terraform init && terraform apply
+            ```
 
-            # Or use Terraform directly
-            cd infrastructure/terraform/environments/aws/dev
-            terraform init && terraform apply
+            **Azure:**
+            ```bash
+            ./deploy-azure.sh deploy
+            # Or: cd infrastructure/terraform/environments/azure/dev && terraform init && terraform apply
+            ```
+
+            **GCP:**
+            ```bash
+            ./deploy-gcp.sh deploy
+            # Or: cd infrastructure/terraform/environments/gcp/dev && terraform init && terraform apply
             ```
 
             ### Components
@@ -82,14 +98,19 @@ jobs:
             - KServe v0.16.0
             - ArgoCD v7.9.0
             - Argo Workflows v0.46.1
-            - Karpenter v1.8.0
+            - Karpenter v1.8.0 (AWS) / KEDA v2.18.3 (Azure) / NAP (GCP)
             - Prometheus Stack v72.6.2
 
           files: |
             release/mlops-platform.yaml
             release/terraform-eks-module.tar.gz
+            release/terraform-aks-module.tar.gz
+            release/terraform-gke-module.tar.gz
             release/examples.tar.gz
+            release/docs.tar.gz
             release/deploy-aws.sh
+            release/deploy-azure.sh
+            release/deploy-gcp.sh
           draft: false
           prerelease: false
         env:

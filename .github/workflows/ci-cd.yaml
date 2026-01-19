@@ -37,8 +37,8 @@ on:
           - deploy-model
 
 env:
-  PYTHON_VERSION: "3.10"
-  TERRAFORM_VERSION: "1.6.0"
+  PYTHON_VERSION: "3.11"
+  TERRAFORM_VERSION: "1.10.0"
   AWS_REGION: "eu-west-1"
   AZURE_LOCATION: "westeurope"
   GCP_REGION: "europe-west4"
@@ -148,6 +148,12 @@ jobs:
           terraform init -backend=false
           terraform validate
 
+      - name: Validate AWS Prod Environment
+        working-directory: infrastructure/terraform/environments/aws/prod
+        run: |
+          terraform init -backend=false
+          terraform validate
+
       # Azure Validation
       - name: Validate AKS Module
         working-directory: infrastructure/terraform/modules/aks
@@ -167,6 +173,12 @@ jobs:
           terraform init -backend=false
           terraform validate
 
+      - name: Validate Azure Prod Environment
+        working-directory: infrastructure/terraform/environments/azure/prod
+        run: |
+          terraform init -backend=false
+          terraform validate
+
       # GCP Validation
       - name: Validate GKE Module
         working-directory: infrastructure/terraform/modules/gke
@@ -182,6 +194,12 @@ jobs:
 
       - name: Validate GCP Dev Environment
         working-directory: infrastructure/terraform/environments/gcp/dev
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate GCP Prod Environment
+        working-directory: infrastructure/terraform/environments/gcp/prod
         run: |
           terraform init -backend=false
           terraform validate
