@@ -39,6 +39,19 @@
 # - terraform-aws-modules/eks: Public endpoint access controlled via our variables
 # - terraform-aws-modules/vpc: NAT Gateway egress is required for outbound traffic
 
+# Ignore security group egress rules in external EKS module (node groups require outbound access)
+# Path: terraform-aws-modules/eks/aws/node_groups.tf
+aws-vpc-no-public-egress-sgr
+
+# Ignore EKS public access warnings in external module (controlled via our cluster_endpoint_public_access variable)
+# Path: terraform-aws-modules/eks/aws/main.tf
+AVD-AWS-0040
+AVD-AWS-0041
+
+# Ignore GCP Cloud SQL SSL warning - ssl_mode=ENCRYPTED_ONLY enforces SSL but Trivy may not recognize it
+# Path: infrastructure/terraform/modules/gke/storage.tf
+AVD-GCP-0015
+
 # =============================================================================
 # Development environment accepted risks
 # =============================================================================
