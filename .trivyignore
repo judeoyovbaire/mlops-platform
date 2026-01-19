@@ -5,12 +5,22 @@
 # FIXED ISSUES (kept for reference)
 # =============================================================================
 # The following issues have been addressed in the codebase:
-# - AVD-AWS-0104: EKS public endpoint now has CIDR restrictions via cluster_endpoint_public_access_cidrs
+#
+# AWS/EKS:
+# - AVD-AWS-0104: EKS public endpoint disabled by default, CIDR restrictions when enabled
 # - AVD-AWS-0057: VPC Flow Logs enabled via enable_vpc_flow_logs variable
-# - AVD-AZURE-0017: Key Vault network ACL now defaults to Deny with VNet access
-# - AVD-AZURE-0013: AKS API server now supports authorized_ip_ranges
-# - AVD-AWS-0031: ECR image tags now set to IMMUTABLE
-# - Security group egress restricted to VPC CIDR for RDS
+# - AVD-AWS-0031: ECR image tags set to IMMUTABLE
+# - AVD-AWS-0088: S3 state bucket now uses KMS CMK encryption
+# - AVD-AWS-0132: Security group egress restricted to VPC CIDR for RDS
+#
+# Azure/AKS:
+# - AVD-AZURE-0017: Key Vault network ACL defaults to Deny with VNet access
+# - AVD-AZURE-0013: AKS API server supports authorized_ip_ranges
+# - AVD-AZURE-0014: RBAC explicitly enabled on AKS clusters
+#
+# GCP/GKE:
+# - AVD-GCP-0027: Default network creation disabled (auto_create_network = false)
+# - AVD-GCP-0024: Cloud SQL SSL mode set to ENCRYPTED_ONLY
 
 # =============================================================================
 # Kubernetes manifest warnings - intentional for ML workloads
@@ -34,5 +44,6 @@
 # =============================================================================
 # The following are acceptable for dev environments but should be
 # reviewed for production deployments:
-# - S3 using AWS-managed keys (SSE-S3) instead of CMK - enable via enable_kms_encryption=true
 # - RDS deletion protection disabled - enable via mlflow_db_deletion_protection=true
+# - EKS public endpoint - disabled by default, enable with restricted CIDRs if needed
+# - AKS API server IP ranges - empty by default, set specific CIDRs for production

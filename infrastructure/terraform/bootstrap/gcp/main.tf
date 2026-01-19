@@ -49,6 +49,9 @@ resource "google_project" "mlops" {
 
   labels = var.labels
 
+  # Disable default network creation - we create our own VPC
+  auto_create_network = false
+
   # Allow project to be deleted on destroy
   deletion_policy = "DELETE"
 }

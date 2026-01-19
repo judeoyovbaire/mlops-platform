@@ -86,6 +86,7 @@ resource "google_sql_database_instance" "mlflow" {
       ipv4_enabled                                  = false
       private_network                               = google_compute_network.main.id
       enable_private_path_for_google_cloud_services = true
+      ssl_mode                                      = "ENCRYPTED_ONLY" # Enforce SSL connections
     }
 
     backup_configuration {

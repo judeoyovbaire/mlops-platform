@@ -17,20 +17,15 @@ variable "cluster_version" {
 }
 
 variable "cluster_endpoint_public_access" {
-  description = "Enable public access to EKS API endpoint (set to false for production)"
+  description = "Enable public access to EKS API endpoint. Set to false for production environments with VPN/bastion access."
   type        = bool
-  default     = true
+  default     = false # Secure by default - enable only if needed
 }
 
 variable "cluster_endpoint_public_access_cidrs" {
-  description = "List of CIDR blocks allowed to access the EKS public endpoint. Use your organization's IP ranges for security."
+  description = "List of CIDR blocks allowed to access the EKS public endpoint. Only used when cluster_endpoint_public_access is true. Restrict to your organization's IP ranges."
   type        = list(string)
-  default     = ["0.0.0.0/0"] # WARNING: Open to all by default - restrict in production!
-
-  validation {
-    condition     = length(var.cluster_endpoint_public_access_cidrs) > 0
-    error_message = "At least one CIDR block must be specified for public access."
-  }
+  default     = [] # Empty by default - must be explicitly configured if public access is enabled
 }
 
 variable "vpc_cidr" {
