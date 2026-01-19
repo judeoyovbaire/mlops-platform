@@ -1,0 +1,275 @@
+# =============================================================================
+# Model Registry Governance Policies
+# =============================================================================
+# Kyverno policies for model versioning, approval workflows, and lineage tracking
+
+---
+# Require model metadata labels on all InferenceServices
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-model-metadata
+  annotations:
+    policies.kyverno.io/title: Require Model Metadata
+    policies.kyverno.io/category: MLOps Governance
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      All InferenceServices must have required model metadata labels for
+      governance, lineage tracking, and audit purposes.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-model-labels
+      match:
+        any:
+          - resources:
+              kinds:
+                - serving.kserve.io/v1beta1/InferenceService
+              namespaces:
+                - mlops
+      validate:
+        message: >-
+          InferenceService must have the following labels:
+          - mlops.io/model-name
+          - mlops.io/model-version
+          - mlops.io/model-owner
+          - mlops.io/model-stage (staging|production|archived)
+        pattern:
+          metadata:
+            labels:
+              mlops.io/model-name: "?*"
+              mlops.io/model-version: "?*"
+              mlops.io/model-owner: "?*"
+              mlops.io/model-stage: "staging | production | archived"
+
+---
+# Require model approval annotation for production deployments
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-production-approval
+  annotations:
+    policies.kyverno.io/title: Require Production Approval
+    policies.kyverno.io/category: MLOps Governance
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Models deployed to production must have an approval annotation
+      indicating they have been reviewed and approved.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-approval-for-production
+      match:
+        any:
+          - resources:
+              kinds:
+                - serving.kserve.io/v1beta1/InferenceService
+              namespaces:
+                - mlops
+      preconditions:
+        all:
+          - key: "{{ request.object.metadata.labels.\"mlops.io/model-stage\" || '' }}"
+            operator: Equals
+            value: "production"
+      validate:
+        message: >-
+          Production models must have approval annotations:
+          - mlops.io/approved-by (approver email/username)
+          - mlops.io/approval-date (ISO 8601 date)
+          - mlops.io/approval-ticket (JIRA/ticket reference)
+        pattern:
+          metadata:
+            annotations:
+              mlops.io/approved-by: "?*"
+              mlops.io/approval-date: "?*"
+              mlops.io/approval-ticket: "?*"
+
+---
+# Require MLflow run ID for model lineage
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-model-lineage
+  annotations:
+    policies.kyverno.io/title: Require Model Lineage
+    policies.kyverno.io/category: MLOps Governance
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      All models must have lineage information linking back to the
+      MLflow experiment and training run.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-mlflow-lineage
+      match:
+        any:
+          - resources:
+              kinds:
+                - serving.kserve.io/v1beta1/InferenceService
+              namespaces:
+                - mlops
+      validate:
+        message: >-
+          Model should have lineage annotations for traceability:
+          - mlops.io/mlflow-experiment-id
+          - mlops.io/mlflow-run-id
+          - mlops.io/training-dataset
+        pattern:
+          metadata:
+            annotations:
+              mlops.io/mlflow-experiment-id: "?*"
+              mlops.io/mlflow-run-id: "?*"
+
+---
+# Require model performance metrics annotation
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-model-metrics
+  annotations:
+    policies.kyverno.io/title: Require Model Performance Metrics
+    policies.kyverno.io/category: MLOps Governance
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Production models should have baseline performance metrics documented.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-performance-metrics
+      match:
+        any:
+          - resources:
+              kinds:
+                - serving.kserve.io/v1beta1/InferenceService
+              namespaces:
+                - mlops
+      preconditions:
+        all:
+          - key: "{{ request.object.metadata.labels.\"mlops.io/model-stage\" || '' }}"
+            operator: Equals
+            value: "production"
+      validate:
+        message: >-
+          Production models should have performance metrics:
+          - mlops.io/accuracy or mlops.io/f1-score
+          - mlops.io/latency-p99-ms
+        anyPattern:
+          - metadata:
+              annotations:
+                mlops.io/accuracy: "?*"
+          - metadata:
+              annotations:
+                mlops.io/f1-score: "?*"
+
+---
+# Enforce semantic versioning for models
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: enforce-semantic-versioning
+  annotations:
+    policies.kyverno.io/title: Enforce Semantic Versioning
+    policies.kyverno.io/category: MLOps Governance
+    policies.kyverno.io/severity: low
+    policies.kyverno.io/description: >-
+      Model versions should follow semantic versioning (X.Y.Z format).
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: validate-version-format
+      match:
+        any:
+          - resources:
+              kinds:
+                - serving.kserve.io/v1beta1/InferenceService
+              namespaces:
+                - mlops
+      validate:
+        message: "Model version should follow semantic versioning (e.g., 1.0.0, 2.1.3)"
+        pattern:
+          metadata:
+            labels:
+              mlops.io/model-version: "{{ regex_match('^[0-9]+\\.[0-9]+\\.[0-9]+$', @) }}"
+
+---
+# Generate model audit log ConfigMap
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: generate-model-audit-log
+  annotations:
+    policies.kyverno.io/title: Generate Model Audit Log
+    policies.kyverno.io/category: MLOps Governance
+    policies.kyverno.io/description: >-
+      Automatically creates audit log entries when models are deployed.
+spec:
+  rules:
+    - name: create-audit-entry
+      match:
+        any:
+          - resources:
+              kinds:
+                - serving.kserve.io/v1beta1/InferenceService
+              namespaces:
+                - mlops
+              operations:
+                - CREATE
+                - UPDATE
+      generate:
+        apiVersion: v1
+        kind: ConfigMap
+        name: "model-audit-{{ request.object.metadata.name }}-{{ request.object.metadata.uid | truncate(@, `8`) }}"
+        namespace: mlops
+        synchronize: false
+        data:
+          data:
+            model-name: "{{ request.object.metadata.labels.\"mlops.io/model-name\" || 'unknown' }}"
+            model-version: "{{ request.object.metadata.labels.\"mlops.io/model-version\" || 'unknown' }}"
+            model-owner: "{{ request.object.metadata.labels.\"mlops.io/model-owner\" || 'unknown' }}"
+            model-stage: "{{ request.object.metadata.labels.\"mlops.io/model-stage\" || 'unknown' }}"
+            deployed-by: "{{ request.userInfo.username }}"
+            deployed-at: "{{ time_now_utc() }}"
+            operation: "{{ request.operation }}"
+
+---
+# Prevent deletion of production models without approval
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: protect-production-models
+  annotations:
+    policies.kyverno.io/title: Protect Production Models
+    policies.kyverno.io/category: MLOps Governance
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Prevents accidental deletion of production models.
+      Models must be transitioned to 'archived' stage before deletion.
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: prevent-production-deletion
+      match:
+        any:
+          - resources:
+              kinds:
+                - serving.kserve.io/v1beta1/InferenceService
+              namespaces:
+                - mlops
+              operations:
+                - DELETE
+      preconditions:
+        all:
+          - key: "{{ request.oldObject.metadata.labels.\"mlops.io/model-stage\" || '' }}"
+            operator: Equals
+            value: "production"
+      validate:
+        message: >-
+          Cannot delete production models directly.
+          First transition the model to 'archived' stage, then delete.
+        deny: {}

@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drift-detector
+  namespace: mlops
+  labels:
+    app: drift-detector
+    app.kubernetes.io/name: drift-detector
+    app.kubernetes.io/component: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drift-detector
+  template:
+    metadata:
+      labels:
+        app: drift-detector
+        app.kubernetes.io/name: drift-detector
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: drift-detector
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: drift-detector
+          image: drift-detector:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: metrics
+              protocol: TCP
+          env:
+            - name: MODEL_NAME
+              value: "iris-classifier"
+            - name: DRIFT_THRESHOLD
+              value: "0.1"
+            - name: CHECK_INTERVAL_SECONDS
+              value: "300"
+            - name: METRICS_PORT
+              value: "8000"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: drift-detector
+  namespace: mlops
+  labels:
+    app: drift-detector
+spec:
+  selector:
+    app: drift-detector
+  ports:
+    - port: 8000
+      targetPort: metrics
+      name: metrics
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: drift-detector
+  namespace: mlops
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: drift-detector
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: drift-detector
+  namespaceSelector:
+    matchNames:
+      - mlops
+  endpoints:
+    - port: metrics
+      interval: 60s
+      path: /metrics
