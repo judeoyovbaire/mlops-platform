@@ -1,12 +1,6 @@
-# Unified CI/CD Pipeline for MLOps Platform
-#
-# Multi-Cloud Support: AWS EKS, Azure AKS, and GCP GKE
-#
-# This pipeline handles all validation, planning, and deployment:
-# - On push/PR: Validates code and shows terraform plan for all clouds
-# - Manual dispatch: Deploy infrastructure or models to selected cloud
-#
-# Destroy is intentionally excluded - run locally via `make destroy-{aws,azure,gcp}` for safety
+# Multi-cloud CI/CD pipeline for AWS EKS, Azure AKS, and GCP GKE
+# - Push/PR: Validates code and shows terraform plan
+# - Manual: Deploy infrastructure or models to selected cloud
 
 name: CI/CD
 
@@ -55,11 +49,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # ============================================================================
-  # STAGE 1: VALIDATE
-  # Runs on every push/PR - no cloud credentials needed
-  # ============================================================================
-
+  # Stage 1: Validate (runs on every push/PR - no credentials needed)
   lint-python:
     name: Lint Python
     runs-on: ubuntu-latest
@@ -320,11 +310,7 @@ jobs:
           python3 -c "import yaml; list(yaml.safe_load_all(open('pipelines/training/ml-training-workflow.yaml')))"
           echo "Argo Workflow YAML is valid"
 
-  # ============================================================================
-  # STAGE 2: TERRAFORM PLAN (AWS)
-  # Runs on every push/PR - requires AWS credentials
-  # ============================================================================
-
+  # Stage 2: Terraform Plan (requires cloud credentials)
   terraform-plan-aws:
     name: Terraform Plan (AWS)
     runs-on: ubuntu-latest
@@ -466,11 +452,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "AWS credentials not configured. Add \`AWS_ROLE_ARN\` secret after running bootstrap." >> $GITHUB_STEP_SUMMARY
 
-  # ============================================================================
-  # STAGE 2: TERRAFORM PLAN (Azure)
-  # Runs on every push/PR - requires Azure credentials
-  # ============================================================================
-
+  # Terraform Plan - Azure
   terraform-plan-azure:
     name: Terraform Plan (Azure)
     runs-on: ubuntu-latest
@@ -579,11 +561,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Azure credentials not configured. Add \`AZURE_CLIENT_ID\`, \`AZURE_TENANT_ID\`, and \`AZURE_SUBSCRIPTION_ID\` secrets after running bootstrap." >> $GITHUB_STEP_SUMMARY
 
-  # ============================================================================
-  # STAGE 2: TERRAFORM PLAN (GCP)
-  # Runs on every push/PR - requires GCP credentials
-  # ============================================================================
-
+  # Terraform Plan - GCP
   terraform-plan-gcp:
     name: Terraform Plan (GCP)
     runs-on: ubuntu-latest
@@ -685,11 +663,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "GCP credentials not configured. Add \`GCP_WORKLOAD_IDENTITY_PROVIDER\` and \`GCP_SERVICE_ACCOUNT\` secrets after running bootstrap." >> $GITHUB_STEP_SUMMARY
 
-  # ============================================================================
-  # STAGE 3: DEPLOY INFRASTRUCTURE - AWS (Manual Only)
-  # Only runs when manually triggered with cloud = "aws" and action = "deploy-infra"
-  # ============================================================================
-
+  # Deploy Infrastructure - AWS (manual trigger only)
   deploy-infra-aws:
     name: Deploy Infrastructure (AWS)
     runs-on: ubuntu-latest
@@ -764,11 +738,7 @@ jobs:
           kubectl get nodes >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Cluster provisioning..."
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
-  # ============================================================================
-  # STAGE 3: DEPLOY INFRASTRUCTURE - Azure (Manual Only)
-  # Only runs when manually triggered with cloud = "azure" and action = "deploy-infra"
-  # ============================================================================
-
+  # Deploy Infrastructure - Azure (manual trigger only)
   deploy-infra-azure:
     name: Deploy Infrastructure (Azure)
     runs-on: ubuntu-latest
@@ -874,11 +844,7 @@ jobs:
           kubectl get nodes >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Cluster provisioning..."
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
-  # ============================================================================
-  # STAGE 3: DEPLOY INFRASTRUCTURE - GCP (Manual Only)
-  # Only runs when manually triggered with cloud = "gcp" and action = "deploy-infra"
-  # ============================================================================
-
+  # Deploy Infrastructure - GCP (manual trigger only)
   deploy-infra-gcp:
     name: Deploy Infrastructure (GCP)
     runs-on: ubuntu-latest
@@ -960,11 +926,7 @@ jobs:
           kubectl get nodes >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Cluster provisioning..."
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
-  # ============================================================================
-  # STAGE 4: DEPLOY MODEL - AWS (Manual Only)
-  # Only runs when manually triggered with cloud = "aws" and action = "deploy-model"
-  # ============================================================================
-
+  # Deploy Model - AWS (manual trigger only)
   deploy-model-aws:
     name: Deploy Model (AWS)
     runs-on: ubuntu-latest
@@ -1010,11 +972,7 @@ jobs:
           echo "## Service URL" >> $GITHUB_STEP_SUMMARY
           echo "- **URL**: ${SERVICE_URL}" >> $GITHUB_STEP_SUMMARY
 
-  # ============================================================================
-  # STAGE 4: DEPLOY MODEL - Azure (Manual Only)
-  # Only runs when manually triggered with cloud = "azure" and action = "deploy-model"
-  # ============================================================================
-
+  # Deploy Model - Azure (manual trigger only)
   deploy-model-azure:
     name: Deploy Model (Azure)
     runs-on: ubuntu-latest
@@ -1073,11 +1031,7 @@ jobs:
           echo "## Service URL" >> $GITHUB_STEP_SUMMARY
           echo "- **URL**: ${SERVICE_URL}" >> $GITHUB_STEP_SUMMARY
 
-  # ============================================================================
-  # STAGE 4: DEPLOY MODEL - GCP (Manual Only)
-  # Only runs when manually triggered with cloud = "gcp" and action = "deploy-model"
-  # ============================================================================
-
+  # Deploy Model - GCP (manual trigger only)
   deploy-model-gcp:
     name: Deploy Model (GCP)
     runs-on: ubuntu-latest
@@ -1132,11 +1086,7 @@ jobs:
           echo "## Service URL" >> $GITHUB_STEP_SUMMARY
           echo "- **URL**: ${SERVICE_URL}" >> $GITHUB_STEP_SUMMARY
 
-  # ============================================================================
-  # SUMMARY
-  # Shows final status
-  # ============================================================================
-
+  # Pipeline Summary
   summary:
     name: Pipeline Summary
     runs-on: ubuntu-latest

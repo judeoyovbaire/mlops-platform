@@ -1,7 +1,4 @@
-# =============================================================================
-# Model Registry Governance Policies
-# =============================================================================
-# Kyverno policies for model versioning, approval workflows, and lineage tracking
+# Model Registry Governance Policies - Kyverno policies for model versioning, approval workflows, and lineage tracking
 
 ---
 # Require model metadata labels on all InferenceServices

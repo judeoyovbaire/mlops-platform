@@ -22,20 +22,14 @@ terraform {
   }
 }
 
-# =============================================================================
 # Data Sources
-# =============================================================================
-
 data "google_project" "current" {
   project_id = var.project_id
 }
 
 data "google_client_config" "default" {}
 
-# =============================================================================
 # VPC Network
-# =============================================================================
-
 resource "google_compute_network" "main" {
   name                    = "${var.cluster_name}-vpc"
   project                 = var.project_id
@@ -97,10 +91,7 @@ resource "google_compute_router_nat" "main" {
   }
 }
 
-# =============================================================================
 # GKE Cluster
-# =============================================================================
-
 resource "google_container_cluster" "main" {
   name     = var.cluster_name
   project  = var.project_id
@@ -246,10 +237,7 @@ resource "google_container_cluster" "main" {
   ]
 }
 
-# =============================================================================
 # Node Pool Service Account
-# =============================================================================
-
 resource "google_service_account" "node_pool" {
   account_id   = "${var.cluster_name}-nodes"
   display_name = "GKE Node Pool Service Account"
@@ -287,11 +275,7 @@ resource "google_project_iam_member" "node_pool_stackdriver_writer" {
   member  = "serviceAccount:${google_service_account.node_pool.email}"
 }
 
-# =============================================================================
-# Node Pools
-# =============================================================================
-
-# System Node Pool - Always running, on-demand instances
+# Node Pools - System (on-demand, always running)
 resource "google_container_node_pool" "system" {
   name     = "system"
   project  = var.project_id
@@ -487,11 +471,7 @@ resource "google_container_node_pool" "gpu" {
   }
 }
 
-# =============================================================================
-# Firewall Rules
-# =============================================================================
-
-# Allow internal communication within VPC
+# Firewall Rules - internal communication
 resource "google_compute_firewall" "internal" {
   name    = "${var.cluster_name}-allow-internal"
   project = var.project_id

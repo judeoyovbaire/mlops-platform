@@ -267,10 +267,7 @@ resource "aws_iam_policy" "mlflow_s3" {
   })
 }
 
-# =============================================================================
-# KMS Key for Encryption (S3, RDS, SSM)
-# =============================================================================
-
+# KMS Key for Encryption
 resource "aws_kms_key" "mlops" {
   count = var.enable_kms_encryption ? 1 : 0
 
@@ -442,11 +439,7 @@ resource "aws_db_instance" "mlflow" {
   tags = var.tags
 }
 
-# =============================================================================
-# Karpenter
-# =============================================================================
-
-# IRSA for Karpenter
+# Karpenter - IRSA
 module "karpenter_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.0"
@@ -578,10 +571,7 @@ resource "aws_eks_access_entry" "karpenter_node" {
   type          = "EC2_LINUX"
 }
 
-# =============================================================================
 # ECR Repository for ML Model Images
-# =============================================================================
-
 resource "aws_ecr_repository" "models" {
   name                 = "${var.cluster_name}/models"
   image_tag_mutability = "IMMUTABLE" # Prevent tag overwriting for security and traceability
@@ -634,10 +624,7 @@ resource "aws_ecr_lifecycle_policy" "models" {
   })
 }
 
-# =============================================================================
 # AWS Backup for RDS
-# =============================================================================
-
 resource "aws_backup_vault" "mlops" {
   count = var.enable_aws_backup ? 1 : 0
 
@@ -726,10 +713,7 @@ resource "aws_iam_role_policy_attachment" "backup_restore" {
   role       = aws_iam_role.backup[0].name
 }
 
-# =============================================================================
 # VPC Flow Logs
-# =============================================================================
-
 resource "aws_flow_log" "main" {
   count = var.enable_vpc_flow_logs ? 1 : 0
 

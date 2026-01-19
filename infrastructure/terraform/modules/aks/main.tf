@@ -223,10 +223,7 @@ resource "azurerm_log_analytics_workspace" "main" {
   tags = var.tags
 }
 
-# =============================================================================
-# NSG Flow Logs (Azure VPC Flow Logs equivalent)
-# =============================================================================
-
+# NSG Flow Logs
 resource "azurerm_network_watcher" "main" {
   count               = var.enable_nsg_flow_logs ? 1 : 0
   name                = "${var.cluster_name}-network-watcher"
