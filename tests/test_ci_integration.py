@@ -40,7 +40,10 @@ class TestGitHubActionsWorkflows:
             with open(workflow) as f:
                 content = yaml.safe_load(f)
                 if content:
-                    assert "on" in content, f"{workflow.name} missing trigger definition"
+                    # Note: "on" in YAML 1.1 can be parsed as True (boolean)
+                    # Check for both "on" key and True key (YAML boolean alias)
+                    has_trigger = "on" in content or True in content
+                    assert has_trigger, f"{workflow.name} missing trigger definition"
 
     def test_terraform_workflow_has_plan_and_apply(self, workflows_dir):
         """Verify Terraform workflow has both plan and apply jobs."""
@@ -204,15 +207,24 @@ class TestArgoWorkflowTemplates:
         if not pipelines_dir.exists():
             pytest.skip("Pipelines directory not found")
 
+        workflow_found = False
         for template in pipelines_dir.rglob("*.yaml"):
+            # Skip non-workflow files like kustomization.yaml
+            if "kustomization" in template.name.lower():
+                continue
+
             with open(template) as f:
                 docs = list(yaml.safe_load_all(f))
 
             for doc in docs:
                 if doc and doc.get("kind") in ["Workflow", "WorkflowTemplate"]:
+                    workflow_found = True
                     metadata = doc.get("metadata", {})
-                    assert "name" in metadata, \
-                        f"{template.name} workflow missing name"
+                    assert "name" in metadata or "generateName" in metadata, \
+                        f"{template.name} workflow missing name or generateName"
+
+        if not workflow_found:
+            pytest.skip("No Workflow/WorkflowTemplate found in pipelines")
 
     def test_workflow_templates_have_resource_limits(self, pipelines_dir):
         """Verify workflow steps have resource limits defined."""
