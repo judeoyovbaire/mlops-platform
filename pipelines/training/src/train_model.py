@@ -11,17 +11,17 @@ from sklearn.model_selection import train_test_split
 
 
 def train_model(
-    input_path,
-    model_output_path,
-    target,
-    model_name,
-    mlflow_uri,
-    n_estimators,
-    max_depth,
-    test_size,
-    run_id_output_path,
-    accuracy_output_path,
-):
+    input_path: str,
+    model_output_path: str,
+    target: str,
+    model_name: str,
+    mlflow_uri: str,
+    n_estimators: int,
+    max_depth: int,
+    test_size: float,
+    run_id_output_path: str,
+    accuracy_output_path: str,
+) -> None:
     try:
         # Setup MLflow
         mlflow.set_tracking_uri(mlflow_uri)
