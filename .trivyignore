@@ -52,6 +52,11 @@ AVD-AWS-0041
 # Path: infrastructure/terraform/modules/gke/storage.tf
 AVD-GCP-0015
 
+# Ignore AKS API Server IP ranges warning - configuration is intentionally flexible for dev
+# Users should set api_server_authorized_ip_ranges for production
+# Path: infrastructure/terraform/modules/aks/main.tf
+AVD-AZU-0041
+
 # =============================================================================
 # Development environment accepted risks
 # =============================================================================
