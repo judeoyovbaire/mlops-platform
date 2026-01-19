@@ -22,6 +22,17 @@ variable "cluster_endpoint_public_access" {
   default     = true
 }
 
+variable "cluster_endpoint_public_access_cidrs" {
+  description = "List of CIDR blocks allowed to access the EKS public endpoint. Use your organization's IP ranges for security."
+  type        = list(string)
+  default     = ["0.0.0.0/0"] # WARNING: Open to all by default - restrict in production!
+
+  validation {
+    condition     = length(var.cluster_endpoint_public_access_cidrs) > 0
+    error_message = "At least one CIDR block must be specified for public access."
+  }
+}
+
 variable "vpc_cidr" {
   description = "CIDR block for the VPC"
   type        = string

@@ -64,6 +64,27 @@ variable "dns_service_ip" {
 }
 
 # -----------------------------------------------------------------------------
+# API Server Access Control
+# -----------------------------------------------------------------------------
+
+variable "api_server_authorized_ip_ranges" {
+  description = "List of CIDR blocks authorized to access the AKS API server. Use your organization's IP ranges for security."
+  type        = list(string)
+  default     = [] # Empty list allows all IPs - set specific CIDRs in production!
+
+  validation {
+    condition     = alltrue([for cidr in var.api_server_authorized_ip_ranges : can(cidrhost(cidr, 0))])
+    error_message = "All entries must be valid CIDR blocks (e.g., 203.0.113.0/24)."
+  }
+}
+
+variable "keyvault_allowed_ip_ranges" {
+  description = "List of IP addresses/CIDR blocks allowed to access Key Vault (for management access)"
+  type        = list(string)
+  default     = [] # Empty by default - access restricted to VNet and Azure services
+}
+
+# -----------------------------------------------------------------------------
 # System Node Pool
 # -----------------------------------------------------------------------------
 

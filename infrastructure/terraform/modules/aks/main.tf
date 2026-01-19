@@ -75,6 +75,14 @@ resource "azurerm_kubernetes_cluster" "main" {
   dns_prefix          = var.cluster_name
   kubernetes_version  = var.kubernetes_version
 
+  # API Server access configuration - restrict to authorized IPs
+  api_server_access_profile {
+    authorized_ip_ranges = var.api_server_authorized_ip_ranges
+  }
+
+  # Explicitly enable RBAC (Azure default, but makes intent clear)
+  role_based_access_control_enabled = true
+
   # System node pool (required default pool)
   default_node_pool {
     name                        = "system"

@@ -59,10 +59,14 @@ resource "azurerm_key_vault" "main" {
   soft_delete_retention_days = 7
   purge_protection_enabled   = false # Set true for production
 
-  # Network rules - allow AKS access
+  # Network rules - deny by default, allow AKS subnet and Azure services
   network_acls {
-    default_action = "Allow"
-    bypass         = "AzureServices"
+    default_action             = "Deny"
+    bypass                     = "AzureServices"
+    virtual_network_subnet_ids = [azurerm_subnet.aks.id]
+
+    # Allow specified IP ranges for management access
+    ip_rules = var.keyvault_allowed_ip_ranges
   }
 
   tags = var.tags

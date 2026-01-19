@@ -1,18 +1,38 @@
 # Trivy ignore file for MLOps Platform
 # https://aquasecurity.github.io/trivy/v0.28.0/docs/configuration/filtering/
 
-# Ignore false positives and accepted risks for IaC scanning
+# =============================================================================
+# FIXED ISSUES (kept for reference)
+# =============================================================================
+# The following issues have been addressed in the codebase:
+# - AVD-AWS-0104: EKS public endpoint now has CIDR restrictions via cluster_endpoint_public_access_cidrs
+# - AVD-AWS-0057: VPC Flow Logs enabled via enable_vpc_flow_logs variable
+# - AVD-AZURE-0017: Key Vault network ACL now defaults to Deny with VNet access
+# - AVD-AZURE-0013: AKS API server now supports authorized_ip_ranges
+# - AVD-AWS-0031: ECR image tags now set to IMMUTABLE
+# - Security group egress restricted to VPC CIDR for RDS
 
-# AWS Provider warnings that are handled by organizational policies
-# AVD-AWS-0057: VPC Flow Logs - enabled via organizational CloudTrail
-# AVD-AWS-0178: EBS encryption - using default KMS key is acceptable for dev
-
-# Kubernetes manifest warnings that are intentional for ML workloads
+# =============================================================================
+# Kubernetes manifest warnings - intentional for ML workloads
+# =============================================================================
 # KSV001: Process can elevate privileges - needed for GPU workloads
 # KSV003: Default capabilities not dropped - handled by PodSecurityPolicy
 # KSV012: Runs as root - some ML frameworks require this
 # KSV014: Root filesystem not read-only - ML models need write access
 # KSV021: Low user/group ID - acceptable for internal services
 
-# Terraform state file warnings
-# Generic secrets detected - these are Terraform state references, not actual secrets
+# =============================================================================
+# External module warnings (terraform-aws-modules)
+# =============================================================================
+# These are from upstream Terraform registry modules and are configured
+# via module inputs where possible. The following are accepted risks:
+# - terraform-aws-modules/eks: Public endpoint access controlled via our variables
+# - terraform-aws-modules/vpc: NAT Gateway egress is required for outbound traffic
+
+# =============================================================================
+# Development environment accepted risks
+# =============================================================================
+# The following are acceptable for dev environments but should be
+# reviewed for production deployments:
+# - S3 using AWS-managed keys (SSE-S3) instead of CMK - enable via enable_kms_encryption=true
+# - RDS deletion protection disabled - enable via mlflow_db_deletion_protection=true

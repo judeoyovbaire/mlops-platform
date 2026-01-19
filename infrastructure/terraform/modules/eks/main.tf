@@ -64,8 +64,9 @@ module "eks" {
   cluster_name    = var.cluster_name
   cluster_version = var.cluster_version
 
-  cluster_endpoint_public_access  = var.cluster_endpoint_public_access
-  cluster_endpoint_private_access = true
+  cluster_endpoint_public_access       = var.cluster_endpoint_public_access
+  cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
+  cluster_endpoint_private_access      = true
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -384,17 +385,20 @@ resource "aws_security_group" "mlflow_rds" {
   vpc_id      = module.vpc.vpc_id
 
   ingress {
+    description     = "PostgreSQL access from EKS nodes"
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
     security_groups = [module.eks.node_security_group_id]
   }
 
+  # Restrict egress to VPC CIDR only - RDS doesn't need internet access
   egress {
+    description = "Allow egress within VPC only"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.vpc_cidr]
   }
 
   tags = var.tags
@@ -580,14 +584,15 @@ resource "aws_eks_access_entry" "karpenter_node" {
 
 resource "aws_ecr_repository" "models" {
   name                 = "${var.cluster_name}/models"
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE" # Prevent tag overwriting for security and traceability
 
   image_scanning_configuration {
     scan_on_push = true
   }
 
   encryption_configuration {
-    encryption_type = "AES256"
+    encryption_type = var.enable_kms_encryption ? "KMS" : "AES256"
+    kms_key         = var.enable_kms_encryption ? aws_kms_key.mlops[0].arn : null
   }
 
   tags = var.tags
