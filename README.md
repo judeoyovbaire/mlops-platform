@@ -120,11 +120,27 @@ AWS EKS                       │  Azure AKS                   │  GCP GKE
 ```
 mlops-platform/
 ├── .github/workflows/          # CI/CD pipeline (multi-cloud)
-├── docs/                       # Documentation and runbooks
+├── components/
+│   └── drift-detection/        # Model drift detection service
+├── docs/
+│   ├── adr/                    # Architecture Decision Records
+│   ├── runbooks/               # Operations and troubleshooting runbooks
+│   ├── architecture.md         # Architecture documentation
+│   ├── performance-tuning.md   # Performance optimization guide
+│   └── ...                     # API reference, secrets, DR guides
 ├── examples/
-│   └── llm-inference/          # LLM with vLLM (advanced)
+│   ├── kserve/                 # Basic KServe inference examples
+│   ├── canary-deployment/      # Progressive rollout with traffic splitting
+│   ├── data-versioning/        # DVC integration examples
+│   ├── distributed-training/   # PyTorch DDP with Kubeflow
+│   ├── drift-detection/        # Model monitoring with Evidently
+│   ├── chaos-testing/          # Resilience testing with Chaos Mesh
+│   └── llm-inference/          # LLM serving with vLLM
 ├── infrastructure/
-│   ├── kubernetes/             # Network policies, monitoring
+│   ├── grafana/dashboards/     # Grafana dashboard configurations
+│   ├── kubernetes/
+│   │   ├── dashboards/         # Kubernetes dashboard configs
+│   │   └── governance/         # Kyverno model registry policies
 │   ├── terraform/
 │   │   ├── bootstrap/
 │   │   │   ├── aws/            # AWS prerequisites (S3, GitHub OIDC)
@@ -135,27 +151,24 @@ mlops-platform/
 │   │   │   ├── aks/            # Azure AKS module
 │   │   │   └── gke/            # GCP GKE module
 │   │   └── environments/
-│   │       ├── aws/dev/        # AWS deployment configuration
-│   │       ├── azure/dev/      # Azure deployment configuration
-│   │       └── gcp/dev/        # GCP deployment configuration
+│   │       ├── aws/{dev,prod}/ # AWS deployment configurations
+│   │       ├── azure/{dev,prod}/ # Azure deployment configurations
+│   │       └── gcp/{dev,prod}/ # GCP deployment configurations
 │   └── helm/
+│       ├── common/             # Shared Helm values
 │       ├── aws/                # AWS-specific Helm values
 │       ├── azure/              # Azure-specific Helm values
 │       └── gcp/                # GCP-specific Helm values
 ├── pipelines/training/         # Argo Workflow pipeline definitions
-│   ├── src/                    # Pipeline Python scripts (load_data, train_model, etc)
+│   ├── src/                    # Pipeline Python scripts
 │   ├── kustomization.yaml      # ConfigMap generator
-│   ├── ml-training-workflow.yaml # Workflow definition
-│   └── requirements.txt        # Python dependencies
+│   └── ml-training-workflow.yaml
 ├── scripts/
-│   ├── deploy-aws.sh           # AWS deployment script
-│   ├── deploy-azure.sh         # Azure deployment script
-│   ├── deploy-gcp.sh           # GCP deployment script
-│   ├── destroy-aws.sh          # AWS cleanup script
-│   ├── destroy-azure.sh        # Azure cleanup script
-│   └── destroy-gcp.sh          # GCP cleanup script
-├── tests/                      # Unit tests
-├── docs/architecture.md        # Architecture documentation
+│   ├── common/                 # Shared script utilities
+│   ├── cost-optimization/      # Cost analysis and reporting scripts
+│   ├── deploy-{aws,azure,gcp}.sh
+│   └── destroy-{aws,azure,gcp}.sh
+├── tests/                      # Unit and integration tests
 └── Makefile                    # Common operations
 ```
 
