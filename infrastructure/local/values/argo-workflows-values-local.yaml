@@ -1,0 +1,64 @@
+# Argo Workflows Local Development Configuration
+# Minimal setup for local testing
+
+# Controller configuration
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  # Use MinIO for artifact storage
+  persistence:
+    archive: true
+    archiveTTL: 30d
+  workflowDefaults:
+    spec:
+      ttlStrategy:
+        secondsAfterCompletion: 86400  # 1 day
+      podGC:
+        strategy: OnPodCompletion
+
+# Server configuration
+server:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  serviceType: NodePort
+  serviceNodePort: 30746
+  # Disable authentication for local development
+  extraArgs:
+    - --auth-mode=server
+
+# Executor configuration
+executor:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Artifact repository configuration (MinIO)
+artifactRepository:
+  archiveLogs: true
+  s3:
+    endpoint: minio.argo.svc.cluster.local:9000
+    insecure: true
+    bucket: mlpipeline
+    region: us-east-1
+    accessKeySecret:
+      name: minio-creds
+      key: accesskey
+    secretKeySecret:
+      name: minio-creds
+      key: secretkey

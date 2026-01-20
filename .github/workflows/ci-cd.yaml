@@ -714,6 +714,19 @@ jobs:
             -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
             -backend-config="encrypt=true"
 
+      - name: Backup Terraform State
+        working-directory: infrastructure/terraform/environments/aws/dev
+        run: |
+          terraform state pull > terraform.tfstate.backup
+          echo "State backed up before apply"
+
+      - name: Upload State Backup
+        uses: actions/upload-artifact@v6
+        with:
+          name: terraform-state-backup-aws-${{ github.run_id }}
+          path: infrastructure/terraform/environments/aws/dev/terraform.tfstate.backup
+          retention-days: 30
+
       - name: Terraform Apply
         working-directory: infrastructure/terraform/environments/aws/dev
         run: terraform apply -auto-approve
@@ -1085,6 +1098,73 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Service URL" >> $GITHUB_STEP_SUMMARY
           echo "- **URL**: ${SERVICE_URL}" >> $GITHUB_STEP_SUMMARY
+
+  # E2E Tests (manual trigger or PR label)
+  e2e-test:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [test-python]
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'e2e-test'))
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Install Kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      - name: Install Argo CLI
+        run: |
+          curl -sLO https://github.com/argoproj/argo-workflows/releases/download/v3.5.4/argo-linux-amd64.gz
+          gunzip argo-linux-amd64.gz
+          chmod +x argo-linux-amd64
+          sudo mv argo-linux-amd64 /usr/local/bin/argo
+
+      - name: Create Kind cluster
+        run: |
+          kind create cluster --config tests/e2e/kind-config.yaml --wait 120s
+
+      - name: Install Argo Workflows
+        run: |
+          kubectl create namespace argo
+          kubectl apply -n argo -f https://github.com/argoproj/argo-workflows/releases/download/v3.5.4/quick-start-minimal.yaml
+          kubectl wait --for=condition=available deployment/argo-workflows-server -n argo --timeout=120s
+
+      - name: Install MinIO
+        run: |
+          kubectl apply -f tests/e2e/minio.yaml
+          kubectl wait --for=condition=available deployment/minio -n argo --timeout=120s
+          kubectl wait --for=condition=complete job/minio-init -n argo --timeout=60s || true
+
+      - name: Run E2E tests
+        env:
+          E2E_CLUSTER_TEST: "true"
+        run: |
+          pytest tests/e2e/ -v --tb=short -m e2e
+
+      - name: Cleanup
+        if: always()
+        run: kind delete cluster --name mlops-e2e-test
 
   # Pipeline Summary
   summary:

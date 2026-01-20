@@ -142,11 +142,11 @@ resource "azurerm_postgresql_flexible_server_database" "mlflow" {
   collation = "en_US.utf8"
 }
 
-# Allow non-SSL connections from VNet (MLflow chart doesn't support sslmode config)
-resource "azurerm_postgresql_flexible_server_configuration" "ssl_off" {
+# Require SSL connections - MLflow configured with PGSSLMODE=require
+resource "azurerm_postgresql_flexible_server_configuration" "ssl_on" {
   name      = "require_secure_transport"
   server_id = azurerm_postgresql_flexible_server.mlflow.id
-  value     = "OFF"
+  value     = "ON"
 }
 
 # Store PostgreSQL credentials in Key Vault

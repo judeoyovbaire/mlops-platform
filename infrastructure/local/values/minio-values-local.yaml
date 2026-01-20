@@ -1,0 +1,47 @@
+# MinIO Local Development Configuration
+# Standalone mode for local testing
+
+mode: standalone
+
+replicas: 1
+
+persistence:
+  enabled: true
+  size: 10Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Root credentials
+rootUser: minio
+rootPassword: minio123
+
+# Create buckets on startup
+buckets:
+  - name: mlflow-artifacts
+    policy: public
+  - name: mlpipeline
+    policy: none
+
+# Service configuration
+service:
+  type: NodePort
+  port: 9000
+  nodePort: 30900
+
+consoleService:
+  type: NodePort
+  port: 9001
+  nodePort: 30901
+
+# Disable ingress for local
+ingress:
+  enabled: false
+
+consoleIngress:
+  enabled: false

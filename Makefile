@@ -9,12 +9,18 @@
         terraform-init-azure terraform-plan-azure terraform-apply-azure terraform-destroy-azure \
         terraform-init-gcp terraform-plan-gcp terraform-apply-gcp terraform-destroy-gcp \
         port-forward-mlflow port-forward-argocd port-forward-grafana port-forward-prometheus \
-        port-forward-argo-wf validate-workflow deploy-example
+        port-forward-argo-wf validate-workflow deploy-example \
+        deploy-local destroy-local status-local
 
 # Default target
 help:
 	@echo "MLOps Platform - Multi-Cloud Commands"
 	@echo "======================================"
+	@echo ""
+	@echo "Local Development:"
+	@echo "  make deploy-local       - Deploy to local Kind cluster"
+	@echo "  make status-local       - Check local cluster status"
+	@echo "  make destroy-local      - Destroy local Kind cluster"
 	@echo ""
 	@echo "Quick Deployment (AWS default):"
 	@echo "  make deploy             - Deploy to AWS EKS (default)"
@@ -22,7 +28,7 @@ help:
 	@echo "  make destroy            - Destroy AWS resources"
 	@echo "  make secrets            - Retrieve secrets from AWS"
 	@echo ""
-	@echo "AWS EKS Deployment:"
+	@echo "AWS EKS Deployment:
 	@echo "  make deploy-aws         - Deploy to AWS EKS (~15-20 min)"
 	@echo "  make status-aws         - Check AWS deployment status"
 	@echo "  make destroy-aws        - Destroy AWS resources"
@@ -344,3 +350,19 @@ logs-mlflow:
 
 logs-argocd:
 	$(KUBECTL) logs -f deployment/argocd-server -n argocd
+
+# =============================================================================
+# Local Development (Kind cluster)
+# =============================================================================
+
+deploy-local:
+	@echo "Deploying MLOps Platform to local Kind cluster..."
+	./scripts/deploy-local.sh deploy
+
+status-local:
+	@echo "Checking local Kind cluster status..."
+	./scripts/deploy-local.sh status
+
+destroy-local:
+	@echo "Destroying local Kind cluster..."
+	./scripts/deploy-local.sh destroy

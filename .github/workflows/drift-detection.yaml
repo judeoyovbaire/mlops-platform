@@ -1,0 +1,349 @@
+# Infrastructure Drift Detection
+# Runs daily to detect configuration drift across all cloud environments
+# Creates GitHub issues when drift is detected
+
+name: Drift Detection
+
+on:
+  schedule:
+    # Run at 2:00 AM UTC daily
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      cloud:
+        description: 'Cloud provider to check (or all)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - aws
+          - azure
+          - gcp
+
+env:
+  TERRAFORM_VERSION: "1.10.0"
+  AWS_REGION: "eu-west-1"
+
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+
+jobs:
+  drift-detection-aws:
+    name: Drift Detection (AWS)
+    runs-on: ubuntu-latest
+    if: github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'aws' || github.event_name == 'schedule'
+    outputs:
+      drift_detected: ${{ steps.detect.outputs.drift_detected }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+        continue-on-error: true
+        id: aws-creds
+
+      - name: Setup Terraform
+        if: steps.aws-creds.outcome == 'success'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Get AWS Account ID
+        if: steps.aws-creds.outcome == 'success'
+        id: aws-account
+        run: echo "account_id=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_OUTPUT
+
+      - name: Terraform Init
+        if: steps.aws-creds.outcome == 'success'
+        working-directory: infrastructure/terraform/environments/aws/dev
+        run: |
+          terraform init \
+            -backend-config="bucket=mlops-platform-tfstate-${{ steps.aws-account.outputs.account_id }}" \
+            -backend-config="key=mlops-platform/dev/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
+            -backend-config="encrypt=true"
+
+      - name: Detect Drift
+        if: steps.aws-creds.outcome == 'success'
+        id: detect
+        working-directory: infrastructure/terraform/environments/aws/dev
+        run: |
+          set +e
+          terraform plan -detailed-exitcode -no-color -out=tfplan 2>&1 | tee plan.txt
+          EXIT_CODE=$?
+          set -e
+
+          if [ $EXIT_CODE -eq 2 ]; then
+            echo "drift_detected=true" >> $GITHUB_OUTPUT
+            echo "## AWS Infrastructure Drift Detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Drift Details</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            head -200 plan.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "drift_detected=false" >> $GITHUB_OUTPUT
+            echo "## AWS Infrastructure: No Drift" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Create Issue for Drift
+        if: steps.detect.outputs.drift_detected == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('infrastructure/terraform/environments/aws/dev/plan.txt', 'utf8');
+            const truncatedPlan = plan.length > 5000 ? plan.substring(0, 5000) + '\n\n... (truncated)' : plan;
+
+            const title = `[Drift] AWS Infrastructure drift detected - ${new Date().toISOString().split('T')[0]}`;
+            const body = `## Infrastructure Drift Detected
+
+            **Cloud:** AWS
+            **Environment:** dev
+            **Detected:** ${new Date().toISOString()}
+
+            ### Drift Details
+
+            \`\`\`
+            ${truncatedPlan}
+            \`\`\`
+
+            ### Recommended Actions
+
+            1. Review the drift details above
+            2. Determine if changes are expected (manual changes, external updates)
+            3. Either:
+               - Run \`terraform apply\` to reconcile state
+               - Update Terraform configuration to match current state
+               - Revert manual changes if unintended
+
+            ### Related Links
+
+            - [Terraform Rollback Runbook](../docs/runbooks/terraform-rollback.md)
+            - [CI/CD Workflow](../.github/workflows/ci-cd.yaml)
+
+            ---
+            *This issue was automatically created by the drift detection workflow.*`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['infrastructure', 'drift', 'automated', 'aws']
+            });
+
+      - name: Skip notice
+        if: steps.aws-creds.outcome != 'success'
+        run: |
+          echo "## AWS Drift Detection: Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "AWS credentials not configured." >> $GITHUB_STEP_SUMMARY
+
+  drift-detection-azure:
+    name: Drift Detection (Azure)
+    runs-on: ubuntu-latest
+    if: github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'azure' || github.event_name == 'schedule'
+    outputs:
+      drift_detected: ${{ steps.detect.outputs.drift_detected }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        continue-on-error: true
+        id: azure-creds
+
+      - name: Setup Terraform
+        if: steps.azure-creds.outcome == 'success'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Init
+        if: steps.azure-creds.outcome == 'success'
+        working-directory: infrastructure/terraform/environments/azure/dev
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        run: terraform init
+
+      - name: Detect Drift
+        if: steps.azure-creds.outcome == 'success'
+        id: detect
+        working-directory: infrastructure/terraform/environments/azure/dev
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        run: |
+          set +e
+          terraform plan -detailed-exitcode -no-color -out=tfplan 2>&1 | tee plan.txt
+          EXIT_CODE=$?
+          set -e
+
+          if [ $EXIT_CODE -eq 2 ]; then
+            echo "drift_detected=true" >> $GITHUB_OUTPUT
+            echo "## Azure Infrastructure Drift Detected" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "drift_detected=false" >> $GITHUB_OUTPUT
+            echo "## Azure Infrastructure: No Drift" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Create Issue for Drift
+        if: steps.detect.outputs.drift_detected == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('infrastructure/terraform/environments/azure/dev/plan.txt', 'utf8');
+            const truncatedPlan = plan.length > 5000 ? plan.substring(0, 5000) + '\n\n... (truncated)' : plan;
+
+            const title = `[Drift] Azure Infrastructure drift detected - ${new Date().toISOString().split('T')[0]}`;
+            const body = `## Infrastructure Drift Detected
+
+            **Cloud:** Azure
+            **Environment:** dev
+            **Detected:** ${new Date().toISOString()}
+
+            ### Drift Details
+
+            \`\`\`
+            ${truncatedPlan}
+            \`\`\`
+
+            ---
+            *This issue was automatically created by the drift detection workflow.*`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['infrastructure', 'drift', 'automated', 'azure']
+            });
+
+      - name: Skip notice
+        if: steps.azure-creds.outcome != 'success'
+        run: |
+          echo "## Azure Drift Detection: Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "Azure credentials not configured." >> $GITHUB_STEP_SUMMARY
+
+  drift-detection-gcp:
+    name: Drift Detection (GCP)
+    runs-on: ubuntu-latest
+    if: github.event.inputs.cloud == 'all' || github.event.inputs.cloud == 'gcp' || github.event_name == 'schedule'
+    outputs:
+      drift_detected: ${{ steps.detect.outputs.drift_detected }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+        continue-on-error: true
+        id: gcp-creds
+
+      - name: Setup Terraform
+        if: steps.gcp-creds.outcome == 'success'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Init
+        if: steps.gcp-creds.outcome == 'success'
+        working-directory: infrastructure/terraform/environments/gcp/dev
+        run: terraform init
+
+      - name: Detect Drift
+        if: steps.gcp-creds.outcome == 'success'
+        id: detect
+        working-directory: infrastructure/terraform/environments/gcp/dev
+        run: |
+          set +e
+          terraform plan -detailed-exitcode -no-color -out=tfplan 2>&1 | tee plan.txt
+          EXIT_CODE=$?
+          set -e
+
+          if [ $EXIT_CODE -eq 2 ]; then
+            echo "drift_detected=true" >> $GITHUB_OUTPUT
+            echo "## GCP Infrastructure Drift Detected" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "drift_detected=false" >> $GITHUB_OUTPUT
+            echo "## GCP Infrastructure: No Drift" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Create Issue for Drift
+        if: steps.detect.outputs.drift_detected == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('infrastructure/terraform/environments/gcp/dev/plan.txt', 'utf8');
+            const truncatedPlan = plan.length > 5000 ? plan.substring(0, 5000) + '\n\n... (truncated)' : plan;
+
+            const title = `[Drift] GCP Infrastructure drift detected - ${new Date().toISOString().split('T')[0]}`;
+            const body = `## Infrastructure Drift Detected
+
+            **Cloud:** GCP
+            **Environment:** dev
+            **Detected:** ${new Date().toISOString()}
+
+            ### Drift Details
+
+            \`\`\`
+            ${truncatedPlan}
+            \`\`\`
+
+            ---
+            *This issue was automatically created by the drift detection workflow.*`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['infrastructure', 'drift', 'automated', 'gcp']
+            });
+
+      - name: Skip notice
+        if: steps.gcp-creds.outcome != 'success'
+        run: |
+          echo "## GCP Drift Detection: Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "GCP credentials not configured." >> $GITHUB_STEP_SUMMARY
+
+  summary:
+    name: Drift Summary
+    runs-on: ubuntu-latest
+    needs: [drift-detection-aws, drift-detection-azure, drift-detection-gcp]
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## Drift Detection Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Cloud | Drift Detected |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|----------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| AWS   | ${{ needs.drift-detection-aws.outputs.drift_detected || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Azure | ${{ needs.drift-detection-azure.outputs.drift_detected || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| GCP   | ${{ needs.drift-detection-gcp.outputs.drift_detected || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY

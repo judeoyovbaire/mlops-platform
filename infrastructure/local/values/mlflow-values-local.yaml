@@ -1,0 +1,69 @@
+# MLflow Local Development Configuration
+# Uses local PostgreSQL and MinIO for storage
+
+replicaCount: 1
+
+image:
+  repository: burakince/mlflow
+  tag: "3.7.0"
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: mlflow
+
+# Backend store - Local PostgreSQL
+backendStore:
+  databaseMigration: true
+  postgres:
+    enabled: true
+    host: "postgres-mlflow"
+    port: 5432
+    database: "mlflow"
+    user: "mlflow"
+
+# Use existing secret for database credentials
+existingDatabaseSecret:
+  name: "mlflow-db-credentials"
+  usernameKey: "username"
+  passwordKey: "password"
+
+# Artifact store - MinIO (S3-compatible)
+artifactRoot:
+  s3:
+    enabled: true
+    bucket: "mlflow-artifacts"
+    awsAccessKeyId: ""
+    awsSecretAccessKey: ""
+
+# Environment variables for MinIO S3
+extraEnvVars:
+  MLFLOW_S3_ENDPOINT_URL: "http://minio.argo.svc.cluster.local:9000"
+  AWS_ACCESS_KEY_ID: "minio"
+  AWS_SECRET_ACCESS_KEY: "minio123"
+  MLFLOW_ARTIFACT_UPLOAD_DOWNLOAD_TIMEOUT: "600"
+
+# MLflow server args
+extraArgs:
+  host: "0.0.0.0"
+  allowed-hosts: "*"
+  workers: "1"
+
+# Service configuration
+service:
+  type: NodePort
+  port: 5000
+  nodePort: 30500
+
+# Minimal resources for local
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Disable ingress for local (use NodePort)
+ingress:
+  enabled: false

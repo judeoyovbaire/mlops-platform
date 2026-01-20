@@ -66,7 +66,7 @@ resource "helm_release" "cert_manager" {
   depends_on = [time_sleep.alb_controller_ready]
 }
 
-# ArgoCD
+# ArgoCD - Production HA Configuration
 resource "helm_release" "argocd" {
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
@@ -75,7 +75,11 @@ resource "helm_release" "argocd" {
   namespace        = "argocd"
   create_namespace = true
 
-  values = [file("${path.module}/../../../../helm/aws/argocd-values.yaml")]
+  # Layer HA values on top of base values for production
+  values = [
+    file("${path.module}/../../../../helm/aws/argocd-values.yaml"),
+    file("${path.module}/../../../../helm/aws/argocd-values-prod.yaml"),
+  ]
 
   depends_on = [time_sleep.alb_controller_ready]
 }

@@ -1,0 +1,76 @@
+# ArgoCD Local Development Configuration
+# Minimal single-replica setup for local testing
+
+global:
+  logging:
+    level: info
+
+# Single replica for local
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+server:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  service:
+    type: NodePort
+    nodePortHttp: 30080
+    nodePortHttps: 30443
+  # Disable TLS for local development
+  extraArgs:
+    - --insecure
+
+repoServer:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+redis:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Disable HA features for local
+redis-ha:
+  enabled: false
+
+applicationSet:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+notifications:
+  enabled: false
+
+# Initial admin password (change in production!)
+configs:
+  secret:
+    argocdServerAdminPassword: "$2a$10$rRyBsGSHK6.uc8fntPwVIuLVHgsAhAX7TcdrqW/RADU0uh7CaChLa"  # admin

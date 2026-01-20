@@ -77,6 +77,161 @@ AWS EKS                       │  Azure AKS                   │  GCP GKE
 • SSM Parameter Store         │  • Azure Key Vault           │  • Secret Manager
 ```
 
+## Architecture Diagrams
+
+### High-Level System Architecture
+
+```mermaid
+graph TB
+    subgraph Users["👥 Users"]
+        DS[Data Scientists]
+        ML[ML Engineers]
+        OPS[Platform Ops]
+    end
+
+    subgraph GitOps["🔄 GitOps Layer"]
+        GH[GitHub Repository]
+        CICD[GitHub Actions CI/CD]
+        ARGOCD[ArgoCD]
+    end
+
+    subgraph Platform["🚀 ML Platform"]
+        ARGO[Argo Workflows<br/>Pipeline Orchestration]
+        MLFLOW[MLflow<br/>Experiment Tracking]
+        KSERVE[KServe<br/>Model Serving]
+    end
+
+    subgraph Security["🔒 Security"]
+        PSA[Pod Security Admission]
+        KYVERNO[Kyverno Policies]
+        TETRAGON[Tetragon Runtime]
+        EXTSEC[External Secrets]
+    end
+
+    subgraph Observability["📊 Observability"]
+        PROM[Prometheus]
+        GRAF[Grafana]
+        ALERTS[AlertManager]
+    end
+
+    subgraph K8s["☸️ Kubernetes"]
+        EKS[AWS EKS]
+        AKS[Azure AKS]
+        GKE[GCP GKE]
+    end
+
+    DS --> GH
+    ML --> GH
+    GH --> CICD
+    CICD --> ARGOCD
+    ARGOCD --> Platform
+    Platform --> K8s
+    Security --> K8s
+    Observability --> K8s
+    OPS --> GRAF
+```
+
+### ML Pipeline Flow
+
+```mermaid
+sequenceDiagram
+    participant DS as Data Scientist
+    participant GH as GitHub
+    participant ARGO as Argo Workflows
+    participant MLF as MLflow
+    participant KS as KServe
+    participant PROM as Prometheus
+
+    DS->>GH: git push model code
+    GH->>ARGO: Trigger pipeline
+    ARGO->>ARGO: 1. Load Data
+    ARGO->>ARGO: 2. Validate Data
+    ARGO->>ARGO: 3. Feature Engineering
+    ARGO->>ARGO: 4. Train Model
+    ARGO->>MLF: 5. Register Model
+    MLF-->>ARGO: Model version created
+    ARGO->>KS: 6. Deploy canary (10%)
+    KS->>PROM: Expose metrics
+    PROM-->>KS: Health check OK
+    KS->>KS: 7. Progressive rollout (50%, 100%)
+    KS-->>DS: Inference endpoint ready
+```
+
+### Infrastructure Layers
+
+```mermaid
+graph TB
+    subgraph Applications["Layer 4: ML Applications"]
+        INF[InferenceServices]
+        WF[Training Workflows]
+        EXP[Experiments]
+    end
+
+    subgraph MLPlatform["Layer 3: ML Platform"]
+        ARGO[Argo Workflows]
+        MLF[MLflow]
+        KS[KServe]
+        ACD[ArgoCD]
+    end
+
+    subgraph PlatformServices["Layer 2: Platform Services"]
+        ING[Ingress Controller]
+        CERT[cert-manager]
+        PROM[Prometheus Stack]
+        CHAOS[Chaos Mesh]
+    end
+
+    subgraph CloudInfra["Layer 1: Cloud Infrastructure"]
+        direction LR
+        AWS["AWS<br/>EKS + Karpenter<br/>S3 + RDS<br/>IRSA"]
+        AZURE["Azure<br/>AKS + KEDA<br/>Blob + PostgreSQL<br/>Workload Identity"]
+        GCP["GCP<br/>GKE + NAP<br/>GCS + Cloud SQL<br/>WIF"]
+    end
+
+    Applications --> MLPlatform
+    MLPlatform --> PlatformServices
+    PlatformServices --> CloudInfra
+```
+
+### CI/CD Pipeline Flow
+
+```mermaid
+flowchart LR
+    subgraph Trigger["Trigger"]
+        PUSH[Push/PR]
+        MANUAL[Manual Dispatch]
+    end
+
+    subgraph Validation["Validation"]
+        LINT[Lint<br/>ruff + terraform fmt]
+        TEST[Test<br/>pytest]
+        SEC[Security<br/>Trivy]
+        VAL[Validate<br/>TF + K8s + Helm]
+    end
+
+    subgraph Plan["Plan"]
+        PLAN_AWS[TF Plan<br/>AWS]
+        PLAN_AZ[TF Plan<br/>Azure]
+        PLAN_GCP[TF Plan<br/>GCP]
+    end
+
+    subgraph Deploy["Deploy"]
+        DEP_AWS[Apply AWS]
+        DEP_AZ[Apply Azure]
+        DEP_GCP[Apply GCP]
+    end
+
+    PUSH --> LINT
+    LINT --> TEST
+    TEST --> SEC
+    SEC --> VAL
+    VAL --> PLAN_AWS & PLAN_AZ & PLAN_GCP
+
+    MANUAL --> DEP_AWS
+    MANUAL --> DEP_AZ
+    MANUAL --> DEP_GCP
+```
+
 ## Features
 
 | Feature | AWS | Azure | GCP |

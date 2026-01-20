@@ -54,7 +54,7 @@ resource "helm_release" "cert_manager" {
 }
 
 # =============================================================================
-# ArgoCD
+# ArgoCD - Production HA Configuration
 # =============================================================================
 
 resource "helm_release" "argocd" {
@@ -65,10 +65,12 @@ resource "helm_release" "argocd" {
   namespace        = "argocd"
   create_namespace = false
 
+  # Layer HA values on top of base values for production
   values = [
     templatefile("${path.module}/../../../../helm/gcp/argocd-values.yaml", {
       argocd_service_account_email = module.gke.argocd_service_account_email
-    })
+    }),
+    file("${path.module}/../../../../helm/gcp/argocd-values-prod.yaml"),
   ]
 
   depends_on = [

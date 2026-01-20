@@ -41,6 +41,8 @@ artifactRoot:
 extraEnvVars:
   AZURE_STORAGE_ACCOUNT: "${storage_account_name}"
   MLFLOW_ARTIFACT_UPLOAD_DOWNLOAD_TIMEOUT: "600"
+  # SSL mode for Azure PostgreSQL - require encrypted connections
+  PGSSLMODE: "require"
 
 # MLflow 3.x security settings
 extraArgs:

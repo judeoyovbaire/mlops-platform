@@ -80,6 +80,17 @@ repos:
           - '-skip'
           - 'TracingPolicy,ClusterPolicy,PolicyException,InferenceService,WorkflowTemplate,Workflow'
 
+  # Run unit tests on commit
+  - repo: local
+    hooks:
+      - id: pytest-check
+        name: pytest-check
+        entry: pytest tests/unit -x -q --tb=no
+        language: system
+        pass_filenames: false
+        stages: [commit]
+        always_run: true
+
 # CI configuration
 ci:
   autofix_commit_msg: |
@@ -88,4 +99,4 @@ ci:
   autoupdate_branch: ''
   autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
   autoupdate_schedule: weekly
-  skip: [terraform_validate, terraform_tflint]
+  skip: [terraform_validate, terraform_tflint, pytest-check]

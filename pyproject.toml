@@ -58,6 +58,8 @@ addopts = [
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
+    "e2e: marks tests requiring a Kubernetes cluster",
+    "network: marks tests requiring network access",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",

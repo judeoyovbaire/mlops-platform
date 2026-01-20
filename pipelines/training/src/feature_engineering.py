@@ -1,43 +1,119 @@
+"""
+Feature engineering for ML pipeline.
+
+This module performs feature transformations including scaling
+numeric features using StandardScaler.
+"""
+
 import argparse
+import logging
 import os
 import sys
+from dataclasses import dataclass, field
 
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
+from pipelines.training.src.exceptions import (
+    FeatureEngineeringError,
+    MissingColumnError,
+)
 
-def feature_engineering(input_path, output_path, target_column):
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class FeatureEngineeringResult:
+    """Result of feature engineering operation."""
+
+    output_path: str
+    input_shape: tuple[int, int]
+    output_shape: tuple[int, int]
+    scaled_columns: list[str] = field(default_factory=list)
+    success: bool = True
+    error_message: str | None = None
+
+
+def feature_engineering(
+    input_path: str,
+    output_path: str,
+    target_column: str,
+) -> FeatureEngineeringResult:
+    """
+    Perform feature engineering on input data.
+
+    This function loads CSV data, separates features from target,
+    scales numeric features using StandardScaler, and saves the result.
+
+    Args:
+        input_path: Path to the input CSV file.
+        output_path: Path to save the processed CSV file.
+        target_column: Name of the target column to preserve without scaling.
+
+    Returns:
+        FeatureEngineeringResult containing processing statistics and status.
+
+    Raises:
+        FeatureEngineeringError: If the input file cannot be read.
+        MissingColumnError: If the target column is not in the data.
+    """
+    logger.info(f"Starting feature engineering on {input_path}")
+
     try:
-        print(f"Loading data from {input_path}")
         df = pd.read_csv(input_path)
+    except FileNotFoundError as e:
+        raise FeatureEngineeringError(f"Input file not found: {input_path}") from e
+    except pd.errors.EmptyDataError as e:
+        raise FeatureEngineeringError(f"Input file is empty: {input_path}") from e
+    except pd.errors.ParserError as e:
+        raise FeatureEngineeringError(f"Failed to parse CSV: {e}") from e
 
-        if target_column not in df.columns:
-            print(f"Error: Target column {target_column} not found", file=sys.stderr)
-            print(f"Available columns: {list(df.columns)}", file=sys.stderr)
-            sys.exit(1)
+    input_shape = df.shape
+    logger.info(f"Loaded data with shape {input_shape}")
 
-        X = df.drop(columns=[target_column])
-        y = df[target_column]
+    if target_column not in df.columns:
+        raise MissingColumnError(
+            f"Target column '{target_column}' not found. Available columns: {list(df.columns)}"
+        )
 
-        # Scale numeric columns
-        numeric_cols = X.select_dtypes(include=["float64", "int64"]).columns
-        if len(numeric_cols) > 0:
-            print(f"Scaling numeric columns: {list(numeric_cols)}")
-            scaler = StandardScaler()
-            X[numeric_cols] = scaler.fit_transform(X[numeric_cols])
+    # Separate features and target
+    X = df.drop(columns=[target_column])
+    y = df[target_column]
 
-        df_out = X.copy()
-        df_out[target_column] = y.values
+    # Scale numeric columns
+    numeric_cols = X.select_dtypes(include=["float64", "int64"]).columns.tolist()
+    scaled_columns = []
 
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    if numeric_cols:
+        logger.info(f"Scaling numeric columns: {numeric_cols}")
+        scaler = StandardScaler()
+        X[numeric_cols] = scaler.fit_transform(X[numeric_cols])
+        scaled_columns = numeric_cols
 
-        df_out.to_csv(output_path, index=False)
-        print(f"Feature engineering complete. Output shape: {df_out.shape}")
+    # Combine features and target
+    df_out = X.copy()
+    df_out[target_column] = y.values
 
-    except Exception as e:
-        print(f"Feature engineering error: {e}", file=sys.stderr)
-        sys.exit(1)
+    output_shape = df_out.shape
+
+    # Ensure output directory exists
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    # Save processed data
+    df_out.to_csv(output_path, index=False)
+    logger.info(f"Feature engineering complete. Output shape: {output_shape}")
+
+    return FeatureEngineeringResult(
+        output_path=output_path,
+        input_shape=input_shape,
+        output_shape=output_shape,
+        scaled_columns=scaled_columns,
+        success=True,
+    )
 
 
 if __name__ == "__main__":
@@ -47,4 +123,10 @@ if __name__ == "__main__":
     parser.add_argument("--target", required=True, help="Target column name")
 
     args = parser.parse_args()
-    feature_engineering(args.input, args.output, args.target)
+
+    try:
+        result = feature_engineering(args.input, args.output, args.target)
+        print(f"Feature engineering complete. Output shape: {result.output_shape}")
+    except (FeatureEngineeringError, MissingColumnError) as e:
+        print(f"Feature engineering error: {e}", file=sys.stderr)
+        sys.exit(1)
