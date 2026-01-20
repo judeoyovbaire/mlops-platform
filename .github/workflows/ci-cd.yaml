@@ -673,7 +673,7 @@ jobs:
 
   # Deploy Infrastructure - AWS (manual trigger only)
   deploy-infra-aws:
-    name: Deploy Infrastructure (AWS - ${{ github.event.inputs.environment }})
+    name: Deploy Infrastructure (AWS)
     runs-on: ubuntu-latest
     needs: [terraform-plan-aws]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'aws' && github.event.inputs.action == 'deploy-infra'
@@ -761,7 +761,7 @@ jobs:
 
   # Deploy Infrastructure - Azure (manual trigger only)
   deploy-infra-azure:
-    name: Deploy Infrastructure (Azure - ${{ github.event.inputs.environment }})
+    name: Deploy Infrastructure (Azure)
     runs-on: ubuntu-latest
     needs: [terraform-plan-azure]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'azure' && github.event.inputs.action == 'deploy-infra'
@@ -867,7 +867,7 @@ jobs:
 
   # Deploy Infrastructure - GCP (manual trigger only)
   deploy-infra-gcp:
-    name: Deploy Infrastructure (GCP - ${{ github.event.inputs.environment }})
+    name: Deploy Infrastructure (GCP)
     runs-on: ubuntu-latest
     needs: [terraform-plan-gcp]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'gcp' && github.event.inputs.action == 'deploy-infra'
@@ -949,7 +949,7 @@ jobs:
 
   # Deploy Model - AWS (manual trigger only)
   deploy-model-aws:
-    name: Deploy Model (AWS - ${{ github.event.inputs.environment }})
+    name: Deploy Model (AWS)
     runs-on: ubuntu-latest
     needs: [terraform-plan-aws]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'aws' && github.event.inputs.action == 'deploy-model'
@@ -995,7 +995,7 @@ jobs:
 
   # Deploy Model - Azure (manual trigger only)
   deploy-model-azure:
-    name: Deploy Model (Azure - ${{ github.event.inputs.environment }})
+    name: Deploy Model (Azure)
     runs-on: ubuntu-latest
     needs: [terraform-plan-azure]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'azure' && github.event.inputs.action == 'deploy-model'
@@ -1054,7 +1054,7 @@ jobs:
 
   # Deploy Model - GCP (manual trigger only)
   deploy-model-gcp:
-    name: Deploy Model (GCP - ${{ github.event.inputs.environment }})
+    name: Deploy Model (GCP)
     runs-on: ubuntu-latest
     needs: [terraform-plan-gcp]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'gcp' && github.event.inputs.action == 'deploy-model'
