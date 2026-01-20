@@ -77,3 +77,37 @@ AVD-AZU-0041
 # - RDS deletion protection disabled - enable via mlflow_db_deletion_protection=true
 # - EKS public endpoint - disabled by default, enable with restricted CIDRs if needed
 # - AKS API server IP ranges - empty by default, set specific CIDRs for production
+
+# =============================================================================
+# E2E Test Infrastructure (tests/e2e/minio.yaml)
+# =============================================================================
+# The MinIO manifest is used only for E2E testing in disposable Kind clusters.
+# These are not production workloads and security hardening is not required.
+# Path: tests/e2e/minio.yaml
+
+# HIGH: Root filesystem not read-only - MinIO requires write access for data
+KSV014
+
+# HIGH: Default security context configured - acceptable for test workloads
+KSV118
+
+# MEDIUM: Runs as root - MinIO test container runs as root
+KSV012
+
+# MEDIUM: Container could be running as root user
+KSV104
+
+# MEDIUM: SYS_ADMIN capability added
+KSV0125
+
+# LOW: Various container security best practices not followed in test fixture
+KSV011
+KSV015
+KSV016
+KSV018
+KSV020
+KSV021
+KSV030
+KSV039
+KSV040
+KSV106
