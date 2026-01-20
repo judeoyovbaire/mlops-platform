@@ -148,7 +148,9 @@ if __name__ == "__main__":
         if result.registered:
             print(f"Registered {result.model_name} v{result.version} with alias '{result.alias}'")
         else:
-            print(f"Model not registered: accuracy {result.accuracy:.4f} < threshold {result.threshold}")
+            print(
+                f"Model not registered: accuracy {result.accuracy:.4f} < threshold {result.threshold}"
+            )
     except (InvalidThresholdError, ModelRegistrationError) as e:
         print(f"Registration error: {e}", file=sys.stderr)
         sys.exit(1)

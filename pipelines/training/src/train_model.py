@@ -111,9 +111,7 @@ def train_model(
     y = df[target]
 
     # Split data
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=42
-    )
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
     logger.info(f"Train set: {len(X_train)}, Test set: {len(X_test)}")
 
     try:
