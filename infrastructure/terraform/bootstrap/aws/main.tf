@@ -330,7 +330,7 @@ resource "aws_iam_role_policy" "terraform_eks_ec2" {
           "ec2:*InternetGateway*", "ec2:*NatGateway*", "ec2:*Address*",
           "ec2:*SecurityGroup*", "ec2:*Tags*", "ec2:Describe*",
           "ec2:*LaunchTemplate*", "ec2:RunInstances", "ec2:TerminateInstances",
-          "ec2:*FlowLogs*"
+          "ec2:*FlowLogs*", "ec2:*NetworkAcl*"
         ]
         Resource = "*"
       },
@@ -403,6 +403,12 @@ resource "aws_iam_role_policy" "terraform_iam" {
             "iam:AWSServiceName" = ["eks.amazonaws.com", "eks-nodegroup.amazonaws.com", "autoscaling.amazonaws.com", "elasticloadbalancing.amazonaws.com"]
           }
         }
+      },
+      {
+        Sid      = "IAMGetServiceLinkedRoles"
+        Effect   = "Allow"
+        Action   = "iam:GetRole"
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/*"
       },
       {
         Sid      = "IAMOIDCProvider"
@@ -505,7 +511,7 @@ resource "aws_iam_role_policy" "terraform_services" {
       {
         Sid      = "SSMParameterAccess"
         Effect   = "Allow"
-        Action   = ["ssm:*Parameter*", "ssm:*TagsForResource"]
+        Action   = ["ssm:*Parameter*", "ssm:AddTagsToResource", "ssm:RemoveTagsFromResource", "ssm:ListTagsForResource"]
         Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}*"
       },
       {
