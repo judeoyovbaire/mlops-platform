@@ -499,7 +499,7 @@ resource "aws_iam_role_policy" "terraform_services" {
       {
         Sid      = "BackupFullAccess"
         Effect   = "Allow"
-        Action   = "backup:*"
+        Action   = ["backup:*", "backup-storage:*"]
         Resource = "*"
       },
       {
