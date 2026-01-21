@@ -362,7 +362,10 @@ resource "aws_iam_role_policy" "terraform_iam" {
           "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy",
           "iam:ListRolePolicies", "iam:UpdateAssumeRolePolicy", "iam:PassRole"
         ]
-        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}*"
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/*-eks-node-group-*"
+        ]
       },
       {
         Sid    = "IAMPolicyManagement"
@@ -372,7 +375,10 @@ resource "aws_iam_role_policy" "terraform_iam" {
           "iam:GetPolicyVersion", "iam:ListPolicyVersions", "iam:CreatePolicyVersion",
           "iam:DeletePolicyVersion", "iam:TagPolicy", "iam:UntagPolicy"
         ]
-        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${var.project_name}*"
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${var.project_name}*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/AmazonEKS_*"
+        ]
       },
       {
         Sid    = "IAMInstanceProfile"
@@ -382,7 +388,10 @@ resource "aws_iam_role_policy" "terraform_iam" {
           "iam:ListInstanceProfiles", "iam:AddRoleToInstanceProfile",
           "iam:RemoveRoleFromInstanceProfile", "iam:TagInstanceProfile", "iam:ListInstanceProfilesForRole"
         ]
-        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:instance-profile/${var.project_name}*"
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:instance-profile/${var.project_name}*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:instance-profile/*-eks-node-group-*"
+        ]
       },
       {
         Sid      = "IAMServiceLinkedRoles"
@@ -497,7 +506,7 @@ resource "aws_iam_role_policy" "terraform_services" {
         Sid      = "SSMParameterAccess"
         Effect   = "Allow"
         Action   = ["ssm:*Parameter*", "ssm:*TagsForResource"]
-        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/*"
+        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}*"
       },
       {
         Sid      = "SSMDescribe"
