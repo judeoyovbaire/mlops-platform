@@ -153,7 +153,7 @@ output "access_info" {
       - Argo Workflows: http://localhost:2746
 
     DEPLOY MODEL:
-      kubectl apply -f components/kserve/inferenceservice-examples.yaml
+      kubectl apply -f examples/kserve/inferenceservice-examples.yaml
       kubectl get inferenceservice -n mlops
 
     PRODUCTION NOTES:

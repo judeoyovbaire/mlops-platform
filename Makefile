@@ -316,7 +316,7 @@ validate-workflow:
 
 deploy-example:
 	@echo "Deploying example inference service..."
-	$(KUBECTL) apply -f components/kserve/inferenceservice-examples.yaml
+	$(KUBECTL) apply -f examples/kserve/inferenceservice-examples.yaml
 	@echo "Waiting for inference service to be ready..."
 	$(KUBECTL) wait --for=condition=Ready inferenceservice/sklearn-iris -n mlops --timeout=300s || true
 	$(KUBECTL) get inferenceservice -n mlops

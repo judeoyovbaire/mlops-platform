@@ -969,7 +969,7 @@ jobs:
 
       - name: Deploy to KServe
         run: |
-          kubectl apply -f components/kserve/inferenceservice-examples.yaml
+          kubectl apply -f examples/kserve/inferenceservice-examples.yaml
 
           echo "## Model Deployment (AWS - ${{ github.event.inputs.environment }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -1028,7 +1028,7 @@ jobs:
 
       - name: Deploy to KServe
         run: |
-          kubectl apply -f components/kserve/inferenceservice-examples.yaml
+          kubectl apply -f examples/kserve/inferenceservice-examples.yaml
 
           echo "## Model Deployment (Azure - ${{ github.event.inputs.environment }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -1083,7 +1083,7 @@ jobs:
 
       - name: Deploy to KServe
         run: |
-          kubectl apply -f components/kserve/inferenceservice-examples.yaml
+          kubectl apply -f examples/kserve/inferenceservice-examples.yaml
 
           echo "## Model Deployment (GCP - ${{ github.event.inputs.environment }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
