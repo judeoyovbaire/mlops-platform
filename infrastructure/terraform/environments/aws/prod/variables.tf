@@ -106,19 +106,19 @@ variable "kserve_ingress_domain" {
 variable "helm_aws_lb_controller_version" {
   description = "AWS Load Balancer Controller Helm chart version"
   type        = string
-  default     = "1.16.0"
+  default     = "1.17.1"
 }
 
 variable "helm_cert_manager_version" {
   description = "cert-manager Helm chart version"
   type        = string
-  default     = "v1.19.1"
+  default     = "v1.19.2"
 }
 
 variable "helm_argocd_version" {
   description = "ArgoCD Helm chart version"
   type        = string
-  default     = "7.9.0"
+  default     = "9.3.4"
 }
 
 variable "helm_kserve_version" {
@@ -136,7 +136,7 @@ variable "helm_mlflow_version" {
 variable "helm_argo_workflows_version" {
   description = "Argo Workflows Helm chart version"
   type        = string
-  default     = "0.46.1"
+  default     = "0.47.1"
 }
 
 variable "helm_minio_version" {
@@ -148,29 +148,29 @@ variable "helm_minio_version" {
 variable "helm_prometheus_stack_version" {
   description = "kube-prometheus-stack Helm chart version"
   type        = string
-  default     = "72.6.2"
+  default     = "81.2.0"
 }
 
 variable "helm_karpenter_version" {
   description = "Karpenter Helm chart version"
   type        = string
-  default     = "1.8.0"
+  default     = "1.8.3"
 }
 
 variable "helm_tetragon_version" {
   description = "Tetragon Helm chart version"
   type        = string
-  default     = "1.3.0"
+  default     = "1.6.0"
 }
 
 variable "helm_kyverno_version" {
   description = "Kyverno Helm chart version"
   type        = string
-  default     = "3.3.4"
+  default     = "3.6.2"
 }
 
 variable "helm_external_secrets_version" {
   description = "External Secrets Operator Helm chart version"
   type        = string
-  default     = "1.1.1"
+  default     = "1.2.1"
 }
