@@ -396,9 +396,9 @@ resource "aws_iam_role_policy" "terraform_iam" {
         }
       },
       {
-        Sid    = "IAMOIDCProvider"
-        Effect = "Allow"
-        Action = ["iam:*OpenIDConnectProvider*"]
+        Sid      = "IAMOIDCProvider"
+        Effect   = "Allow"
+        Action   = ["iam:*OpenIDConnectProvider*"]
         Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/oidc.eks.${var.aws_region}.amazonaws.com/*"
       }
     ]
@@ -414,9 +414,9 @@ resource "aws_iam_role_policy" "terraform_storage" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "S3BucketManagement"
-        Effect = "Allow"
-        Action = ["s3:*"]
+        Sid      = "S3BucketManagement"
+        Effect   = "Allow"
+        Action   = ["s3:*"]
         Resource = ["arn:aws:s3:::${var.project_name}*", "arn:aws:s3:::${var.project_name}*/*"]
       },
       {
@@ -426,9 +426,9 @@ resource "aws_iam_role_policy" "terraform_storage" {
         Resource = "*"
       },
       {
-        Sid    = "ECRManagement"
-        Effect = "Allow"
-        Action = ["ecr:*"]
+        Sid      = "ECRManagement"
+        Effect   = "Allow"
+        Action   = ["ecr:*"]
         Resource = "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${var.project_name}*"
       },
       {
@@ -494,9 +494,9 @@ resource "aws_iam_role_policy" "terraform_services" {
         Resource = "*"
       },
       {
-        Sid    = "SSMParameterAccess"
-        Effect = "Allow"
-        Action = ["ssm:*Parameter*", "ssm:*TagsForResource"]
+        Sid      = "SSMParameterAccess"
+        Effect   = "Allow"
+        Action   = ["ssm:*Parameter*", "ssm:*TagsForResource"]
         Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/*"
       },
       {
