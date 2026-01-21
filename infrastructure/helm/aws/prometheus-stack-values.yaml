@@ -101,11 +101,7 @@ grafana:
   enabled: true
   replicas: 1
   adminUser: admin
-  # Password from AWS Secrets Manager via External Secrets
-  admin:
-    existingSecret: grafana-admin-credentials
-    userKey: username
-    passwordKey: password
+  # Password set via Terraform helm_release set block
 
   persistence:
     enabled: true
