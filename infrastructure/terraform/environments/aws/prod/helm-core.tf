@@ -110,28 +110,28 @@ resource "helm_release" "kserve_controller" {
 
   # Disable KServe's built-in ingress creation - we manage Ingress separately via ALB
   set {
-    name  = "kserve.controller.ingress.disableIngressCreation"
+    name  = "kserve.controller.gateway.disableIngressCreation"
     value = "true"
   }
 
   set {
-    name  = "kserve.controller.ingress.disableIstioVirtualHost"
+    name  = "kserve.controller.gateway.disableIstioVirtualHost"
     value = "true"
   }
 
-  # Required even when ingress is disabled
+  # Configure ingress gateway settings
   set {
-    name  = "kserve.controller.ingress.ingressGateway"
+    name  = "kserve.controller.gateway.ingressGateway.gateway"
     value = "kserve/kserve-ingress-gateway"
   }
 
   set {
-    name  = "kserve.controller.ingress.ingressClassName"
+    name  = "kserve.controller.gateway.ingressGateway.className"
     value = "alb"
   }
 
   set {
-    name  = "kserve.controller.ingress.ingressDomain"
+    name  = "kserve.controller.gateway.domain"
     value = var.kserve_ingress_domain
   }
 

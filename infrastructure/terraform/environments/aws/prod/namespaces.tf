@@ -7,8 +7,9 @@
 # - privileged: Unrestricted (system namespaces only)
 #
 # Enforcement strategy:
-# - mlops, kserve: restricted (inference workloads should be hardened)
-# - mlflow: restricted (tracking server is stateless)
+# - kserve: restricted (KServe controller namespace)
+# - mlops: baseline (KServe runtime images don't set seccompProfile)
+# - mlflow: baseline (MLflow chart doesn't set seccompProfile)
 # - argo: baseline (workflow executor needs some elevated permissions)
 # - monitoring, kyverno, tetragon: privileged (system components)
 
@@ -16,11 +17,12 @@ resource "kubernetes_namespace" "mlops" {
   metadata {
     name = "mlops"
     labels = {
-      "app.kubernetes.io/name"                     = "mlops-platform"
-      "app.kubernetes.io/part-of"                  = "mlops-platform"
-      "pod-security.kubernetes.io/enforce"         = "restricted"
+      "app.kubernetes.io/name"    = "mlops-platform"
+      "app.kubernetes.io/part-of" = "mlops-platform"
+      # KServe runtime images don't set seccompProfile, requires baseline
+      "pod-security.kubernetes.io/enforce"         = "baseline"
       "pod-security.kubernetes.io/enforce-version" = "latest"
-      "pod-security.kubernetes.io/warn"            = "restricted"
+      "pod-security.kubernetes.io/warn"            = "baseline"
       "pod-security.kubernetes.io/warn-version"    = "latest"
       "pod-security.kubernetes.io/audit"           = "restricted"
       "pod-security.kubernetes.io/audit-version"   = "latest"
@@ -34,11 +36,12 @@ resource "kubernetes_namespace" "mlflow" {
   metadata {
     name = "mlflow"
     labels = {
-      "app.kubernetes.io/name"                     = "mlops-platform"
-      "app.kubernetes.io/part-of"                  = "mlops-platform"
-      "pod-security.kubernetes.io/enforce"         = "restricted"
+      "app.kubernetes.io/name"    = "mlops-platform"
+      "app.kubernetes.io/part-of" = "mlops-platform"
+      # MLflow Helm chart doesn't set seccompProfile, requires baseline
+      "pod-security.kubernetes.io/enforce"         = "baseline"
       "pod-security.kubernetes.io/enforce-version" = "latest"
-      "pod-security.kubernetes.io/warn"            = "restricted"
+      "pod-security.kubernetes.io/warn"            = "baseline"
       "pod-security.kubernetes.io/warn-version"    = "latest"
       "pod-security.kubernetes.io/audit"           = "restricted"
       "pod-security.kubernetes.io/audit-version"   = "latest"
