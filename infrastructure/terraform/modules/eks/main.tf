@@ -25,6 +25,7 @@ data "aws_availability_zones" "available" {
 }
 
 data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
 
 # VPC for EKS
 module "vpc" {
@@ -321,7 +322,7 @@ resource "aws_kms_key" "mlops" {
         Sid    = "Allow CloudWatch Logs Service"
         Effect = "Allow"
         Principal = {
-          Service = "logs.${var.aws_region}.amazonaws.com"
+          Service = "logs.${data.aws_region.current.name}.amazonaws.com"
         }
         Action = [
           "kms:Encrypt",
@@ -333,7 +334,7 @@ resource "aws_kms_key" "mlops" {
         Resource = "*"
         Condition = {
           ArnLike = {
-            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:*"
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:*"
           }
         }
       }
