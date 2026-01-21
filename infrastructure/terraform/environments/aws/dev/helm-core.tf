@@ -159,7 +159,6 @@ resource "helm_release" "mlflow" {
 }
 
 # Argo Workflows - ML Pipeline Orchestration
-# Argo Workflows for ML pipeline orchestration
 resource "helm_release" "argo_workflows" {
   name       = "argo-workflows"
   repository = "https://argoproj.github.io/argo-helm"

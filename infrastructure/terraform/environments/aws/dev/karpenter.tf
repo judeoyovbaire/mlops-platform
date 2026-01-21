@@ -22,6 +22,47 @@ resource "kubernetes_namespace" "karpenter" {
   depends_on = [module.eks]
 }
 
+# Cleanup Karpenter-managed nodes before destroying Karpenter
+# This prevents orphaned EC2 instances when running terraform destroy
+resource "null_resource" "karpenter_cleanup" {
+  triggers = {
+    cluster_name = module.eks.cluster_name
+    region       = var.aws_region
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      echo "Cleaning up Karpenter-managed nodes..."
+
+      # Update kubeconfig
+      aws eks update-kubeconfig --region ${self.triggers.region} --name ${self.triggers.cluster_name} 2>/dev/null || true
+
+      # Delete all NodePools to trigger node cleanup
+      kubectl delete nodepools --all --ignore-not-found=true 2>/dev/null || true
+
+      # Delete all EC2NodeClasses
+      kubectl delete ec2nodeclasses --all --ignore-not-found=true 2>/dev/null || true
+
+      # Wait for Karpenter to terminate nodes (max 5 minutes)
+      echo "Waiting for Karpenter nodes to terminate..."
+      for i in $(seq 1 30); do
+        NODE_COUNT=$(kubectl get nodes -l karpenter.sh/registered=true --no-headers 2>/dev/null | wc -l || echo "0")
+        if [ "$NODE_COUNT" -eq 0 ]; then
+          echo "All Karpenter nodes terminated"
+          break
+        fi
+        echo "Waiting for $NODE_COUNT Karpenter nodes to terminate... ($i/30)"
+        sleep 10
+      done
+
+      echo "Karpenter cleanup complete"
+    EOT
+  }
+
+  depends_on = [module.eks]
+}
+
 # Karpenter Helm release
 resource "helm_release" "karpenter" {
   name       = "karpenter"
@@ -89,7 +130,8 @@ resource "helm_release" "karpenter" {
 
   depends_on = [
     kubernetes_namespace.karpenter,
-    time_sleep.alb_controller_ready
+    time_sleep.alb_controller_ready,
+    null_resource.karpenter_cleanup
   ]
 }
 
