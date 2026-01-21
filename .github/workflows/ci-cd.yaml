@@ -1156,7 +1156,7 @@ jobs:
         run: |
           kubectl create namespace argo
           kubectl apply -n argo -f https://github.com/argoproj/argo-workflows/releases/download/v3.5.4/quick-start-minimal.yaml
-          kubectl wait --for=condition=available deployment/argo-workflows-server -n argo --timeout=120s
+          kubectl wait --for=condition=available deployment/argo-server -n argo --timeout=120s
 
       - name: Install MinIO
         run: |

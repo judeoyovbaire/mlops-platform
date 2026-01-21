@@ -425,7 +425,10 @@ resource "aws_iam_role_policy" "terraform_operations" {
           "ec2:DescribeInstanceTypeOfferings",
           "ec2:RunInstances",
           "ec2:TerminateInstances",
-          "ec2:DescribeInstances"
+          "ec2:DescribeInstances",
+          "ec2:CreateFlowLogs",
+          "ec2:DeleteFlowLogs",
+          "ec2:DescribeFlowLogs"
         ]
         Resource = "*"
       },
@@ -672,7 +675,7 @@ resource "aws_iam_role_policy" "terraform_operations" {
         ]
         Resource = "*"
       },
-      # KMS - scoped to project keys
+      # KMS - for encryption of project resources
       {
         Sid    = "KMSKeyManagement"
         Effect = "Allow"
@@ -680,6 +683,7 @@ resource "aws_iam_role_policy" "terraform_operations" {
           "kms:CreateKey",
           "kms:DescribeKey",
           "kms:GetKeyPolicy",
+          "kms:PutKeyPolicy",
           "kms:GetKeyRotationStatus",
           "kms:ListResourceTags",
           "kms:TagResource",
@@ -689,24 +693,28 @@ resource "aws_iam_role_policy" "terraform_operations" {
           "kms:CreateAlias",
           "kms:DeleteAlias",
           "kms:ListAliases",
-          "kms:UpdateAlias"
+          "kms:UpdateAlias",
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:GenerateDataKey",
+          "kms:GenerateDataKeyWithoutPlaintext"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "KMSCreateGrant"
+        Effect = "Allow"
+        Action = [
+          "kms:CreateGrant",
+          "kms:ListGrants",
+          "kms:RevokeGrant"
         ]
         Resource = "*"
         Condition = {
-          StringEquals = {
-            "aws:ResourceTag/Project" = var.project_name
+          Bool = {
+            "kms:GrantIsForAWSResource" = "true"
           }
         }
-      },
-      {
-        Sid    = "KMSListKeys"
-        Effect = "Allow"
-        Action = [
-          "kms:ListKeys",
-          "kms:ListAliases",
-          "kms:DescribeKey"
-        ]
-        Resource = "*"
       },
       # CloudWatch Logs - scoped to project log groups
       {
@@ -720,10 +728,13 @@ resource "aws_iam_role_policy" "terraform_operations" {
           "logs:DeleteRetentionPolicy",
           "logs:TagResource",
           "logs:UntagResource",
-          "logs:ListTagsForResource"
+          "logs:ListTagsForResource",
+          "logs:AssociateKmsKey",
+          "logs:DisassociateKmsKey"
         ]
         Resource = [
           "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/eks/${var.project_name}*",
+          "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/vpc-flow-logs/${var.project_name}*",
           "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:${var.project_name}*"
         ]
       },
@@ -734,6 +745,47 @@ resource "aws_iam_role_policy" "terraform_operations" {
           "logs:DescribeLogGroups"
         ]
         Resource = "*"
+      },
+      # AWS Backup - scoped to project backup vaults
+      {
+        Sid    = "BackupVaultManagement"
+        Effect = "Allow"
+        Action = [
+          "backup:CreateBackupVault",
+          "backup:DeleteBackupVault",
+          "backup:DescribeBackupVault",
+          "backup:ListBackupVaults",
+          "backup:PutBackupVaultAccessPolicy",
+          "backup:DeleteBackupVaultAccessPolicy",
+          "backup:GetBackupVaultAccessPolicy",
+          "backup:PutBackupVaultNotifications",
+          "backup:DeleteBackupVaultNotifications",
+          "backup:GetBackupVaultNotifications",
+          "backup:ListTags",
+          "backup:TagResource",
+          "backup:UntagResource"
+        ]
+        Resource = [
+          "arn:aws:backup:${var.aws_region}:${data.aws_caller_identity.current.account_id}:backup-vault:${var.project_name}*"
+        ]
+      },
+      {
+        Sid    = "BackupPlanManagement"
+        Effect = "Allow"
+        Action = [
+          "backup:CreateBackupPlan",
+          "backup:DeleteBackupPlan",
+          "backup:GetBackupPlan",
+          "backup:ListBackupPlans",
+          "backup:UpdateBackupPlan",
+          "backup:CreateBackupSelection",
+          "backup:DeleteBackupSelection",
+          "backup:GetBackupSelection",
+          "backup:ListBackupSelections"
+        ]
+        Resource = [
+          "arn:aws:backup:${var.aws_region}:${data.aws_caller_identity.current.account_id}:backup-plan:*"
+        ]
       },
       # Auto Scaling - required for EKS managed node groups
       {
