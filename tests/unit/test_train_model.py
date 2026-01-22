@@ -1,10 +1,11 @@
 """Unit tests for train_model module."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+
 import pytest
 
-from pipelines.training.src.train_model import train_model, TrainingResult, TrainingConfig
 from pipelines.training.src.exceptions import ModelTrainingError
+from pipelines.training.src.train_model import TrainingConfig, TrainingResult, train_model
 
 
 class TestTrainingConfig:
@@ -139,6 +140,7 @@ class TestTrainModel:
         )
 
         import os
+
         assert os.path.exists(artifacts["model_path"])
 
     def test_run_id_saved(self, trained_model_artifacts, mocker):

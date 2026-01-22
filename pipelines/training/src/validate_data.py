@@ -99,7 +99,9 @@ def validate_data(
         )
 
     # Ensure output directory exists
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    output_dir = os.path.dirname(output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
 
     # Save cleaned data
     df_clean.to_csv(output_path, index=False)

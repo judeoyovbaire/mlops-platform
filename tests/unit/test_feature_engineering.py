@@ -3,13 +3,13 @@
 import pandas as pd
 import pytest
 
-from pipelines.training.src.feature_engineering import (
-    feature_engineering,
-    FeatureEngineeringResult,
-)
 from pipelines.training.src.exceptions import (
     FeatureEngineeringError,
     MissingColumnError,
+)
+from pipelines.training.src.feature_engineering import (
+    FeatureEngineeringResult,
+    feature_engineering,
 )
 
 

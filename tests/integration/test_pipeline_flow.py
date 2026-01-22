@@ -4,12 +4,12 @@ These tests verify that pipeline components work together correctly.
 """
 
 import os
-import pytest
 from unittest.mock import MagicMock
 
-from pipelines.training.src.load_data import load_data
-from pipelines.training.src.validate_data import validate_data
+import pytest
+
 from pipelines.training.src.feature_engineering import feature_engineering
+from pipelines.training.src.validate_data import validate_data
 
 
 class TestPipelineFlow:
@@ -89,9 +89,7 @@ class TestPipelineFlow:
         features_path = str(temp_dir / "features.csv")
 
         # Validate and clean data
-        validation_result = validate_data(
-            csv_with_nulls_path, validated_path, min_rows=5
-        )
+        validation_result = validate_data(csv_with_nulls_path, validated_path, min_rows=5)
         assert validation_result.rows_removed > 0
         assert validation_result.clean_rows >= 5
 

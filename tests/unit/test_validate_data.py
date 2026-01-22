@@ -2,12 +2,12 @@
 
 import pytest
 
-from pipelines.training.src.validate_data import validate_data, ValidationResult
 from pipelines.training.src.exceptions import (
     DataValidationError,
     EmptyDataError,
     InsufficientDataError,
 )
+from pipelines.training.src.validate_data import ValidationResult, validate_data
 
 
 class TestValidateData:

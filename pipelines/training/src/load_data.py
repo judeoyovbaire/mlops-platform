@@ -9,6 +9,7 @@ network issues.
 import argparse
 import logging
 import os
+import shutil
 import sys
 import urllib.request
 from dataclasses import dataclass
@@ -22,6 +23,9 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# Default timeout for network requests (seconds)
+DEFAULT_TIMEOUT = 30
 
 
 @dataclass
@@ -58,13 +62,14 @@ def validate_url(url: str) -> bool:
         raise InvalidURLError(f"Failed to parse URL: {e}") from e
 
 
-def load_data(url: str, output_path: str) -> LoadResult:
+def load_data(url: str, output_path: str, timeout: int = DEFAULT_TIMEOUT) -> LoadResult:
     """
     Download data from a URL and save it to the specified path.
 
     Args:
         url: URL to download data from.
         output_path: Local path to save the downloaded data.
+        timeout: Network timeout in seconds (default: 30).
 
     Returns:
         LoadResult containing the output path, number of lines, and status.
@@ -80,14 +85,16 @@ def load_data(url: str, output_path: str) -> LoadResult:
     validate_url(url)
 
     try:
-        logger.info(f"Downloading data from {url}")
-        urllib.request.urlretrieve(url, output_path)
+        logger.info(f"Downloading data from {url} (timeout: {timeout}s)")
+        with urllib.request.urlopen(url, timeout=timeout) as response:
+            with open(output_path, "wb") as out_file:
+                shutil.copyfileobj(response, out_file)
 
         # Verify download
         if not os.path.exists(output_path):
             raise DataLoadError(f"Output file {output_path} not found after download")
 
-        with open(output_path) as f:
+        with open(output_path, encoding="utf-8") as f:
             lines = f.readlines()
             num_lines = len(lines)
             logger.info(f"Downloaded {num_lines} lines")

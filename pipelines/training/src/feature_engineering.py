@@ -11,6 +11,7 @@ import os
 import sys
 from dataclasses import dataclass, field
 
+import joblib
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
@@ -31,6 +32,7 @@ class FeatureEngineeringResult:
     """Result of feature engineering operation."""
 
     output_path: str
+    scaler_path: str | None
     input_shape: tuple[int, int]
     output_shape: tuple[int, int]
     scaled_columns: list[str] = field(default_factory=list)
@@ -87,12 +89,19 @@ def feature_engineering(
     # Scale numeric columns
     numeric_cols = X.select_dtypes(include=["float64", "int64"]).columns.tolist()
     scaled_columns = []
+    scaler_path = None
 
     if numeric_cols:
         logger.info(f"Scaling numeric columns: {numeric_cols}")
         scaler = StandardScaler()
         X[numeric_cols] = scaler.fit_transform(X[numeric_cols])
         scaled_columns = numeric_cols
+
+        # Save scaler for inference
+        scaler_path = output_path.replace(".csv", "_scaler.joblib")
+        os.makedirs(os.path.dirname(scaler_path) or ".", exist_ok=True)
+        joblib.dump(scaler, scaler_path)
+        logger.info(f"Scaler saved to {scaler_path}")
 
     # Combine features and target
     df_out = X.copy()
@@ -101,7 +110,9 @@ def feature_engineering(
     output_shape = df_out.shape
 
     # Ensure output directory exists
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    output_dir = os.path.dirname(output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
 
     # Save processed data
     df_out.to_csv(output_path, index=False)
@@ -109,6 +120,7 @@ def feature_engineering(
 
     return FeatureEngineeringResult(
         output_path=output_path,
+        scaler_path=scaler_path,
         input_shape=input_shape,
         output_shape=output_shape,
         scaled_columns=scaled_columns,

@@ -91,6 +91,20 @@ variable "master_cidr" {
   default     = "172.16.0.0/28"
 }
 
+variable "master_authorized_networks" {
+  description = "List of CIDR blocks authorized to access the GKE master API server"
+  type = list(object({
+    cidr_block   = string
+    display_name = string
+  }))
+  default = [
+    {
+      cidr_block   = "10.100.0.0/8"
+      display_name = "Internal networks"
+    }
+  ]
+}
+
 # =============================================================================
 # Node Pools - Production Sizing
 # =============================================================================

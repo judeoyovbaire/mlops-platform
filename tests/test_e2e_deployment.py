@@ -7,11 +7,12 @@ Manifest validation is handled by CI/CD (kubeconform).
 Set E2E_CLUSTER_TEST=true to run actual cluster tests.
 """
 
-import pytest
-import subprocess
 import json
 import os
+import subprocess
 from pathlib import Path
+
+import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent
 CLUSTER_TEST = os.environ.get("E2E_CLUSTER_TEST", "false").lower() == "true"
@@ -66,6 +67,9 @@ class TestClusterHealth:
             )
             if result.returncode == 0:
                 pods = json.loads(result.stdout)
-                running = [p for p in pods.get("items", [])
-                          if p.get("status", {}).get("phase") == "Running"]
+                running = [
+                    p
+                    for p in pods.get("items", [])
+                    if p.get("status", {}).get("phase") == "Running"
+                ]
                 assert len(running) > 0, f"{namespace} should be running"

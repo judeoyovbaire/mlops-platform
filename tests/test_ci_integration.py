@@ -4,10 +4,10 @@ CI/CD Pipeline Integration Tests.
 Tests that verify the CI/CD pipeline components work correctly together.
 """
 
+from pathlib import Path
+
 import pytest
 import yaml
-import json
-from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent
 
@@ -48,7 +48,8 @@ class TestGitHubActionsWorkflows:
     def test_terraform_workflow_has_plan_and_apply(self, workflows_dir):
         """Verify Terraform workflow has both plan and apply jobs."""
         tf_workflows = [
-            w for w in workflows_dir.glob("*.y*ml")
+            w
+            for w in workflows_dir.glob("*.y*ml")
             if "terraform" in w.name.lower() or "infrastructure" in w.name.lower()
         ]
 
@@ -60,27 +61,25 @@ class TestGitHubActionsWorkflows:
                     job_names = " ".join(jobs.keys()).lower()
                     # Check workflow has validation/planning steps
                     has_validation = any(
-                        "plan" in name.lower() or
-                        "validate" in name.lower() or
-                        "lint" in name.lower()
+                        "plan" in name.lower()
+                        or "validate" in name.lower()
+                        or "lint" in name.lower()
                         for name in jobs.keys()
                     )
-                    assert has_validation, \
-                        f"{workflow.name} should have validation/planning job"
+                    assert has_validation, f"{workflow.name} should have validation/planning job"
 
     def test_no_secrets_in_workflows(self, workflows_dir):
         """Verify no hardcoded secrets in workflows."""
         dangerous_patterns = [
             "AKIA",  # AWS access key prefix
             "ghp_",  # GitHub PAT prefix
-            "sk-",   # OpenAI key prefix
+            "sk-",  # OpenAI key prefix
         ]
 
         for workflow in workflows_dir.glob("*.y*ml"):
             content = workflow.read_text()
             for pattern in dangerous_patterns:
-                assert pattern not in content, \
-                    f"Potential hardcoded secret in {workflow.name}"
+                assert pattern not in content, f"Potential hardcoded secret in {workflow.name}"
 
     def test_workflows_use_pinned_actions(self, workflows_dir):
         """Verify workflows use pinned action versions."""
@@ -93,8 +92,9 @@ class TestGitHubActionsWorkflows:
                             if "uses" in step:
                                 uses = step["uses"]
                                 # Should have version pinning (@v1, @sha, etc.)
-                                assert "@" in uses, \
+                                assert "@" in uses, (
                                     f"Action '{uses}' in {workflow.name} should be version pinned"
+                                )
 
 
 class TestPreCommitHooks:
@@ -115,10 +115,7 @@ class TestPreCommitHooks:
             for hook in repo.get("hooks", []):
                 hooks.append(hook.get("id", ""))
 
-        tf_hooks_present = any(
-            "terraform" in h.lower() or "tflint" in h.lower()
-            for h in hooks
-        )
+        tf_hooks_present = any("terraform" in h.lower() or "tflint" in h.lower() for h in hooks)
         assert tf_hooks_present, "Pre-commit should have Terraform hooks"
 
     def test_security_hooks_configured(self, precommit_config):
@@ -132,10 +129,7 @@ class TestPreCommitHooks:
             all_hooks.append(repo_url)
 
         security_patterns = ["trivy", "checkov", "tfsec", "detect-secrets", "gitleaks"]
-        has_security = any(
-            pattern in " ".join(all_hooks)
-            for pattern in security_patterns
-        )
+        has_security = any(pattern in " ".join(all_hooks) for pattern in security_patterns)
         # Security hooks are recommended but not required
         if not has_security:
             pytest.skip("Security hooks recommended but not configured")
@@ -163,13 +157,15 @@ class TestMakefileTargets:
 
     def test_has_test_target(self, makefile_content):
         """Verify Makefile has test target."""
-        assert "test:" in makefile_content or "test :" in makefile_content, \
+        assert "test:" in makefile_content or "test :" in makefile_content, (
             "Makefile should have 'test' target"
+        )
 
     def test_has_lint_target(self, makefile_content):
         """Verify Makefile has lint target."""
-        assert "lint:" in makefile_content or "lint :" in makefile_content, \
+        assert "lint:" in makefile_content or "lint :" in makefile_content, (
             "Makefile should have 'lint' target"
+        )
 
     def test_has_terraform_targets(self, makefile_content):
         """Verify Makefile has Terraform targets."""
@@ -179,8 +175,9 @@ class TestMakefileTargets:
 
     def test_has_help_target(self, makefile_content):
         """Verify Makefile has help target."""
-        assert "help:" in makefile_content or "help :" in makefile_content, \
+        assert "help:" in makefile_content or "help :" in makefile_content, (
             "Makefile should have 'help' target"
+        )
 
 
 class TestArgoWorkflowTemplates:
@@ -220,8 +217,9 @@ class TestArgoWorkflowTemplates:
                 if doc and doc.get("kind") in ["Workflow", "WorkflowTemplate"]:
                     workflow_found = True
                     metadata = doc.get("metadata", {})
-                    assert "name" in metadata or "generateName" in metadata, \
+                    assert "name" in metadata or "generateName" in metadata, (
                         f"{template.name} workflow missing name or generateName"
+                    )
 
         if not workflow_found:
             pytest.skip("No Workflow/WorkflowTemplate found in pipelines")
@@ -257,20 +255,21 @@ class TestDockerfilesBestPractices:
         """Verify Dockerfiles use specific image tags, not 'latest'."""
         for dockerfile in dockerfiles:
             content = dockerfile.read_text()
-            lines = content.split('\n')
+            lines = content.split("\n")
 
             for line in lines:
-                if line.strip().startswith('FROM'):
+                if line.strip().startswith("FROM"):
                     # Should not use :latest
-                    assert ':latest' not in line.lower(), \
+                    assert ":latest" not in line.lower(), (
                         f"{dockerfile} uses :latest tag - use specific version"
+                    )
 
     def test_dockerfiles_have_healthcheck(self, dockerfiles):
         """Verify Dockerfiles define HEALTHCHECK (recommended)."""
         for dockerfile in dockerfiles:
             content = dockerfile.read_text()
-            if 'EXPOSE' in content:  # If it exposes a port, should have healthcheck
-                if 'HEALTHCHECK' not in content:
+            if "EXPOSE" in content:  # If it exposes a port, should have healthcheck
+                if "HEALTHCHECK" not in content:
                     # Warning, not failure - healthchecks are recommended
                     pass
 
@@ -279,7 +278,7 @@ class TestDockerfilesBestPractices:
         for dockerfile in dockerfiles:
             content = dockerfile.read_text()
             # Check if USER directive is present
-            has_user = 'USER' in content and 'USER root' not in content
+            has_user = "USER" in content and "USER root" not in content
             # This is a best practice, not a hard requirement
             if not has_user:
                 pass  # Just informational

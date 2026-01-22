@@ -61,6 +61,7 @@ def train_model(
     test_size: float,
     run_id_output_path: str,
     accuracy_output_path: str,
+    random_state: int = 42,
 ) -> TrainingResult:
     """
     Train a RandomForest classifier and log to MLflow.
@@ -76,6 +77,7 @@ def train_model(
         test_size: Proportion of data for test set.
         run_id_output_path: Path to save MLflow run ID.
         accuracy_output_path: Path to save accuracy metric.
+        random_state: Random seed for reproducibility (default: 42).
 
     Returns:
         TrainingResult containing model path, run ID, and metrics.
@@ -111,7 +113,9 @@ def train_model(
     y = df[target]
 
     # Split data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=random_state
+    )
     logger.info(f"Train set: {len(X_train)}, Test set: {len(X_test)}")
 
     try:
@@ -124,6 +128,7 @@ def train_model(
                 "n_estimators": n_estimators,
                 "max_depth": max_depth,
                 "test_size": test_size,
+                "random_state": random_state,
             }
             mlflow.log_params(params)
             logger.info(f"Training parameters: {params}")
@@ -132,7 +137,7 @@ def train_model(
             model = RandomForestClassifier(
                 n_estimators=n_estimators,
                 max_depth=max_depth,
-                random_state=42,
+                random_state=random_state,
                 n_jobs=-1,
             )
             model.fit(X_train, y_train)
@@ -188,6 +193,7 @@ if __name__ == "__main__":
     parser.add_argument("--n-estimators", type=int, default=100, help="Number of trees")
     parser.add_argument("--max-depth", type=int, default=10, help="Max depth of trees")
     parser.add_argument("--test-size", type=float, default=0.2, help="Test set size")
+    parser.add_argument("--random-state", type=int, default=42, help="Random seed")
 
     args = parser.parse_args()
 
@@ -203,6 +209,7 @@ if __name__ == "__main__":
             args.test_size,
             args.run_id_output,
             args.accuracy_output,
+            args.random_state,
         )
         print(f"Training complete. Accuracy: {result.accuracy:.4f}, F1: {result.f1:.4f}")
     except ModelTrainingError as e:

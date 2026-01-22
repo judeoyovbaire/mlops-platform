@@ -85,7 +85,7 @@ repos:
     hooks:
       - id: pytest-check
         name: pytest-check
-        entry: pytest tests/unit -x -q --tb=no
+        entry: pytest tests/ -q --tb=short
         language: system
         pass_filenames: false
         stages: [commit]

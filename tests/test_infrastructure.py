@@ -4,12 +4,12 @@ Infrastructure Configuration Tests.
 Tests that verify Terraform and Kubernetes configurations are valid and follow best practices.
 """
 
-import pytest
-import json
-import yaml
 import shutil
 import subprocess
 from pathlib import Path
+
+import pytest
+import yaml
 
 PROJECT_ROOT = Path(__file__).parent.parent
 
@@ -39,14 +39,13 @@ class TestTerraformConfiguration:
             pytest.skip("AWS dev environment not found")
 
         result = subprocess.run(
-            ["terraform", "validate"],
-            cwd=aws_tf_dir,
-            capture_output=True,
-            text=True
+            ["terraform", "validate"], cwd=aws_tf_dir, capture_output=True, text=True
         )
         # Accept success or skip if not initialized (missing providers)
-        not_initialized = ("Could not satisfy plugin requirements" in result.stderr or
-                          "Missing required provider" in result.stderr)
+        not_initialized = (
+            "Could not satisfy plugin requirements" in result.stderr
+            or "Missing required provider" in result.stderr
+        )
         assert result.returncode == 0 or not_initialized
 
     @pytest.mark.skipif(not TERRAFORM_AVAILABLE, reason="terraform not installed")
@@ -56,13 +55,12 @@ class TestTerraformConfiguration:
             pytest.skip("Azure dev environment not found")
 
         result = subprocess.run(
-            ["terraform", "validate"],
-            cwd=azure_tf_dir,
-            capture_output=True,
-            text=True
+            ["terraform", "validate"], cwd=azure_tf_dir, capture_output=True, text=True
         )
-        not_initialized = ("Could not satisfy plugin requirements" in result.stderr or
-                          "Missing required provider" in result.stderr)
+        not_initialized = (
+            "Could not satisfy plugin requirements" in result.stderr
+            or "Missing required provider" in result.stderr
+        )
         assert result.returncode == 0 or not_initialized
 
     @pytest.mark.skipif(not TERRAFORM_AVAILABLE, reason="terraform not installed")
@@ -72,13 +70,12 @@ class TestTerraformConfiguration:
             pytest.skip("GCP dev environment not found")
 
         result = subprocess.run(
-            ["terraform", "validate"],
-            cwd=gcp_tf_dir,
-            capture_output=True,
-            text=True
+            ["terraform", "validate"], cwd=gcp_tf_dir, capture_output=True, text=True
         )
-        not_initialized = ("Could not satisfy plugin requirements" in result.stderr or
-                          "Missing required provider" in result.stderr)
+        not_initialized = (
+            "Could not satisfy plugin requirements" in result.stderr
+            or "Missing required provider" in result.stderr
+        )
         assert result.returncode == 0 or not_initialized
 
     def test_all_environments_have_required_files(self):
@@ -89,8 +86,7 @@ class TestTerraformConfiguration:
             tf_dir = PROJECT_ROOT / "infrastructure" / "terraform" / "environments" / cloud / "dev"
             if tf_dir.exists():
                 for required_file in required_files:
-                    assert (tf_dir / required_file).exists(), \
-                        f"{cloud}/dev missing {required_file}"
+                    assert (tf_dir / required_file).exists(), f"{cloud}/dev missing {required_file}"
 
 
 class TestHelmValues:
@@ -120,8 +116,9 @@ class TestHelmValues:
                     with open(argocd_file) as f:
                         content = f.read()
                         # Should not have --insecure flag
-                        assert "--insecure" not in content, \
+                        assert "--insecure" not in content, (
                             f"ArgoCD in {cloud_dir.name} should not use --insecure"
+                        )
 
     def test_prometheus_no_hardcoded_passwords(self, helm_dir):
         """Verify Prometheus stack doesn't have hardcoded passwords."""
@@ -138,8 +135,9 @@ class TestHelmValues:
 
                     # Should either be null/None or use external secret
                     if admin_password is not None:
-                        assert admin_password != "admin", \
+                        assert admin_password != "admin", (
                             f"Grafana in {cloud_dir.name} should not use default password"
+                        )
 
 
 class TestKubernetesManifests:
@@ -203,19 +201,28 @@ class TestSecurityConfiguration:
     def test_psa_labels_configured(self):
         """Verify Pod Security Admission labels are set in all environments."""
         for cloud in ["aws", "azure", "gcp"]:
-            namespaces_file = PROJECT_ROOT / "infrastructure" / "terraform" / \
-                "environments" / cloud / "dev" / "namespaces.tf"
+            namespaces_file = (
+                PROJECT_ROOT
+                / "infrastructure"
+                / "terraform"
+                / "environments"
+                / cloud
+                / "dev"
+                / "namespaces.tf"
+            )
 
             if namespaces_file.exists():
                 content = namespaces_file.read_text()
 
                 # Check for PSA enforce labels
-                assert "pod-security.kubernetes.io/enforce" in content, \
+                assert "pod-security.kubernetes.io/enforce" in content, (
                     f"{cloud} should have PSA enforce labels"
+                )
 
                 # mlops, mlflow, kserve should be restricted
-                assert "restricted" in content, \
+                assert "restricted" in content, (
                     f"{cloud} should use restricted PSA for workload namespaces"
+                )
 
     def test_irsa_workload_identity_configured(self):
         """Verify cloud identity is configured (IRSA/Workload Identity)."""
@@ -223,13 +230,19 @@ class TestSecurityConfiguration:
         # Azure uses escaped dots in HCL (azure\.workload\.identity), so we check for key parts
         checks = {
             "aws": {"pattern": "eks.amazonaws.com/role-arn", "description": "IRSA"},
-            "azure": {"pattern": "workload", "extra": "identity", "description": "Workload Identity"},
-            "gcp": {"pattern": "iam.gke.io/gcp-service-account", "description": "Workload Identity"}
+            "azure": {
+                "pattern": "workload",
+                "extra": "identity",
+                "description": "Workload Identity",
+            },
+            "gcp": {
+                "pattern": "iam.gke.io/gcp-service-account",
+                "description": "Workload Identity",
+            },
         }
 
         for cloud, check in checks.items():
-            tf_dir = PROJECT_ROOT / "infrastructure" / "terraform" / \
-                "environments" / cloud / "dev"
+            tf_dir = PROJECT_ROOT / "infrastructure" / "terraform" / "environments" / cloud / "dev"
 
             if tf_dir.exists():
                 all_content = ""
@@ -239,8 +252,7 @@ class TestSecurityConfiguration:
                 found = check["pattern"] in all_content
                 if "extra" in check:
                     found = found and check["extra"] in all_content
-                assert found, \
-                    f"{cloud} should configure {check['description']}"
+                assert found, f"{cloud} should configure {check['description']}"
 
 
 class TestExamples:
@@ -261,8 +273,9 @@ class TestExamples:
 
     def test_inferenceservice_examples_exist(self, examples_dir):
         """Verify InferenceService examples are provided."""
-        kserve_examples = list(examples_dir.rglob("*inferenceservice*.yaml")) + \
-                         list(examples_dir.rglob("*InferenceService*.yaml"))
+        kserve_examples = list(examples_dir.rglob("*inferenceservice*.yaml")) + list(
+            examples_dir.rglob("*InferenceService*.yaml")
+        )
 
         assert len(kserve_examples) >= 1, "Should have InferenceService examples"
 

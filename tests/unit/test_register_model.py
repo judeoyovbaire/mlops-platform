@@ -2,14 +2,13 @@
 
 import pytest
 
-from pipelines.training.src.register_model import (
-    register_model,
-    validate_threshold,
-    RegistrationResult,
-)
 from pipelines.training.src.exceptions import (
     InvalidThresholdError,
-    ModelRegistrationError,
+)
+from pipelines.training.src.register_model import (
+    RegistrationResult,
+    register_model,
+    validate_threshold,
 )
 
 

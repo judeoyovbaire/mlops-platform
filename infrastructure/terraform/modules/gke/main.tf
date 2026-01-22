@@ -198,10 +198,11 @@ resource "google_container_cluster" "main" {
   }
 
   # Maintenance window - daily 03:00-07:00 UTC (GKE requires 48h availability per 32 days)
+  # RFC 3339 format requires a date, but GKE only uses the time portion for recurring windows
   maintenance_policy {
     recurring_window {
-      start_time = "2024-01-01T03:00:00Z"
-      end_time   = "2024-01-01T07:00:00Z"
+      start_time = "1970-01-01T03:00:00Z"
+      end_time   = "1970-01-01T07:00:00Z"
       recurrence = "FREQ=DAILY"
     }
   }

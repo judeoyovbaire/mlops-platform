@@ -5,17 +5,17 @@ Tests that verify Terraform modules follow best practices and have proper config
 These tests can run without terraform init by parsing HCL files directly.
 """
 
-import pytest
 import re
-import json
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any
+
+import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent
 MODULES_DIR = PROJECT_ROOT / "infrastructure" / "terraform" / "modules"
 
 
-def parse_terraform_variables(tf_content: str) -> Dict[str, Any]:
+def parse_terraform_variables(tf_content: str) -> dict[str, Any]:
     """Extract variable definitions from Terraform content."""
     variables = {}
     # Match variable blocks
@@ -32,7 +32,7 @@ def parse_terraform_variables(tf_content: str) -> Dict[str, Any]:
             var_info["description"] = desc_match.group(1)
 
         # Check for type
-        type_match = re.search(r'type\s*=\s*(\S+)', var_block)
+        type_match = re.search(r"type\s*=\s*(\S+)", var_block)
         if type_match:
             var_info["type"] = type_match.group(1)
 
@@ -47,7 +47,7 @@ def parse_terraform_variables(tf_content: str) -> Dict[str, Any]:
     return variables
 
 
-def parse_terraform_outputs(tf_content: str) -> Dict[str, Any]:
+def parse_terraform_outputs(tf_content: str) -> dict[str, Any]:
     """Extract output definitions from Terraform content."""
     outputs = {}
     output_pattern = r'output\s+"([^"]+)"\s*\{([^}]+)\}'
@@ -102,13 +102,13 @@ class TestEKSModule:
         sensitive_exact = ["password", "secret", "api_key", "token"]
         for var_name, var_info in variables.items():
             var_lower = var_name.lower()
-            is_sensitive_name = (
-                any(var_lower.endswith(s) for s in sensitive_suffixes) or
-                any(var_lower == s for s in sensitive_exact)
+            is_sensitive_name = any(var_lower.endswith(s) for s in sensitive_suffixes) or any(
+                var_lower == s for s in sensitive_exact
             )
             if is_sensitive_name:
-                assert var_info.get("sensitive", False), \
+                assert var_info.get("sensitive", False), (
                     f"Variable '{var_name}' appears sensitive but not marked"
+                )
 
     def test_outputs_have_descriptions(self, module_content):
         """All outputs should have descriptions."""
@@ -119,20 +119,21 @@ class TestEKSModule:
     def test_encryption_enabled(self, module_content):
         """Verify encryption is configured for data at rest."""
         # Check for KMS encryption
-        assert "kms" in module_content.lower() or "encrypt" in module_content.lower(), \
+        assert "kms" in module_content.lower() or "encrypt" in module_content.lower(), (
             "EKS module should configure encryption"
+        )
 
     def test_private_endpoints_configurable(self, module_content):
         """Verify private endpoint access is configurable."""
-        assert "endpoint_private_access" in module_content, \
+        assert "endpoint_private_access" in module_content, (
             "EKS should have configurable private endpoint access"
+        )
 
     def test_logging_enabled(self, module_content):
         """Verify cluster logging is enabled."""
         # Check for either EKS cluster logging or VPC flow logs
         has_logging = (
-            "enabled_cluster_log_types" in module_content or
-            "flow_log" in module_content.lower()
+            "enabled_cluster_log_types" in module_content or "flow_log" in module_content.lower()
         )
         assert has_logging, "EKS should enable cluster or VPC flow logging"
 
@@ -167,20 +168,20 @@ class TestAKSModule:
 
     def test_managed_identity_enabled(self, module_content):
         """Verify managed identity is used."""
-        assert "identity" in module_content.lower(), \
-            "AKS should use managed identity"
+        assert "identity" in module_content.lower(), "AKS should use managed identity"
 
     def test_network_policy_enabled(self, module_content):
         """Verify network policy is configured."""
-        assert "network_policy" in module_content, \
-            "AKS should configure network policy"
+        assert "network_policy" in module_content, "AKS should configure network policy"
 
     def test_azure_defender_configurable(self, module_content):
         """Verify Azure Defender/security center integration."""
         # Either Azure Monitor or Defender should be enabled
-        has_monitoring = "azure_monitor" in module_content.lower() or \
-                        "oms_agent" in module_content.lower() or \
-                        "monitor_metrics" in module_content.lower()
+        has_monitoring = (
+            "azure_monitor" in module_content.lower()
+            or "oms_agent" in module_content.lower()
+            or "monitor_metrics" in module_content.lower()
+        )
         assert has_monitoring, "AKS should have monitoring configured"
 
 
@@ -214,21 +215,23 @@ class TestGKEModule:
 
     def test_workload_identity_enabled(self, module_content):
         """Verify Workload Identity is configured."""
-        assert "workload_identity" in module_content.lower() or \
-               "workload_metadata_config" in module_content, \
-            "GKE should enable Workload Identity"
+        assert (
+            "workload_identity" in module_content.lower()
+            or "workload_metadata_config" in module_content
+        ), "GKE should enable Workload Identity"
 
     def test_shielded_nodes_enabled(self, module_content):
         """Verify shielded nodes are configured."""
-        has_shielded = "shielded" in module_content.lower() or \
-                      "secure_boot" in module_content.lower()
+        has_shielded = (
+            "shielded" in module_content.lower() or "secure_boot" in module_content.lower()
+        )
         assert has_shielded, "GKE should configure shielded nodes"
 
     def test_private_cluster_configurable(self, module_content):
         """Verify private cluster is configurable."""
-        assert "private_cluster_config" in module_content or \
-               "enable_private_nodes" in module_content, \
-            "GKE should have private cluster configuration"
+        assert (
+            "private_cluster_config" in module_content or "enable_private_nodes" in module_content
+        ), "GKE should have private cluster configuration"
 
 
 class TestModuleConsistency:
@@ -257,7 +260,7 @@ class TestModuleConsistency:
         db_patterns = {
             "eks": ["rds", "postgresql"],
             "aks": ["postgresql", "flexible"],
-            "gke": ["cloudsql", "sql_database"]
+            "gke": ["cloudsql", "sql_database"],
         }
 
         for module_name, patterns in db_patterns.items():
@@ -278,23 +281,19 @@ class TestModuleConsistency:
                 outputs_file = module_path / "outputs.tf"
                 if outputs_file.exists():
                     content = outputs_file.read_text()
-                    assert "endpoint" in content.lower(), \
+                    assert "endpoint" in content.lower(), (
                         f"{module_name} should output cluster endpoint"
+                    )
 
     def test_all_modules_use_tagging(self):
         """All modules should support resource tagging/labeling."""
-        tag_patterns = {
-            "eks": "tags",
-            "aks": "tags",
-            "gke": "labels"
-        }
+        tag_patterns = {"eks": "tags", "aks": "tags", "gke": "labels"}
 
         for module_name, pattern in tag_patterns.items():
             module_path = MODULES_DIR / module_name / "variables.tf"
             if module_path.exists():
                 content = module_path.read_text()
-                assert pattern in content.lower(), \
-                    f"{module_name} should have {pattern} variable"
+                assert pattern in content.lower(), f"{module_name} should have {pattern} variable"
 
 
 class TestSecurityBestPractices:
@@ -306,7 +305,7 @@ class TestSecurityBestPractices:
             r'password\s*=\s*"[^"$]',  # Hardcoded password (not variable)
             r'secret_key\s*=\s*"[^"$]',
             r'access_key\s*=\s*"[^"$]',
-            r'AKIA[0-9A-Z]{16}',  # AWS access key pattern
+            r"AKIA[0-9A-Z]{16}",  # AWS access key pattern
         ]
 
         for module_dir in MODULES_DIR.iterdir():
@@ -315,15 +314,16 @@ class TestSecurityBestPractices:
                     content = tf_file.read_text()
                     for pattern in dangerous_patterns:
                         matches = re.findall(pattern, content)
-                        assert not matches, \
+                        assert not matches, (
                             f"Potential hardcoded credential in {tf_file}: {matches}"
+                        )
 
     def test_encryption_at_rest(self):
         """Verify encryption at rest is configured."""
         encryption_keywords = {
             "eks": ["kms", "encrypt"],
             "aks": ["key_vault", "disk_encryption"],
-            "gke": ["kms", "encryption", "encrypted"]  # GKE uses "ENCRYPTED_ONLY" for SSL
+            "gke": ["kms", "encryption", "encrypted"],  # GKE uses "ENCRYPTED_ONLY" for SSL
         }
 
         for module_name, keywords in encryption_keywords.items():
@@ -334,15 +334,14 @@ class TestSecurityBestPractices:
                     content += tf_file.read_text().lower()
 
                 has_encryption = any(kw in content for kw in keywords)
-                assert has_encryption, \
-                    f"{module_name} should configure encryption at rest"
+                assert has_encryption, f"{module_name} should configure encryption at rest"
 
     def test_network_isolation(self):
         """Verify network isolation is configured."""
         network_keywords = {
             "eks": ["vpc", "subnet", "security_group"],
             "aks": ["vnet", "subnet", "network_security"],
-            "gke": ["network", "subnetwork", "firewall"]
+            "gke": ["network", "subnetwork", "firewall"],
         }
 
         for module_name, keywords in network_keywords.items():
@@ -353,5 +352,4 @@ class TestSecurityBestPractices:
                     content += tf_file.read_text().lower()
 
                 has_network = any(kw in content for kw in keywords)
-                assert has_network, \
-                    f"{module_name} should configure network isolation"
+                assert has_network, f"{module_name} should configure network isolation"

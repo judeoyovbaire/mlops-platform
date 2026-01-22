@@ -4,17 +4,18 @@ Unit tests for Argo Workflow pipeline components.
 Tests the individual component logic without requiring a Kubernetes runtime.
 """
 
-import pytest
-import pandas as pd
-import numpy as np
 import tempfile
+
+import numpy as np
+import pandas as pd
 
 
 class MockDataset:
     """Mock Dataset artifact for testing pipeline components."""
+
     def __init__(self, path: str = None):
         if path is None:
-            self._temp = tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False)
+            self._temp = tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False)
             self.path = self._temp.name
         else:
             self.path = path
@@ -22,13 +23,15 @@ class MockDataset:
 
 class MockModel:
     """Mock Model artifact for testing pipeline components."""
+
     def __init__(self):
-        self._temp = tempfile.NamedTemporaryFile(mode='wb', suffix='.joblib', delete=False)
+        self._temp = tempfile.NamedTemporaryFile(mode="wb", suffix=".joblib", delete=False)
         self.path = self._temp.name
 
 
 class MockMetrics:
     """Mock Metrics for testing pipeline components."""
+
     def __init__(self):
         self.metrics = {}
 
@@ -51,7 +54,7 @@ class TestLoadDataComponent:
         # Verify output
         result = pd.read_csv(output.path)
         assert len(result) == 150
-        assert 'species' in result.columns
+        assert "species" in result.columns
 
     def test_load_data_handles_valid_url(self):
         """Test loading from a valid URL."""
@@ -67,8 +70,8 @@ class TestValidateDataComponent:
         """Test that validation removes null values."""
         # Add some nulls
         df_with_nulls = iris_dataframe.copy()
-        df_with_nulls.loc[0, 'sepal_length'] = np.nan
-        df_with_nulls.loc[1, 'sepal_width'] = np.nan
+        df_with_nulls.loc[0, "sepal_length"] = np.nan
+        df_with_nulls.loc[1, "sepal_width"] = np.nan
 
         input_ds = MockDataset()
         df_with_nulls.to_csv(input_ds.path, index=False)
@@ -128,12 +131,10 @@ class TestFeatureEngineeringComponent:
         X = df.drop(columns=[target_column])
         y = df[target_column]
 
-        numeric_cols = X.select_dtypes(include=['float64', 'int64']).columns
+        numeric_cols = X.select_dtypes(include=["float64", "int64"]).columns
         scaler = StandardScaler()
         X_scaled = pd.DataFrame(
-            scaler.fit_transform(X[numeric_cols]),
-            columns=numeric_cols,
-            index=X.index
+            scaler.fit_transform(X[numeric_cols]), columns=numeric_cols, index=X.index
         )
         df_processed = X_scaled.copy()
         df_processed[target_column] = y.values
@@ -159,18 +160,14 @@ class TestFeatureEngineeringComponent:
         y = df[target_column]
 
         scaler = StandardScaler()
-        X_scaled = pd.DataFrame(
-            scaler.fit_transform(X),
-            columns=X.columns,
-            index=X.index
-        )
+        X_scaled = pd.DataFrame(scaler.fit_transform(X), columns=X.columns, index=X.index)
         df_processed = X_scaled.copy()
         df_processed[target_column] = y.values
         df_processed.to_csv(output_ds.path, index=False)
 
         result = pd.read_csv(output_ds.path)
         assert target_column in result.columns
-        assert set(result[target_column].unique()) == {'setosa', 'versicolor', 'virginica'}
+        assert set(result[target_column].unique()) == {"setosa", "versicolor", "virginica"}
 
 
 class TestTrainModelComponent:
@@ -178,14 +175,14 @@ class TestTrainModelComponent:
 
     def test_train_creates_model(self, iris_dataframe):
         """Test that training creates a valid model."""
+        import joblib
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.model_selection import train_test_split
         from sklearn.preprocessing import LabelEncoder
-        import joblib
 
         # Prepare data
-        X = iris_dataframe.drop(columns=['species'])
-        y = LabelEncoder().fit_transform(iris_dataframe['species'])
+        X = iris_dataframe.drop(columns=["species"])
+        y = LabelEncoder().fit_transform(iris_dataframe["species"])
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
         # Train
@@ -205,12 +202,12 @@ class TestTrainModelComponent:
     def test_train_logs_metrics(self, iris_dataframe):
         """Test that training logs correct metrics."""
         from sklearn.ensemble import RandomForestClassifier
+        from sklearn.metrics import accuracy_score, f1_score
         from sklearn.model_selection import train_test_split
         from sklearn.preprocessing import LabelEncoder
-        from sklearn.metrics import accuracy_score, f1_score
 
-        X = iris_dataframe.drop(columns=['species'])
-        y = LabelEncoder().fit_transform(iris_dataframe['species'])
+        X = iris_dataframe.drop(columns=["species"])
+        y = LabelEncoder().fit_transform(iris_dataframe["species"])
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
         model = RandomForestClassifier(n_estimators=50, max_depth=5, random_state=42)
@@ -219,7 +216,7 @@ class TestTrainModelComponent:
 
         metrics = MockMetrics()
         metrics.log_metric("accuracy", accuracy_score(y_test, y_pred))
-        metrics.log_metric("f1_score", f1_score(y_test, y_pred, average='weighted'))
+        metrics.log_metric("f1_score", f1_score(y_test, y_pred, average="weighted"))
 
         assert metrics.metrics["accuracy"] > 0.9
         assert metrics.metrics["f1_score"] > 0.9
@@ -230,10 +227,10 @@ class TestPipelineIntegration:
 
     def test_pipeline_data_flow(self, iris_dataframe):
         """Test data flows correctly through pipeline stages."""
-        from sklearn.preprocessing import StandardScaler, LabelEncoder
         from sklearn.ensemble import RandomForestClassifier
-        from sklearn.model_selection import train_test_split
         from sklearn.metrics import accuracy_score
+        from sklearn.model_selection import train_test_split
+        from sklearn.preprocessing import LabelEncoder, StandardScaler
 
         # Stage 1: Load (simulated)
         df = iris_dataframe.copy()
@@ -244,8 +241,8 @@ class TestPipelineIntegration:
         assert len(df_clean) == 150
 
         # Stage 3: Feature engineering
-        X = df_clean.drop(columns=['species'])
-        y = df_clean['species']
+        X = df_clean.drop(columns=["species"])
+        y = df_clean["species"]
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
         le = LabelEncoder()
@@ -266,8 +263,8 @@ class TestPipelineIntegration:
         """Test pipeline can handle different dataset sizes."""
         from sklearn.datasets import make_classification
         from sklearn.ensemble import RandomForestClassifier
-        from sklearn.model_selection import train_test_split
         from sklearn.metrics import accuracy_score
+        from sklearn.model_selection import train_test_split
 
         for n_samples in [50, 100, 500]:
             X, y = make_classification(
@@ -277,7 +274,7 @@ class TestPipelineIntegration:
                 n_informative=5,
                 n_redundant=2,
                 n_clusters_per_class=1,
-                random_state=42
+                random_state=42,
             )
 
             X_train, X_test, y_train, y_test = train_test_split(

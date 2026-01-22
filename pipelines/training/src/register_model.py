@@ -90,7 +90,20 @@ def register_model(
     try:
         # Get run metrics
         run = client.get_run(run_id)
-        accuracy = run.data.metrics.get("accuracy", 0.0)
+        if "accuracy" not in run.data.metrics:
+            logger.warning(
+                f"No 'accuracy' metric found in run {run_id}. Cannot evaluate against threshold."
+            )
+            return RegistrationResult(
+                model_name=model_name,
+                run_id=run_id,
+                accuracy=0.0,
+                threshold=threshold,
+                registered=False,
+                success=True,
+                error_message="No accuracy metric found in run",
+            )
+        accuracy = run.data.metrics["accuracy"]
         logger.info(f"Model accuracy: {accuracy:.4f}, threshold: {threshold}")
     except MlflowException as e:
         raise ModelRegistrationError(f"Failed to get run {run_id}: {e}") from e

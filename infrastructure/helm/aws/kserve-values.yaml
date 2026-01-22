@@ -1,0 +1,50 @@
+# KServe Helm Values - AWS EKS (RawDeployment mode, no Knative)
+kserve:
+  controller:
+    deploymentMode: "RawDeployment"
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  modelmeshEnabled: false
+
+# Ingress configuration
+ingress:
+  ingressClassName: alb
+  ingressDomain: "mlops.local"
+
+  # Annotations for AWS ALB Ingress
+  ingressAnnotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /v1/models
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "30"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "10"
+
+# Default serving runtimes
+servingRuntimes:
+  sklearn:
+    enabled: true
+  xgboost:
+    enabled: true
+  tensorflow:
+    enabled: true
+  pytorch:
+    enabled: true
+  triton:
+    enabled: true
+  huggingface:
+    enabled: true
+
+# Logger configuration
+logger:
+  enabled: false
+
+# Metrics
+metricsAggregator:
+  enabled: true

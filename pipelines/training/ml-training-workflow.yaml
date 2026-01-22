@@ -37,6 +37,8 @@ spec:
         value: "10"
       - name: test-size
         value: "0.2"
+      - name: random-state
+        value: "42"
       - name: model-alias
         value: "champion"
 
@@ -93,9 +95,13 @@ spec:
                   value: "{{workflow.parameters.max-depth}}"
                 - name: test-size
                   value: "{{workflow.parameters.test-size}}"
+                - name: random-state
+                  value: "{{workflow.parameters.random-state}}"
               artifacts:
                 - name: input-data
                   from: "{{tasks.feature-engineering.outputs.artifacts.output-data}}"
+                - name: scaler
+                  from: "{{tasks.feature-engineering.outputs.artifacts.scaler}}"
 
           - name: register-model
             template: register-model
@@ -204,6 +210,9 @@ spec:
         artifacts:
           - name: output-data
             path: /tmp/features.csv
+          - name: scaler
+            path: /tmp/features_scaler.joblib
+            optional: true
       container:
         image: python:3.10-slim
         command: [sh, -c]
@@ -241,9 +250,13 @@ spec:
           - name: n-estimators
           - name: max-depth
           - name: test-size
+          - name: random-state
         artifacts:
           - name: input-data
             path: /tmp/input.csv
+          - name: scaler
+            path: /tmp/scaler.joblib
+            optional: true
       outputs:
         parameters:
           - name: run-id
@@ -255,6 +268,9 @@ spec:
         artifacts:
           - name: model
             path: /tmp/model.joblib
+          - name: scaler
+            path: /tmp/scaler.joblib
+            optional: true
       container:
         image: python:3.10-slim
         command: [sh, -c]
@@ -271,7 +287,8 @@ spec:
               --mlflow-uri "{{inputs.parameters.mlflow-tracking-uri}}" \
               --n-estimators "{{inputs.parameters.n-estimators}}" \
               --max-depth "{{inputs.parameters.max-depth}}" \
-              --test-size "{{inputs.parameters.test-size}}"
+              --test-size "{{inputs.parameters.test-size}}" \
+              --random-state "{{inputs.parameters.random-state}}"
         volumeMounts:
           - name: scripts
             mountPath: /src

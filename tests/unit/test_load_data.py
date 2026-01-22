@@ -1,15 +1,17 @@
 """Unit tests for load_data module."""
 
-import pytest
-from unittest.mock import patch, MagicMock
+import io
+from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError, URLError
 
-from pipelines.training.src.load_data import load_data, validate_url, LoadResult
+import pytest
+
 from pipelines.training.src.exceptions import (
     DataLoadError,
     InvalidURLError,
     NetworkError,
 )
+from pipelines.training.src.load_data import LoadResult, load_data, validate_url
 
 
 class TestValidateUrl:
@@ -45,16 +47,14 @@ class TestLoadData:
     def test_successful_download(self, temp_dir):
         """Test successful data download."""
         output_path = str(temp_dir / "output.csv")
-        test_content = "col1,col2\n1,2\n3,4\n"
+        test_content = b"col1,col2\n1,2\n3,4\n"
 
-        with patch("urllib.request.urlretrieve") as mock_retrieve:
-            # Simulate file creation
-            def create_file(url, path):
-                with open(path, "w") as f:
-                    f.write(test_content)
+        mock_response = MagicMock()
+        mock_response.read.return_value = test_content
+        mock_response.__enter__ = MagicMock(return_value=io.BytesIO(test_content))
+        mock_response.__exit__ = MagicMock(return_value=False)
 
-            mock_retrieve.side_effect = create_file
-
+        with patch("urllib.request.urlopen", return_value=mock_response):
             result = load_data("https://example.com/data.csv", output_path)
 
             assert isinstance(result, LoadResult)
@@ -66,10 +66,8 @@ class TestLoadData:
         """Test handling of HTTP errors."""
         output_path = str(temp_dir / "output.csv")
 
-        with patch("urllib.request.urlretrieve") as mock_retrieve:
-            mock_retrieve.side_effect = HTTPError(
-                "https://example.com", 404, "Not Found", {}, None
-            )
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_urlopen.side_effect = HTTPError("https://example.com", 404, "Not Found", {}, None)
 
             with pytest.raises(NetworkError, match="HTTP error"):
                 load_data("https://example.com/data.csv", output_path)
@@ -78,8 +76,8 @@ class TestLoadData:
         """Test handling of URL/network errors."""
         output_path = str(temp_dir / "output.csv")
 
-        with patch("urllib.request.urlretrieve") as mock_retrieve:
-            mock_retrieve.side_effect = URLError("Connection refused")
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_urlopen.side_effect = URLError("Connection refused")
 
             with pytest.raises(NetworkError, match="URL error"):
                 load_data("https://example.com/data.csv", output_path)
@@ -94,40 +92,39 @@ class TestLoadData:
     def test_empty_file_download(self, temp_dir):
         """Test handling of empty downloaded files."""
         output_path = str(temp_dir / "output.csv")
+        test_content = b"header\n"  # Only header, no data
 
-        with patch("urllib.request.urlretrieve") as mock_retrieve:
-            def create_empty_file(url, path):
-                with open(path, "w") as f:
-                    f.write("header\n")  # Only header, no data
+        mock_response = MagicMock()
+        mock_response.__enter__ = MagicMock(return_value=io.BytesIO(test_content))
+        mock_response.__exit__ = MagicMock(return_value=False)
 
-            mock_retrieve.side_effect = create_empty_file
-
+        with patch("urllib.request.urlopen", return_value=mock_response):
             with pytest.raises(DataLoadError, match="empty"):
                 load_data("https://example.com/data.csv", output_path)
 
     def test_file_not_created(self, temp_dir):
-        """Test handling when file is not created after download."""
-        output_path = str(temp_dir / "nonexistent" / "output.csv")
+        """Test handling when file cannot be written (OSError)."""
+        # Use an invalid path that will cause an OSError
+        output_path = "/nonexistent/directory/output.csv"
 
-        with patch("urllib.request.urlretrieve") as mock_retrieve:
-            # Don't create the file
-            mock_retrieve.return_value = None
+        mock_response = MagicMock()
+        mock_response.__enter__ = MagicMock(return_value=io.BytesIO(b"test\n"))
+        mock_response.__exit__ = MagicMock(return_value=False)
 
-            with pytest.raises(DataLoadError, match="not found"):
+        with patch("urllib.request.urlopen", return_value=mock_response):
+            with pytest.raises(DataLoadError, match="File system error"):
                 load_data("https://example.com/data.csv", output_path)
 
     def test_result_dataclass_fields(self, temp_dir):
         """Test that LoadResult contains expected fields."""
         output_path = str(temp_dir / "output.csv")
-        test_content = "col1,col2\n1,2\n3,4\n5,6\n"
+        test_content = b"col1,col2\n1,2\n3,4\n5,6\n"
 
-        with patch("urllib.request.urlretrieve") as mock_retrieve:
-            def create_file(url, path):
-                with open(path, "w") as f:
-                    f.write(test_content)
+        mock_response = MagicMock()
+        mock_response.__enter__ = MagicMock(return_value=io.BytesIO(test_content))
+        mock_response.__exit__ = MagicMock(return_value=False)
 
-            mock_retrieve.side_effect = create_file
-
+        with patch("urllib.request.urlopen", return_value=mock_response):
             result = load_data("https://example.com/data.csv", output_path)
 
             assert hasattr(result, "output_path")

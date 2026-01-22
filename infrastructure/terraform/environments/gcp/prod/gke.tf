@@ -28,6 +28,9 @@ module "gke" {
   services_cidr = var.services_cidr
   master_cidr   = var.master_cidr
 
+  # Master authorized networks - restrict API server access
+  master_authorized_networks = var.master_authorized_networks
+
   # ==========================================================================
   # System Node Pool - Production
   # ==========================================================================

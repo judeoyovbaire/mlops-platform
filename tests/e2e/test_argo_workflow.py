@@ -6,7 +6,6 @@ Skip with: pytest -m "not e2e"
 
 import os
 import subprocess
-import time
 
 import pytest
 
@@ -73,13 +72,13 @@ class TestArgoWorkflow:
 
     def test_workflow_template_exists(self, cluster_ready):
         """Test that ML training workflow template is deployed."""
-        result = run_kubectl(
-            ["get", "workflowtemplate", "ml-training-pipeline", "-n", "argo"]
-        )
+        result = run_kubectl(["get", "workflowtemplate", "ml-training-pipeline", "-n", "argo"])
 
         # Template might not be deployed yet - that's OK for this test
         if result.returncode != 0:
-            pytest.skip("WorkflowTemplate not deployed - deploy with kubectl apply -k pipelines/training")
+            pytest.skip(
+                "WorkflowTemplate not deployed - deploy with kubectl apply -k pipelines/training"
+            )
 
         assert "ml-training-pipeline" in result.stdout
 
