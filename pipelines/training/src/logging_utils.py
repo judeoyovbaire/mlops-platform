@@ -117,9 +117,7 @@ class CorrelatedLoggerAdapter(logging.LoggerAdapter):
         logger.info("Processing started", input_file="data.csv", rows=1000)
     """
 
-    def process(
-        self, msg: str, kwargs: dict[str, Any]
-    ) -> tuple[str, dict[str, Any]]:
+    def process(self, msg: str, kwargs: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         """Process the logging call to add extra fields."""
         # Extract extra fields from kwargs
         extra_fields = {}

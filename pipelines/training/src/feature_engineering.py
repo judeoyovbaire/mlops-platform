@@ -99,7 +99,9 @@ def feature_engineering(
     encoder_path = None
 
     # Identify column types
-    numeric_cols = X.select_dtypes(include=["float64", "int64", "float32", "int32"]).columns.tolist()
+    numeric_cols = X.select_dtypes(
+        include=["float64", "int64", "float32", "int32"]
+    ).columns.tolist()
     categorical_cols = X.select_dtypes(include=["object", "category"]).columns.tolist()
 
     # Scale numeric columns
