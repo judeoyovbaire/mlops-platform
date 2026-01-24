@@ -6,7 +6,6 @@ data cleaning, and ensuring minimum data requirements.
 """
 
 import argparse
-import logging
 import os
 import sys
 from dataclasses import dataclass
@@ -18,12 +17,9 @@ from pipelines.training.src.exceptions import (
     EmptyDataError,
     InsufficientDataError,
 )
+from pipelines.training.src.logging_utils import get_logger
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 MIN_ROWS_DEFAULT = 10
 # Default threshold: drop column if more than 50% of values are null

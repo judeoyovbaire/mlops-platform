@@ -88,9 +88,12 @@ class TestFeatureEngineering:
         result = feature_engineering(iris_csv_path, output_path, "species")
 
         assert hasattr(result, "output_path")
+        assert hasattr(result, "scaler_path")
+        assert hasattr(result, "encoder_path")
         assert hasattr(result, "input_shape")
         assert hasattr(result, "output_shape")
         assert hasattr(result, "scaled_columns")
+        assert hasattr(result, "encoded_columns")
         assert hasattr(result, "success")
         assert hasattr(result, "error_message")
 
@@ -102,3 +105,58 @@ class TestFeatureEngineering:
 
         assert output_path.exists()
         assert result.output_path == str(output_path)
+
+    def test_categorical_encoding(self, csv_with_categorical_path, temp_dir):
+        """Test one-hot encoding of categorical columns."""
+        output_path = str(temp_dir / "features.csv")
+
+        result = feature_engineering(csv_with_categorical_path, output_path, "target")
+
+        assert result.success is True
+        # Should encode city and gender columns
+        assert "city" in result.encoded_columns or "gender" in result.encoded_columns
+        # Output should have more columns due to one-hot encoding
+        assert result.output_shape[1] > result.input_shape[1]
+
+        # Verify encoded columns in output
+        df = pd.read_csv(output_path)
+        # Should have encoded column names like city_NYC, city_LA, etc.
+        city_cols = [c for c in df.columns if c.startswith("city_")]
+        assert len(city_cols) > 0
+
+    def test_categorical_encoding_disabled(self, csv_with_categorical_path, temp_dir):
+        """Test that categorical encoding can be disabled."""
+        output_path = str(temp_dir / "features.csv")
+
+        result = feature_engineering(
+            csv_with_categorical_path, output_path, "target", encode_categorical=False
+        )
+
+        assert result.success is True
+        assert result.encoded_columns == []
+        # Shape should be similar (categorical cols preserved as-is)
+        assert result.output_shape[1] == result.input_shape[1]
+
+    def test_high_cardinality_columns_dropped(self, csv_with_high_cardinality_path, temp_dir):
+        """Test that columns with too many categories are dropped."""
+        output_path = str(temp_dir / "features.csv")
+
+        result = feature_engineering(
+            csv_with_high_cardinality_path, output_path, "target", max_categories=10
+        )
+
+        assert result.success is True
+        # id column should be dropped (15 unique > 10 max)
+        df = pd.read_csv(output_path)
+        assert "id" not in df.columns
+        # But value column should still exist (scaled)
+        assert "value" in result.scaled_columns
+
+    def test_encoder_saved(self, csv_with_categorical_path, temp_dir):
+        """Test that encoder is saved for inference."""
+        output_path = str(temp_dir / "features.csv")
+
+        result = feature_engineering(csv_with_categorical_path, output_path, "target")
+
+        assert result.encoder_path is not None
+        assert temp_dir.joinpath("features_encoder.joblib").exists()

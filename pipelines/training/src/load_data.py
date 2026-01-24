@@ -7,7 +7,6 @@ network issues.
 """
 
 import argparse
-import logging
 import os
 import shutil
 import sys
@@ -17,12 +16,9 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 
 from pipelines.training.src.exceptions import DataLoadError, InvalidURLError, NetworkError
+from pipelines.training.src.logging_utils import get_logger
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Default timeout for network requests (seconds)
 DEFAULT_TIMEOUT = 30

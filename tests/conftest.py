@@ -190,6 +190,53 @@ def mock_mlflow_client_low_accuracy(mocker):
 
 
 @pytest.fixture
+def csv_with_categorical_path(temp_dir):
+    """Create a CSV file with mixed numeric and categorical columns."""
+    csv_path = temp_dir / "categorical.csv"
+    data = """age,income,city,gender,target
+25,50000,NYC,M,0
+30,60000,LA,F,1
+35,70000,NYC,M,0
+40,80000,Chicago,F,1
+45,90000,LA,M,0
+50,100000,NYC,F,1
+55,110000,Chicago,M,0
+60,120000,LA,F,1
+65,130000,NYC,M,0
+70,140000,Chicago,F,1
+75,150000,LA,M,0
+"""
+    csv_path.write_text(data)
+    return str(csv_path)
+
+
+@pytest.fixture
+def csv_with_high_cardinality_path(temp_dir):
+    """Create a CSV file with high cardinality categorical column."""
+    csv_path = temp_dir / "high_cardinality.csv"
+    # 15 unique IDs - too many for encoding with max_categories=10
+    data = """id,value,target
+id_001,10,0
+id_002,20,1
+id_003,30,0
+id_004,40,1
+id_005,50,0
+id_006,60,1
+id_007,70,0
+id_008,80,1
+id_009,90,0
+id_010,100,1
+id_011,110,0
+id_012,120,1
+id_013,130,0
+id_014,140,1
+id_015,150,0
+"""
+    csv_path.write_text(data)
+    return str(csv_path)
+
+
+@pytest.fixture
 def trained_model_artifacts(temp_dir, iris_dataframe):
     """Create artifacts needed for model training tests."""
     # Save processed data

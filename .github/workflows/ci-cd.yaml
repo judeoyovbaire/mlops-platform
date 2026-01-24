@@ -9,6 +9,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    # Run nightly E2E tests at 2:00 AM UTC
+    - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
       cloud:
@@ -278,6 +281,21 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: infrastructure/terraform
+          soft_fail: true
+          format: sarif
+          sarif_file: tfsec-results.sarif
+
+      - name: Upload tfsec scan results
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: 'tfsec-results.sarif'
+          category: 'tfsec'
+
   test-python:
     name: Test Python
     runs-on: ubuntu-latest
@@ -304,7 +322,17 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run unit tests with coverage
-        run: pytest tests/ -v --tb=short --cov=pipelines --cov-report=xml --cov-report=term-missing --cov-fail-under=70
+        run: pytest tests/ -v --tb=short --cov=pipelines --cov-report=xml --cov-report=term-missing --cov-fail-under=70 -n auto
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          verbose: true
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v6
@@ -1107,12 +1135,13 @@ jobs:
           echo "## Service URL" >> $GITHUB_STEP_SUMMARY
           echo "- **URL**: ${SERVICE_URL}" >> $GITHUB_STEP_SUMMARY
 
-  # E2E Tests (manual trigger or PR label)
+  # E2E Tests (nightly schedule, manual trigger, or PR label)
   e2e-test:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: [test-python]
     if: |
+      github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'e2e-test'))
     steps:

@@ -6,7 +6,6 @@ to MLflow, and saves the trained model.
 """
 
 import argparse
-import logging
 import os
 import signal
 import sys
@@ -22,12 +21,9 @@ from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import cross_val_score, train_test_split
 
 from pipelines.training.src.exceptions import ModelTrainingError
+from pipelines.training.src.logging_utils import get_logger
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Default timeout for MLflow connection (seconds)
 MLFLOW_CONNECTION_TIMEOUT = 30

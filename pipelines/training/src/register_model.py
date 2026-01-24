@@ -6,7 +6,6 @@ the specified accuracy threshold.
 """
 
 import argparse
-import logging
 import sys
 from dataclasses import dataclass
 
@@ -15,12 +14,9 @@ from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
 
 from pipelines.training.src.exceptions import InvalidThresholdError, ModelRegistrationError
+from pipelines.training.src.logging_utils import get_logger
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass
