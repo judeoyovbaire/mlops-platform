@@ -8,7 +8,6 @@ support for tracing requests across pipeline steps.
 import json
 import logging
 import os
-import threading
 import uuid
 from contextvars import ContextVar
 from datetime import datetime, timezone
