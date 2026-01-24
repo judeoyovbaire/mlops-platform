@@ -281,24 +281,6 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-      - name: Install tfsec
-        run: |
-          curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
-
-      - name: Run tfsec
-        run: |
-          tfsec infrastructure/terraform --format sarif --out tfsec-results.sarif --soft-fail || true
-          # Fix SARIF URI paths for GitHub Code Scanning
-          if [ -f tfsec-results.sarif ]; then
-            sed -i 's|"uri": "git://|"uri": "file://|g' tfsec-results.sarif
-          fi
-
-      - name: Upload tfsec scan results
-        uses: github/codeql-action/upload-sarif@v4
-        if: always() && hashFiles('tfsec-results.sarif') != ''
-        with:
-          sarif_file: 'tfsec-results.sarif'
-          category: 'tfsec'
 
   test-python:
     name: Test Python
