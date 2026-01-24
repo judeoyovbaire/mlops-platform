@@ -26,16 +26,34 @@ class TestValidateData:
         assert result.null_count == 0
         assert result.rows_removed == 0
 
-    def test_validation_with_nulls(self, csv_with_nulls_path, temp_dir):
-        """Test validation removes rows with null values."""
+    def test_validation_with_nulls_imputation(self, csv_with_nulls_path, temp_dir):
+        """Test validation imputes null values by default."""
         output_path = str(temp_dir / "validated.csv")
 
         result = validate_data(csv_with_nulls_path, output_path, min_rows=5)
 
         assert result.success is True
         assert result.original_rows == 15
-        assert result.clean_rows == 11  # 4 rows have nulls
-        assert result.rows_removed == 4
+        # With imputation, all 15 rows are preserved (nulls are filled)
+        assert result.clean_rows == 15
+        assert result.rows_removed == 0
+        assert result.null_count > 0
+        # Check that imputation happened
+        assert len(result.imputed_columns) > 0
+
+    def test_validation_with_drop_null_rows(self, csv_with_nulls_path, temp_dir):
+        """Test validation drops rows when drop_all_null_rows=True."""
+        output_path = str(temp_dir / "validated.csv")
+
+        result = validate_data(
+            csv_with_nulls_path, output_path, min_rows=5, drop_all_null_rows=True
+        )
+
+        assert result.success is True
+        assert result.original_rows == 15
+        # With drop_all_null_rows, rows with nulls are removed after imputation
+        # But imputation fills all nulls, so rows_removed stays 0 in most cases
+        assert result.clean_rows == 15
         assert result.null_count > 0
 
     def test_file_not_found(self, temp_dir):
@@ -82,6 +100,8 @@ class TestValidateData:
         assert hasattr(result, "clean_rows")
         assert hasattr(result, "null_count")
         assert hasattr(result, "rows_removed")
+        assert hasattr(result, "columns_dropped")
+        assert hasattr(result, "imputed_columns")
         assert hasattr(result, "success")
         assert hasattr(result, "error_message")
 

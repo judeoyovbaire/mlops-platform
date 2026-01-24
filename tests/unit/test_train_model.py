@@ -19,6 +19,8 @@ class TestTrainingConfig:
         assert config.max_depth == 10
         assert config.test_size == 0.2
         assert config.random_state == 42
+        assert config.cv_folds == 5
+        assert config.use_cross_validation is True
 
     def test_custom_values(self):
         """Test custom configuration values."""
@@ -211,5 +213,7 @@ class TestTrainModel:
         assert hasattr(result, "run_id")
         assert hasattr(result, "accuracy")
         assert hasattr(result, "f1")
+        assert hasattr(result, "cv_mean")
+        assert hasattr(result, "cv_std")
         assert hasattr(result, "success")
         assert hasattr(result, "error_message")

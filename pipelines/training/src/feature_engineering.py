@@ -10,6 +10,7 @@ import logging
 import os
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import joblib
 import pandas as pd
@@ -97,8 +98,9 @@ def feature_engineering(
         X[numeric_cols] = scaler.fit_transform(X[numeric_cols])
         scaled_columns = numeric_cols
 
-        # Save scaler for inference
-        scaler_path = output_path.replace(".csv", "_scaler.joblib")
+        # Save scaler for inference using pathlib for robust path construction
+        output_file = Path(output_path)
+        scaler_path = str(output_file.parent / f"{output_file.stem}_scaler.joblib")
         os.makedirs(os.path.dirname(scaler_path) or ".", exist_ok=True)
         joblib.dump(scaler, scaler_path)
         logger.info(f"Scaler saved to {scaler_path}")

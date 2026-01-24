@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 # Default timeout for network requests (seconds)
 DEFAULT_TIMEOUT = 30
 
+# Encodings to try in order of preference
+ENCODING_FALLBACKS = ["utf-8", "latin-1", "cp1252", "iso-8859-1"]
+
 
 @dataclass
 class LoadResult:
@@ -34,8 +37,36 @@ class LoadResult:
 
     output_path: str
     num_lines: int
+    detected_encoding: str
     success: bool
     error_message: str | None = None
+
+
+def detect_encoding(file_path: str) -> str:
+    """
+    Detect the encoding of a file by trying multiple encodings.
+
+    Args:
+        file_path: Path to the file to check.
+
+    Returns:
+        The detected encoding name.
+
+    Raises:
+        DataLoadError: If no valid encoding is found.
+    """
+    for encoding in ENCODING_FALLBACKS:
+        try:
+            with open(file_path, encoding=encoding) as f:
+                f.read()
+            logger.info(f"Detected encoding: {encoding}")
+            return encoding
+        except UnicodeDecodeError:
+            continue
+
+    raise DataLoadError(
+        f"Unable to decode file with any of the following encodings: {ENCODING_FALLBACKS}"
+    )
 
 
 def validate_url(url: str) -> bool:
@@ -94,10 +125,13 @@ def load_data(url: str, output_path: str, timeout: int = DEFAULT_TIMEOUT) -> Loa
         if not os.path.exists(output_path):
             raise DataLoadError(f"Output file {output_path} not found after download")
 
-        with open(output_path, encoding="utf-8") as f:
+        # Detect encoding with fallback
+        detected_encoding = detect_encoding(output_path)
+
+        with open(output_path, encoding=detected_encoding) as f:
             lines = f.readlines()
             num_lines = len(lines)
-            logger.info(f"Downloaded {num_lines} lines")
+            logger.info(f"Downloaded {num_lines} lines (encoding: {detected_encoding})")
 
             if num_lines < 2:
                 raise DataLoadError("Downloaded file appears empty (less than 2 lines)")
@@ -106,6 +140,7 @@ def load_data(url: str, output_path: str, timeout: int = DEFAULT_TIMEOUT) -> Loa
         return LoadResult(
             output_path=output_path,
             num_lines=num_lines,
+            detected_encoding=detected_encoding,
             success=True,
         )
 
@@ -137,7 +172,10 @@ if __name__ == "__main__":
 
     try:
         result = load_data(args.url, args.output)
-        print(f"Downloaded {result.num_lines} lines to {result.output_path}")
+        print(
+            f"Downloaded {result.num_lines} lines to {result.output_path} "
+            f"(encoding: {result.detected_encoding})"
+        )
     except (InvalidURLError, NetworkError, DataLoadError) as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

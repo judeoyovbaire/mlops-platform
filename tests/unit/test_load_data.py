@@ -129,5 +129,6 @@ class TestLoadData:
 
             assert hasattr(result, "output_path")
             assert hasattr(result, "num_lines")
+            assert hasattr(result, "detected_encoding")
             assert hasattr(result, "success")
             assert hasattr(result, "error_message")

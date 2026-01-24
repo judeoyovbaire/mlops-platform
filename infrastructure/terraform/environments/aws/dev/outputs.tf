@@ -61,22 +61,22 @@ output "oidc_provider_arn" {
 }
 
 # =============================================================================
-# SSM Parameter Store - Secret Locations
+# AWS Secrets Manager - Secret Locations
 # =============================================================================
 
-output "ssm_mlflow_db_password" {
-  description = "SSM parameter path for MLflow DB password"
-  value       = aws_ssm_parameter.mlflow_db_password.name
+output "secrets_manager_mlflow_db" {
+  description = "Secrets Manager ARN for MLflow DB credentials"
+  value       = aws_secretsmanager_secret.mlflow_db_password.arn
 }
 
-output "ssm_minio_password" {
-  description = "SSM parameter path for MinIO root password"
-  value       = aws_ssm_parameter.minio_root_password.name
+output "secrets_manager_minio" {
+  description = "Secrets Manager ARN for MinIO root credentials"
+  value       = aws_secretsmanager_secret.minio_root_password.arn
 }
 
-output "ssm_argocd_password" {
-  description = "SSM parameter path for ArgoCD admin password"
-  value       = aws_ssm_parameter.argocd_admin_password.name
+output "secrets_manager_argocd" {
+  description = "Secrets Manager ARN for ArgoCD admin credentials"
+  value       = aws_secretsmanager_secret.argocd_admin_password.arn
 }
 
 # =============================================================================
@@ -98,20 +98,20 @@ output "access_info" {
     kubectl get ingress -A
 
   ============================================================
-  Secrets (stored in AWS SSM Parameter Store)
+  Secrets (stored in AWS Secrets Manager)
   ============================================================
 
-  All secrets are auto-generated and stored securely in SSM.
+  All secrets are auto-generated and stored securely in Secrets Manager.
   Retrieve with:
 
-    # MLflow DB password
-    aws ssm get-parameter --name "/${var.cluster_name}/mlflow/db-password" --with-decryption --query 'Parameter.Value' --output text
+    # MLflow DB credentials
+    aws secretsmanager get-secret-value --secret-id "${var.cluster_name}/mlflow/db-password" --query 'SecretString' --output text | jq .
 
-    # MinIO root password
-    aws ssm get-parameter --name "/${var.cluster_name}/minio/root-password" --with-decryption --query 'Parameter.Value' --output text
+    # MinIO root credentials
+    aws secretsmanager get-secret-value --secret-id "${var.cluster_name}/minio/root-password" --query 'SecretString' --output text | jq .
 
-    # ArgoCD admin password
-    aws ssm get-parameter --name "/${var.cluster_name}/argocd/admin-password" --with-decryption --query 'Parameter.Value' --output text
+    # ArgoCD admin credentials
+    aws secretsmanager get-secret-value --secret-id "${var.cluster_name}/argocd/admin-password" --query 'SecretString' --output text | jq .
 
   ============================================================
   Service Details

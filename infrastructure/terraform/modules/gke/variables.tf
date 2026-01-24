@@ -103,9 +103,9 @@ variable "enable_private_nodes" {
 }
 
 variable "enable_private_endpoint" {
-  description = "Enable private endpoint (master not accessible from internet)"
+  description = "Enable private endpoint (master not accessible from internet). Recommended true for production."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "master_authorized_networks" {

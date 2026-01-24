@@ -25,10 +25,18 @@ spec:
   policyTypes:
     - Egress
   egress:
-    # Allow DNS resolution
-    - to: []
+    # Allow DNS resolution to cluster DNS (kube-dns/CoreDNS in kube-system)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
       ports:
         - protocol: UDP
+          port: 53
+        - protocol: TCP
           port: 53
     # Allow HTTPS (S3, public internet for dependencies if needed)
     - to: []
@@ -187,7 +195,7 @@ spec:
   policyTypes:
     - Egress
   egress:
-    # PostgreSQL
+    # PostgreSQL (external RDS/Cloud SQL - allow any destination on 5432)
     - to: []
       ports:
         - protocol: TCP
@@ -197,10 +205,18 @@ spec:
       ports:
         - protocol: TCP
           port: 443
-    # DNS
-    - to: []
+    # DNS - restrict to cluster DNS (kube-dns/CoreDNS)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
       ports:
         - protocol: UDP
+          port: 53
+        - protocol: TCP
           port: 53
 
 ---
@@ -289,10 +305,18 @@ spec:
       ports:
         - protocol: TCP
           port: 9000
-    # DNS
-    - to: []
+    # DNS - restrict to cluster DNS (kube-dns/CoreDNS)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
       ports:
         - protocol: UDP
+          port: 53
+        - protocol: TCP
           port: 53
     # HTTPS (for external data sources)
     - to: []
@@ -347,13 +371,39 @@ spec:
           port: 443
         - protocol: TCP
           port: 6443
-    # DNS
-    - to: []
+    # DNS - restrict to cluster DNS (kube-dns/CoreDNS)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
       ports:
         - protocol: UDP
+          port: 53
+        - protocol: TCP
           port: 53
     # Access to mlops namespace for managing inference services
     - to:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: mlops
+
+---
+# Allow KServe internal communication (controller-to-webhook)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kserve-internal
+  namespace: kserve
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow all traffic within kserve namespace (controller <-> webhook)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kserve

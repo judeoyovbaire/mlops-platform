@@ -84,13 +84,19 @@ class TestPipelineFlow:
 
     @pytest.mark.integration
     def test_pipeline_handles_data_with_nulls(self, csv_with_nulls_path, temp_dir):
-        """Test that pipeline correctly handles and cleans data with nulls."""
+        """Test that pipeline correctly handles and cleans data with nulls.
+
+        Note: With the improved null handling, values are imputed rather than
+        rows being dropped, so all original rows are preserved.
+        """
         validated_path = str(temp_dir / "validated.csv")
         features_path = str(temp_dir / "features.csv")
 
-        # Validate and clean data
+        # Validate and clean data (with imputation)
         validation_result = validate_data(csv_with_nulls_path, validated_path, min_rows=5)
-        assert validation_result.rows_removed > 0
+        # Nulls are imputed, so all rows are preserved
+        assert validation_result.null_count > 0
+        assert len(validation_result.imputed_columns) > 0
         assert validation_result.clean_rows >= 5
 
         # Feature engineering should work on cleaned data

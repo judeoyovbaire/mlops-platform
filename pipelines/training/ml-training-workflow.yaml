@@ -41,6 +41,16 @@ spec:
         value: "42"
       - name: model-alias
         value: "champion"
+      # Data validation parameters
+      - name: min-rows
+        value: "10"
+      - name: null-threshold
+        value: "0.5"
+      # Training parameters
+      - name: cv-folds
+        value: "5"
+      - name: use-cross-validation
+        value: "true"
 
   # Artifact storage using MinIO
   artifactRepositoryRef:
@@ -63,6 +73,11 @@ spec:
             template: validate-data
             dependencies: [load-data]
             arguments:
+              parameters:
+                - name: min-rows
+                  value: "{{workflow.parameters.min-rows}}"
+                - name: null-threshold
+                  value: "{{workflow.parameters.null-threshold}}"
               artifacts:
                 - name: input-data
                   from: "{{tasks.load-data.outputs.artifacts.output-data}}"
@@ -97,6 +112,10 @@ spec:
                   value: "{{workflow.parameters.test-size}}"
                 - name: random-state
                   value: "{{workflow.parameters.random-state}}"
+                - name: cv-folds
+                  value: "{{workflow.parameters.cv-folds}}"
+                - name: use-cross-validation
+                  value: "{{workflow.parameters.use-cross-validation}}"
               artifacts:
                 - name: input-data
                   from: "{{tasks.feature-engineering.outputs.artifacts.output-data}}"
@@ -164,6 +183,9 @@ spec:
         limit: 2
         retryPolicy: "OnError"
       inputs:
+        parameters:
+          - name: min-rows
+          - name: null-threshold
         artifacts:
           - name: input-data
             path: /tmp/input.csv
@@ -175,7 +197,7 @@ spec:
         image: python:3.10-slim
         command: [sh, -c]
         args:
-          - pip install -r /src/requirements.txt && python /src/validate_data.py --input /tmp/input.csv --output /tmp/validated.csv
+          - pip install -r /src/requirements.txt && python /src/validate_data.py --input /tmp/input.csv --output /tmp/validated.csv --min-rows "{{inputs.parameters.min-rows}}" --null-threshold "{{inputs.parameters.null-threshold}}"
         volumeMounts:
           - name: scripts
             mountPath: /src
@@ -251,6 +273,8 @@ spec:
           - name: max-depth
           - name: test-size
           - name: random-state
+          - name: cv-folds
+          - name: use-cross-validation
         artifacts:
           - name: input-data
             path: /tmp/input.csv
@@ -277,6 +301,8 @@ spec:
         args:
           - |
             pip install -r /src/requirements.txt && \
+            CV_FLAG="" && \
+            if [ "{{inputs.parameters.use-cross-validation}}" = "false" ]; then CV_FLAG="--no-cv"; fi && \
             python /src/train_model.py \
               --input /tmp/input.csv \
               --model-output /tmp/model.joblib \
@@ -288,7 +314,9 @@ spec:
               --n-estimators "{{inputs.parameters.n-estimators}}" \
               --max-depth "{{inputs.parameters.max-depth}}" \
               --test-size "{{inputs.parameters.test-size}}" \
-              --random-state "{{inputs.parameters.random-state}}"
+              --random-state "{{inputs.parameters.random-state}}" \
+              --cv-folds "{{inputs.parameters.cv-folds}}" \
+              $CV_FLAG
         volumeMounts:
           - name: scripts
             mountPath: /src

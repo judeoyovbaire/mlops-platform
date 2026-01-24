@@ -8,16 +8,18 @@ to MLflow, and saves the trained model.
 import argparse
 import logging
 import os
+import signal
 import sys
 from dataclasses import dataclass
 
 import joblib
 import mlflow
+import numpy as np
 import pandas as pd
 from mlflow.exceptions import MlflowException
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import cross_val_score, train_test_split
 
 from pipelines.training.src.exceptions import ModelTrainingError
 
@@ -26,6 +28,37 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# Default timeout for MLflow connection (seconds)
+MLFLOW_CONNECTION_TIMEOUT = 30
+
+
+class TimeoutError(Exception):
+    """Raised when an operation times out."""
+
+    pass
+
+
+class timeout:
+    """Context manager for timing out operations."""
+
+    def __init__(self, seconds: int, error_message: str = "Operation timed out"):
+        self.seconds = seconds
+        self.error_message = error_message
+
+    def _handle_timeout(self, signum, frame):
+        raise TimeoutError(self.error_message)
+
+    def __enter__(self):
+        # Only use signal-based timeout on Unix systems
+        if hasattr(signal, "SIGALRM"):
+            signal.signal(signal.SIGALRM, self._handle_timeout)
+            signal.alarm(self.seconds)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if hasattr(signal, "SIGALRM"):
+            signal.alarm(0)
 
 
 @dataclass
@@ -36,6 +69,8 @@ class TrainingConfig:
     max_depth: int = 10
     test_size: float = 0.2
     random_state: int = 42
+    cv_folds: int = 5
+    use_cross_validation: bool = True
 
 
 @dataclass
@@ -46,6 +81,8 @@ class TrainingResult:
     run_id: str
     accuracy: float
     f1: float
+    cv_mean: float | None = None
+    cv_std: float | None = None
     success: bool = True
     error_message: str | None = None
 
@@ -62,6 +99,9 @@ def train_model(
     run_id_output_path: str,
     accuracy_output_path: str,
     random_state: int = 42,
+    cv_folds: int = 5,
+    use_cross_validation: bool = True,
+    mlflow_timeout: int = MLFLOW_CONNECTION_TIMEOUT,
 ) -> TrainingResult:
     """
     Train a RandomForest classifier and log to MLflow.
@@ -78,9 +118,12 @@ def train_model(
         run_id_output_path: Path to save MLflow run ID.
         accuracy_output_path: Path to save accuracy metric.
         random_state: Random seed for reproducibility (default: 42).
+        cv_folds: Number of cross-validation folds (default: 5).
+        use_cross_validation: Whether to perform cross-validation (default: True).
+        mlflow_timeout: Timeout in seconds for MLflow connection (default: 30).
 
     Returns:
-        TrainingResult containing model path, run ID, and metrics.
+        TrainingResult containing model path, run ID, metrics, and CV scores.
 
     Raises:
         ModelTrainingError: If training fails due to data or MLflow issues.
@@ -88,10 +131,14 @@ def train_model(
     logger.info(f"Starting model training with data from {input_path}")
 
     try:
-        # Setup MLflow
-        mlflow.set_tracking_uri(mlflow_uri)
-        mlflow.set_experiment(model_name)
+        # Setup MLflow with timeout to prevent indefinite hangs
+        logger.info(f"Connecting to MLflow at {mlflow_uri} (timeout: {mlflow_timeout}s)")
+        with timeout(mlflow_timeout, f"MLflow connection timed out after {mlflow_timeout}s"):
+            mlflow.set_tracking_uri(mlflow_uri)
+            mlflow.set_experiment(model_name)
         logger.info(f"MLflow tracking URI: {mlflow_uri}, Experiment: {model_name}")
+    except TimeoutError as e:
+        raise ModelTrainingError(str(e)) from e
     except MlflowException as e:
         raise ModelTrainingError(f"Failed to setup MLflow: {e}") from e
 
@@ -129,21 +176,40 @@ def train_model(
                 "max_depth": max_depth,
                 "test_size": test_size,
                 "random_state": random_state,
+                "cv_folds": cv_folds,
+                "use_cross_validation": use_cross_validation,
             }
             mlflow.log_params(params)
             logger.info(f"Training parameters: {params}")
 
-            # Train model
+            # Train model (limit n_jobs to avoid oversubscription in Kubernetes)
+            n_jobs = min(4, os.cpu_count() or 1)
             model = RandomForestClassifier(
                 n_estimators=n_estimators,
                 max_depth=max_depth,
                 random_state=random_state,
-                n_jobs=-1,
+                n_jobs=n_jobs,
             )
+
+            # Perform cross-validation if enabled
+            cv_mean = None
+            cv_std = None
+            if use_cross_validation and len(X) >= cv_folds:
+                logger.info(f"Performing {cv_folds}-fold cross-validation")
+                cv_scores = cross_val_score(
+                    model, X, y, cv=cv_folds, scoring="accuracy", n_jobs=n_jobs
+                )
+                cv_mean = float(np.mean(cv_scores))
+                cv_std = float(np.std(cv_scores))
+                logger.info(f"CV Scores: {cv_scores}")
+                logger.info(f"CV Mean: {cv_mean:.4f} (+/- {cv_std:.4f})")
+                mlflow.log_metrics({"cv_mean_accuracy": cv_mean, "cv_std_accuracy": cv_std})
+
+            # Train final model on training set
             model.fit(X_train, y_train)
             logger.info("Model training completed")
 
-            # Evaluate
+            # Evaluate on test set
             y_pred = model.predict(X_test)
             accuracy = accuracy_score(y_test, y_pred)
             f1 = f1_score(y_test, y_pred, average="weighted")
@@ -170,6 +236,8 @@ def train_model(
                 run_id=run_id,
                 accuracy=accuracy,
                 f1=f1,
+                cv_mean=cv_mean,
+                cv_std=cv_std,
                 success=True,
             )
 
@@ -194,6 +262,14 @@ if __name__ == "__main__":
     parser.add_argument("--max-depth", type=int, default=10, help="Max depth of trees")
     parser.add_argument("--test-size", type=float, default=0.2, help="Test set size")
     parser.add_argument("--random-state", type=int, default=42, help="Random seed")
+    parser.add_argument("--cv-folds", type=int, default=5, help="Cross-validation folds")
+    parser.add_argument("--no-cv", action="store_true", help="Disable cross-validation")
+    parser.add_argument(
+        "--mlflow-timeout",
+        type=int,
+        default=MLFLOW_CONNECTION_TIMEOUT,
+        help="MLflow connection timeout (seconds)",
+    )
 
     args = parser.parse_args()
 
@@ -210,8 +286,14 @@ if __name__ == "__main__":
             args.run_id_output,
             args.accuracy_output,
             args.random_state,
+            args.cv_folds,
+            not args.no_cv,
+            args.mlflow_timeout,
         )
-        print(f"Training complete. Accuracy: {result.accuracy:.4f}, F1: {result.f1:.4f}")
+        cv_info = ""
+        if result.cv_mean is not None:
+            cv_info = f", CV: {result.cv_mean:.4f} (+/- {result.cv_std:.4f})"
+        print(f"Training complete. Accuracy: {result.accuracy:.4f}, F1: {result.f1:.4f}{cv_info}")
     except ModelTrainingError as e:
         print(f"Training error: {e}", file=sys.stderr)
         sys.exit(1)
