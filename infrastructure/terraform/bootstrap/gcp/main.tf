@@ -1,20 +1,4 @@
-# Bootstrap Infrastructure for MLOps Platform (GCP)
-#
-# This module creates the foundational GCP resources required BEFORE
-# deploying the main MLOps platform:
-#   - GCP Project (optional - can create new or use existing)
-#   - GCS bucket for Terraform state
-#   - Workload Identity Pool for GitHub Actions OIDC
-#   - Workload Identity Provider for GitHub
-#   - Service Account for GitHub Actions
-#   - IAM bindings for Terraform operations
-#
-# Usage:
-#   cd infrastructure/terraform/bootstrap/gcp
-#   terraform init
-#   terraform apply -var="project_id=mlops-dev-12345" -var="billing_account=XXXXX-XXXXX-XXXXX"
-#
-# After applying, update the backend configuration in environments/gcp/dev/providers.tf
+# Bootstrap GCP: Project, GCS state bucket, Workload Identity Pool, service account, IAM bindings
 
 terraform {
   required_version = ">= 1.0"
@@ -34,9 +18,7 @@ terraform {
   # After creation, you could migrate this to GCS if desired
 }
 
-# =============================================================================
 # GCP Project (Optional - Create New)
-# =============================================================================
 
 resource "google_project" "mlops" {
   count = var.create_project ? 1 : 0
@@ -69,9 +51,7 @@ provider "google" {
   region  = var.region
 }
 
-# =============================================================================
 # Data Sources
-# =============================================================================
 
 data "google_project" "current" {
   project_id = local.project_id
@@ -79,9 +59,7 @@ data "google_project" "current" {
   depends_on = [google_project.mlops]
 }
 
-# =============================================================================
 # GCS Bucket for Terraform State
-# =============================================================================
 
 resource "google_storage_bucket" "terraform_state" {
   name          = "${var.resource_prefix}-tfstate-${local.project_id}"
@@ -123,9 +101,7 @@ resource "google_storage_bucket" "terraform_state" {
   depends_on = [google_project_service.required_apis]
 }
 
-# =============================================================================
 # Workload Identity Pool for GitHub Actions
-# =============================================================================
 
 resource "google_iam_workload_identity_pool" "github" {
   project                   = local.project_id
@@ -158,9 +134,7 @@ resource "google_iam_workload_identity_pool_provider" "github" {
   }
 }
 
-# =============================================================================
 # Service Account for GitHub Actions
-# =============================================================================
 
 resource "google_service_account" "github_actions" {
   project      = local.project_id
@@ -178,9 +152,7 @@ resource "google_service_account_iam_member" "github_actions_workload_identity" 
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_org}/${var.github_repo}"
 }
 
-# =============================================================================
 # IAM Bindings for GitHub Actions Service Account
-# =============================================================================
 
 # Terraform state bucket access
 resource "google_storage_bucket_iam_member" "terraform_state_admin" {
@@ -280,9 +252,7 @@ resource "google_project_iam_member" "service_account_user" {
   member  = "serviceAccount:${google_service_account.github_actions.email}"
 }
 
-# =============================================================================
 # Enable Required APIs
-# =============================================================================
 
 resource "google_project_service" "required_apis" {
   for_each = toset([

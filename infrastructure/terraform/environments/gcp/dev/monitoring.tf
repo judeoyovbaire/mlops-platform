@@ -1,6 +1,4 @@
-# =============================================================================
 # Monitoring Stack
-# =============================================================================
 # Deploys Prometheus, Grafana, and AlertManager
 
 resource "helm_release" "prometheus_stack" {
@@ -29,9 +27,7 @@ resource "helm_release" "prometheus_stack" {
   ]
 }
 
-# =============================================================================
 # ServiceMonitors for Platform Components
-# =============================================================================
 
 # MLflow ServiceMonitor
 resource "kubectl_manifest" "mlflow_service_monitor" {
@@ -84,9 +80,7 @@ resource "kubectl_manifest" "argo_workflows_pod_monitor" {
   depends_on = [helm_release.prometheus_stack, helm_release.argo_workflows]
 }
 
-# =============================================================================
 # PrometheusRules for Alerting
-# =============================================================================
 
 resource "kubectl_manifest" "mlops_prometheus_rules" {
   yaml_body = <<-YAML

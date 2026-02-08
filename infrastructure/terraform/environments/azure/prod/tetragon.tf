@@ -1,6 +1,4 @@
-# =============================================================================
 # Tetragon - Runtime Security and Observability
-# =============================================================================
 
 resource "helm_release" "tetragon" {
   name             = "tetragon"
@@ -23,9 +21,7 @@ resource "helm_release" "tetragon" {
   depends_on = [module.aks]
 }
 
-# =============================================================================
 # Tetragon Tracing Policies
-# =============================================================================
 
 # Monitor file access in sensitive directories
 resource "kubectl_manifest" "tetragon_file_access_policy" {

@@ -1,6 +1,4 @@
-# =============================================================================
 # Kubernetes Namespaces with Pod Security Admission
-# =============================================================================
 # Enforcement strategy:
 # - mlops, kserve: restricted (inference workloads should be hardened)
 # - mlflow: restricted (tracking server is stateless)

@@ -1,6 +1,4 @@
-# =============================================================================
 # Multi-Tenancy Kyverno Policies
-# =============================================================================
 # Policies for namespace isolation and resource governance
 
 # Policy: Enforce resource quotas on new namespaces

@@ -1,6 +1,4 @@
-# =============================================================================
 # Kyverno Policy Engine
-# =============================================================================
 # Deploys Kyverno for policy enforcement and multi-tenancy
 
 resource "helm_release" "kyverno" {
@@ -51,9 +49,7 @@ resource "time_sleep" "wait_for_kyverno" {
   create_duration = "30s"
 }
 
-# =============================================================================
 # Kyverno Policies
-# =============================================================================
 
 # Require resource limits on all pods
 resource "kubectl_manifest" "require_resource_limits" {

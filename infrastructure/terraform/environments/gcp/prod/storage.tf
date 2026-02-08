@@ -1,13 +1,6 @@
-# =============================================================================
 # Storage Configuration - Production
-# =============================================================================
-# GKE automatically provides standard-rwo and premium-rwo StorageClasses
-#
-# For production workloads requiring shared volumes (RWX), consider:
-# - Filestore CSI driver (minimum 1TiB, suitable for production)
-# - Cloud Storage FUSE for read-heavy ML model storage
-#
-# See: https://cloud.google.com/filestore/docs/creating-instances
+# GKE provides standard-rwo and premium-rwo StorageClasses by default.
+# For RWX: Filestore CSI (min 1TiB) or Cloud Storage FUSE for ML model storage.
 
 # Production storage considerations:
 # - Use premium-rwo for databases and high-IOPS workloads

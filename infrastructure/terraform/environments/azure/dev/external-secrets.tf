@@ -1,6 +1,4 @@
-# =============================================================================
 # External Secrets Operator - Azure Key Vault Integration
-# =============================================================================
 
 resource "helm_release" "external_secrets" {
   name             = "external-secrets"
@@ -33,9 +31,7 @@ resource "time_sleep" "wait_for_external_secrets_crds" {
   create_duration = "60s"
 }
 
-# =============================================================================
 # ClusterSecretStore for Azure Key Vault
-# =============================================================================
 
 resource "kubectl_manifest" "cluster_secret_store_azure" {
   yaml_body = <<-YAML
@@ -56,9 +52,7 @@ resource "kubectl_manifest" "cluster_secret_store_azure" {
   depends_on = [time_sleep.wait_for_external_secrets_crds]
 }
 
-# =============================================================================
 # External Secrets
-# =============================================================================
 
 # MLflow Database Credentials
 resource "kubectl_manifest" "mlflow_db_external_secret" {

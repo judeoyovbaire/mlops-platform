@@ -1,11 +1,6 @@
-# GKE Module - Storage Resources
-#
-# Creates: GCS Bucket (MLflow artifacts), Cloud SQL PostgreSQL,
-# Artifact Registry, Secret Manager secrets
+# GKE Storage - GCS bucket, Cloud SQL, Artifact Registry, Secret Manager
 
-# =============================================================================
 # GCS Bucket for MLflow Artifacts
-# =============================================================================
 
 resource "google_storage_bucket" "mlflow_artifacts" {
   name          = "${var.cluster_name}-mlflow-artifacts-${var.project_id}"
@@ -40,9 +35,7 @@ resource "google_storage_bucket" "mlflow_artifacts" {
   labels = var.labels
 }
 
-# =============================================================================
 # Private Service Access for Cloud SQL
-# =============================================================================
 
 resource "google_compute_global_address" "private_ip_range" {
   name          = "${var.cluster_name}-private-ip-range"
@@ -59,9 +52,7 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   reserved_peering_ranges = [google_compute_global_address.private_ip_range.name]
 }
 
-# =============================================================================
 # Cloud SQL PostgreSQL
-# =============================================================================
 
 resource "random_id" "cloudsql_suffix" {
   byte_length = 4
@@ -136,9 +127,7 @@ resource "google_sql_user" "mlflow" {
   password = random_password.mlflow_db.result
 }
 
-# =============================================================================
 # Artifact Registry
-# =============================================================================
 
 resource "google_artifact_registry_repository" "models" {
   repository_id = "${var.cluster_name}-models"
@@ -171,9 +160,7 @@ resource "google_artifact_registry_repository" "models" {
   labels = var.labels
 }
 
-# =============================================================================
 # Secret Manager Secrets
-# =============================================================================
 
 # MLflow Database Password
 resource "google_secret_manager_secret" "mlflow_db_password" {

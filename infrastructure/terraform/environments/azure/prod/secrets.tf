@@ -1,10 +1,6 @@
-# =============================================================================
 # Auto-generated Secrets - Stored in Azure Key Vault
-# =============================================================================
 
-# =============================================================================
 # Random Passwords
-# =============================================================================
 
 resource "random_password" "grafana_admin" {
   length  = 24
@@ -16,9 +12,7 @@ resource "random_password" "argocd_admin" {
   special = false
 }
 
-# =============================================================================
 # Wait for RBAC propagation
-# =============================================================================
 
 # Azure RBAC assignments can take up to 10 minutes to propagate
 # Wait before creating secrets to ensure permissions are available
@@ -28,9 +22,7 @@ resource "time_sleep" "wait_for_keyvault_rbac" {
   create_duration = "60s"
 }
 
-# =============================================================================
 # Store Secrets in Key Vault
-# =============================================================================
 
 resource "azurerm_key_vault_secret" "grafana_admin" {
   name         = "grafana-admin-password"

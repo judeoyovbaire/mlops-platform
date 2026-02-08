@@ -1,6 +1,4 @@
-# =============================================================================
 # Kubernetes Secrets Configuration
-# =============================================================================
 # Creates Kubernetes secrets for components that don't use External Secrets
 
 # MLflow database credentials (username component)
@@ -46,9 +44,7 @@ resource "kubernetes_secret" "minio_root_user" {
   depends_on = [kubernetes_namespace.argo]
 }
 
-# =============================================================================
 # ConfigMaps for Platform Configuration
-# =============================================================================
 
 # MLflow configuration
 resource "kubernetes_config_map" "mlflow_config" {

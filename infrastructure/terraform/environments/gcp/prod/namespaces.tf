@@ -1,6 +1,4 @@
-# =============================================================================
 # Kubernetes Namespaces - Production
-# =============================================================================
 # Creates namespaces with Pod Security Admission (PSA) labels
 # https://kubernetes.io/docs/concepts/security/pod-security-standards/
 #
@@ -94,9 +92,7 @@ resource "kubernetes_namespace" "argocd" {
   depends_on = [module.gke]
 }
 
-# =============================================================================
 # Service Accounts with Workload Identity
-# =============================================================================
 
 # Note: MLflow ServiceAccount is managed by the Helm chart (helm-core.tf)
 # with Workload Identity annotation set in mlflow-values.yaml

@@ -1,7 +1,4 @@
-# GKE Module - Google Kubernetes Engine for MLOps Platform
-#
-# Creates: VPC, GKE Cluster with Workload Identity, Node Pools (System, Training/Spot, GPU/Spot)
-# Uses GKE Standard mode with Node Auto-provisioning for dynamic scaling
+# GKE Module - VPC, GKE cluster, node pools (system/training/GPU)
 
 terraform {
   required_version = ">= 1.0"

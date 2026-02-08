@@ -60,9 +60,7 @@ output "oidc_provider_arn" {
   value       = module.eks.oidc_provider_arn
 }
 
-# =============================================================================
 # SSM Parameter Store - Secret Locations
-# =============================================================================
 
 output "ssm_mlflow_db_password" {
   description = "SSM parameter path for MLflow DB password"
@@ -79,9 +77,7 @@ output "ssm_argocd_password" {
   value       = aws_ssm_parameter.argocd_admin_password.name
 }
 
-# =============================================================================
 # Access Information
-# =============================================================================
 
 output "access_info" {
   description = "Access information for deployed services"

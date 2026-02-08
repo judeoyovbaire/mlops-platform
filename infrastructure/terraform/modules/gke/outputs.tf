@@ -1,11 +1,6 @@
 # GKE Module Outputs
-#
-# Exports cluster, networking, storage, and identity information
-# for use in the environment configuration layer.
 
-# =============================================================================
 # Cluster Information
-# =============================================================================
 
 output "cluster_name" {
   description = "GKE cluster name"
@@ -39,9 +34,7 @@ output "workload_identity_pool" {
   value       = "${var.project_id}.svc.id.goog"
 }
 
-# =============================================================================
 # Network Information
-# =============================================================================
 
 output "vpc_id" {
   description = "VPC network ID"
@@ -63,9 +56,7 @@ output "subnet_name" {
   value       = google_compute_subnetwork.gke.name
 }
 
-# =============================================================================
 # Storage Information
-# =============================================================================
 
 output "mlflow_artifacts_bucket" {
   description = "GCS bucket name for MLflow artifacts"
@@ -77,9 +68,7 @@ output "mlflow_artifacts_bucket_url" {
   value       = google_storage_bucket.mlflow_artifacts.url
 }
 
-# =============================================================================
 # Cloud SQL Information
-# =============================================================================
 
 output "cloudsql_instance_name" {
   description = "Cloud SQL instance name"
@@ -106,9 +95,7 @@ output "cloudsql_user" {
   value       = google_sql_user.mlflow.name
 }
 
-# =============================================================================
 # Artifact Registry Information
-# =============================================================================
 
 output "artifact_registry_repository" {
   description = "Artifact Registry repository name"
@@ -120,9 +107,7 @@ output "artifact_registry_url" {
   value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.models.name}"
 }
 
-# =============================================================================
 # Secret Manager Information
-# =============================================================================
 
 output "mlflow_db_password_secret" {
   description = "Secret Manager secret ID for MLflow DB password"
@@ -144,9 +129,7 @@ output "grafana_admin_password_secret" {
   value       = google_secret_manager_secret.grafana_admin_password.secret_id
 }
 
-# =============================================================================
 # Service Account Information (Workload Identity)
-# =============================================================================
 
 output "mlflow_service_account_email" {
   description = "MLflow service account email"
@@ -183,9 +166,7 @@ output "node_pool_service_account_email" {
   value       = google_service_account.node_pool.email
 }
 
-# =============================================================================
 # Project Information
-# =============================================================================
 
 output "project_id" {
   description = "GCP project ID"
@@ -202,18 +183,14 @@ output "region" {
   value       = var.region
 }
 
-# =============================================================================
 # kubectl Configuration
-# =============================================================================
 
 output "kubectl_config_command" {
   description = "Command to configure kubectl"
   value       = "gcloud container clusters get-credentials ${google_container_cluster.main.name} --zone ${google_container_cluster.main.location} --project ${var.project_id}"
 }
 
-# =============================================================================
 # Access Information
-# =============================================================================
 
 output "access_info" {
   description = "Access information for deployed services"

@@ -1,6 +1,4 @@
-# =============================================================================
 # Monitoring Stack - Prometheus + Grafana
-# =============================================================================
 
 resource "helm_release" "prometheus_stack" {
   name             = "prometheus"
@@ -37,9 +35,7 @@ resource "helm_release" "prometheus_stack" {
   ]
 }
 
-# =============================================================================
 # ServiceMonitors for MLOps Components
-# =============================================================================
 
 # MLflow ServiceMonitor
 resource "kubectl_manifest" "mlflow_servicemonitor" {

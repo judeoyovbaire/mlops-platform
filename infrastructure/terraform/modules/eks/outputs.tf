@@ -75,7 +75,7 @@ output "mlflow_db_name" {
 # Kubeconfig command
 output "configure_kubectl" {
   description = "Command to configure kubectl"
-  value       = "aws eks update-kubeconfig --region ${data.aws_availability_zones.available.id} --name ${module.eks.cluster_name}"
+  value       = "aws eks update-kubeconfig --region ${data.aws_region.current.region} --name ${module.eks.cluster_name}"
 }
 
 # Karpenter outputs

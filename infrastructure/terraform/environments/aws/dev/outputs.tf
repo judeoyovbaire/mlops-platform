@@ -60,9 +60,7 @@ output "oidc_provider_arn" {
   value       = module.eks.oidc_provider_arn
 }
 
-# =============================================================================
 # AWS Secrets Manager - Secret Locations
-# =============================================================================
 
 output "secrets_manager_mlflow_db" {
   description = "Secrets Manager ARN for MLflow DB credentials"
@@ -79,9 +77,7 @@ output "secrets_manager_argocd" {
   value       = aws_secretsmanager_secret.argocd_admin_password.arn
 }
 
-# =============================================================================
 # Access Information
-# =============================================================================
 
 output "access_info" {
   description = "Access information for deployed services"

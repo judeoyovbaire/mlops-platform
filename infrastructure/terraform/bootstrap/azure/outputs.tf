@@ -1,6 +1,4 @@
-# =============================================================================
 # Azure Bootstrap Outputs
-# =============================================================================
 
 output "resource_group_name" {
   description = "Name of the bootstrap resource group"

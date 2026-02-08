@@ -1,11 +1,6 @@
-# GKE Module - Workload Identity Configuration
-#
-# Creates Google Service Accounts and binds them to Kubernetes Service Accounts
-# using GKE Workload Identity Federation for secure pod authentication.
+# GKE Workload Identity - GSA to KSA bindings for pod authentication
 
-# =============================================================================
 # MLflow Service Account
-# =============================================================================
 
 resource "google_service_account" "mlflow" {
   account_id   = "${var.cluster_name}-mlflow"
@@ -38,9 +33,7 @@ resource "google_project_iam_member" "mlflow_cloudsql" {
   member  = "serviceAccount:${google_service_account.mlflow.email}"
 }
 
-# =============================================================================
 # External Secrets Operator Service Account
-# =============================================================================
 
 resource "google_service_account" "external_secrets" {
   account_id   = "${var.cluster_name}-eso"
@@ -65,9 +58,7 @@ resource "google_project_iam_member" "external_secrets_secretmanager" {
   member  = "serviceAccount:${google_service_account.external_secrets.email}"
 }
 
-# =============================================================================
 # Argo Workflows Service Account
-# =============================================================================
 
 resource "google_service_account" "argo_workflows" {
   account_id   = "${var.cluster_name}-argo"
@@ -101,9 +92,7 @@ resource "google_storage_bucket_iam_member" "argo_gcs" {
   member = "serviceAccount:${google_service_account.argo_workflows.email}"
 }
 
-# =============================================================================
 # ArgoCD Service Account
-# =============================================================================
 
 resource "google_service_account" "argocd" {
   account_id   = "${var.cluster_name}-argocd"
@@ -129,9 +118,7 @@ resource "google_service_account_iam_member" "argocd_controller_workload_identit
   depends_on = [google_container_cluster.main]
 }
 
-# =============================================================================
 # KServe Service Account
-# =============================================================================
 
 resource "google_service_account" "kserve" {
   account_id   = "${var.cluster_name}-kserve"
@@ -183,9 +170,7 @@ resource "google_artifact_registry_repository_iam_member" "kserve_reader" {
   member     = "serviceAccount:${google_service_account.kserve.email}"
 }
 
-# =============================================================================
 # Prometheus Service Account (for GCP monitoring integration)
-# =============================================================================
 
 resource "google_service_account" "prometheus" {
   account_id   = "${var.cluster_name}-prometheus"

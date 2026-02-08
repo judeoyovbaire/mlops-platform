@@ -1,6 +1,4 @@
-# =============================================================================
 # External Secrets Operator Configuration
-# =============================================================================
 # Syncs secrets from GCP Secret Manager to Kubernetes
 
 # External Secrets Operator Helm release
@@ -36,9 +34,7 @@ resource "time_sleep" "wait_for_external_secrets_crds" {
   create_duration = "60s"
 }
 
-# =============================================================================
 # ClusterSecretStore - GCP Secret Manager
-# =============================================================================
 
 resource "kubectl_manifest" "cluster_secret_store" {
   yaml_body = <<-YAML
@@ -62,9 +58,7 @@ resource "kubectl_manifest" "cluster_secret_store" {
   depends_on = [time_sleep.wait_for_external_secrets_crds]
 }
 
-# =============================================================================
 # External Secrets - MLflow
-# =============================================================================
 
 resource "kubectl_manifest" "mlflow_db_credentials" {
   yaml_body = <<-YAML
@@ -98,9 +92,7 @@ resource "kubectl_manifest" "mlflow_db_credentials" {
   ]
 }
 
-# =============================================================================
 # External Secrets - Grafana
-# =============================================================================
 
 resource "kubectl_manifest" "grafana_admin_credentials" {
   yaml_body = <<-YAML
@@ -134,9 +126,7 @@ resource "kubectl_manifest" "grafana_admin_credentials" {
   ]
 }
 
-# =============================================================================
 # External Secrets - ArgoCD
-# =============================================================================
 
 resource "kubectl_manifest" "argocd_admin_credentials" {
   yaml_body = <<-YAML
@@ -170,9 +160,7 @@ resource "kubectl_manifest" "argocd_admin_credentials" {
   ]
 }
 
-# =============================================================================
 # External Secrets - MinIO
-# =============================================================================
 
 resource "kubectl_manifest" "minio_credentials" {
   yaml_body = <<-YAML

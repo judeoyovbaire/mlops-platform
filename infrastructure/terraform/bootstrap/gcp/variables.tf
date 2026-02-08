@@ -1,7 +1,4 @@
 # Bootstrap Variables for GCP MLOps Platform
-#
-# These variables configure the initial GCP resources needed before
-# deploying the main MLOps platform infrastructure.
 
 variable "create_project" {
   description = "Whether to create a new GCP project (true) or use an existing one (false)"

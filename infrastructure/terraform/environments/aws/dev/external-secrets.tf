@@ -1,6 +1,4 @@
-# =============================================================================
 # External Secrets Operator - SSM to K8s Secret Sync
-# =============================================================================
 
 # IRSA for External Secrets Operator
 module "external_secrets_irsa" {

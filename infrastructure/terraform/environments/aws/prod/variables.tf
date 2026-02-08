@@ -1,16 +1,4 @@
-# =============================================================================
 # Production Environment Variables - AWS
-# =============================================================================
-#
-# This file contains production-grade configurations optimized for:
-# - High availability (multi-AZ, redundant components)
-# - Security (encryption, network isolation, access controls)
-# - Performance (appropriate sizing for production workloads)
-# - Disaster recovery (backup retention, deletion protection)
-#
-# IMPORTANT: Review and customize these values for your specific requirements
-# before deploying to production.
-# =============================================================================
 
 variable "aws_region" {
   description = "AWS region for production deployment"
@@ -30,9 +18,7 @@ variable "cluster_version" {
   default     = "1.34"
 }
 
-# =============================================================================
 # Network Configuration
-# =============================================================================
 
 variable "vpc_cidr" {
   description = "CIDR block for VPC"
@@ -52,9 +38,7 @@ variable "public_subnets" {
   default     = ["10.100.101.0/24", "10.100.102.0/24", "10.100.103.0/24"]
 }
 
-# =============================================================================
 # Cluster Access Control
-# =============================================================================
 
 variable "cluster_endpoint_public_access" {
   description = "Enable public access to EKS API endpoint"
@@ -68,9 +52,7 @@ variable "cluster_endpoint_public_access_cidrs" {
   default     = [] # Set to your organization's IP ranges if public access needed
 }
 
-# =============================================================================
 # Tags
-# =============================================================================
 
 variable "tags" {
   description = "Tags for all resources"
@@ -83,9 +65,7 @@ variable "tags" {
   }
 }
 
-# =============================================================================
 # Inference Domain
-# =============================================================================
 
 variable "acm_certificate_arn" {
   description = "ACM certificate ARN for HTTPS ingress. Must be set for production."
@@ -104,10 +84,8 @@ variable "kserve_ingress_domain" {
   }
 }
 
-# =============================================================================
 # Helm Chart Versions
 # Pinned versions for production stability
-# =============================================================================
 
 variable "helm_aws_lb_controller_version" {
   description = "AWS Load Balancer Controller Helm chart version"

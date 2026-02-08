@@ -1,6 +1,4 @@
-# =============================================================================
 # Kyverno - Kubernetes Native Policy Engine
-# =============================================================================
 # Kyverno provides policy-as-code for Kubernetes using YAML (no Rego required)
 # CNCF Incubating project - simpler alternative to OPA/Gatekeeper
 # Reference: https://kyverno.io/
@@ -83,9 +81,7 @@ resource "helm_release" "kyverno" {
   ]
 }
 
-# =============================================================================
 # Kyverno Cluster Policies - MLOps Best Practices
-# =============================================================================
 
 # Policy: Require resource limits on all pods
 resource "kubectl_manifest" "kyverno_require_limits" {

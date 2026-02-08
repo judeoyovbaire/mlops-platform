@@ -1,13 +1,4 @@
-# =============================================================================
 # Production Environment Variables - GCP
-# =============================================================================
-#
-# Production-grade configurations for GCP GKE with:
-# - High availability (multi-zone, HA Cloud SQL)
-# - Security (Workload Identity, private cluster options)
-# - Performance (appropriate machine sizing)
-# - Reliability (ON_DEMAND instances, extended backups)
-# =============================================================================
 
 variable "project_id" {
   description = "GCP project ID"
@@ -57,9 +48,7 @@ variable "labels" {
   }
 }
 
-# =============================================================================
 # Networking
-# =============================================================================
 
 variable "vpc_cidr" {
   description = "CIDR block for the VPC"
@@ -105,9 +94,7 @@ variable "master_authorized_networks" {
   ]
 }
 
-# =============================================================================
 # Node Pools - Production Sizing
-# =============================================================================
 
 variable "system_machine_type" {
   description = "Machine type for system node pool"
@@ -187,9 +174,7 @@ variable "gpu_use_spot" {
   default     = false # Production: ON_DEMAND for reliability
 }
 
-# =============================================================================
 # Cloud SQL - Production Grade
-# =============================================================================
 
 variable "cloudsql_tier" {
   description = "Cloud SQL machine tier"
@@ -215,9 +200,7 @@ variable "cloudsql_high_availability" {
   default     = true # Regional HA for production
 }
 
-# =============================================================================
 # Helm Chart Versions (Pinned for production stability)
-# =============================================================================
 
 variable "helm_nginx_ingress_version" {
   description = "NGINX Ingress Controller Helm chart version"

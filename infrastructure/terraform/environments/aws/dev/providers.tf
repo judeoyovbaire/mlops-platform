@@ -1,6 +1,4 @@
-# =============================================================================
 # Terraform Configuration and Providers
-# =============================================================================
 
 terraform {
   required_version = ">= 1.5.7"
@@ -49,7 +47,6 @@ provider "aws" {
   }
 }
 
-# Kubernetes provider configuration (after cluster creation)
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)

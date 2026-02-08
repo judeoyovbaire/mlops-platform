@@ -1,13 +1,4 @@
-# =============================================================================
-# Azure Bootstrap - Foundational Resources for MLOps Platform
-# =============================================================================
-# This module creates:
-#   - Resource Group for bootstrap resources
-#   - Storage Account for Terraform state (with versioning, GRS replication)
-#   - Azure AD Application + Service Principal for GitHub Actions
-#   - Federated Identity Credential for GitHub OIDC (no static credentials!)
-#   - Role assignments for deployment permissions
-# =============================================================================
+# Azure Bootstrap: Resource Group, Storage Account, AD App, Federated Identity, role assignments
 
 terraform {
   required_version = ">= 1.0"
@@ -38,16 +29,12 @@ provider "azurerm" {
 
 provider "azuread" {}
 
-# =============================================================================
 # Data Sources
-# =============================================================================
 
 data "azurerm_subscription" "current" {}
 data "azurerm_client_config" "current" {}
 
-# =============================================================================
 # Resource Group
-# =============================================================================
 
 resource "azurerm_resource_group" "bootstrap" {
   name     = "${var.project_name}-bootstrap"
@@ -58,9 +45,7 @@ resource "azurerm_resource_group" "bootstrap" {
   })
 }
 
-# =============================================================================
 # Storage Account for Terraform State
-# =============================================================================
 
 resource "random_string" "storage_suffix" {
   length  = 8
@@ -104,9 +89,7 @@ resource "azurerm_storage_container" "tfstate" {
   container_access_type = "private"
 }
 
-# =============================================================================
 # Azure AD Application for GitHub Actions
-# =============================================================================
 
 resource "azuread_application" "github_actions" {
   display_name = "${var.project_name}-github-actions"
@@ -128,9 +111,7 @@ resource "azuread_service_principal" "github_actions" {
   owners    = [data.azurerm_client_config.current.object_id]
 }
 
-# =============================================================================
 # Federated Identity Credentials for GitHub OIDC
-# =============================================================================
 
 # Main branch deployment
 resource "azuread_application_federated_identity_credential" "github_main" {
@@ -159,9 +140,7 @@ resource "azuread_application_federated_identity_credential" "github_environment
   subject        = "repo:${var.github_org}/${var.github_repo}:environment:production"
 }
 
-# =============================================================================
 # Role Assignments
-# =============================================================================
 
 # Contributor role on subscription for infrastructure deployment
 resource "azurerm_role_assignment" "github_contributor" {

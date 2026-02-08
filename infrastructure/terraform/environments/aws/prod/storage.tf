@@ -1,6 +1,4 @@
-# =============================================================================
 # Storage Classes
-# =============================================================================
 
 # GP3 StorageClass (default) - more cost-effective than GP2
 resource "kubernetes_storage_class" "gp3" {

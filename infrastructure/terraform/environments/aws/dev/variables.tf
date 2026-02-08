@@ -78,10 +78,8 @@ variable "kserve_ingress_domain" {
   }
 }
 
-# =============================================================================
 # Helm Chart Versions
 # Centralized version management for all Helm releases
-# =============================================================================
 
 variable "helm_aws_lb_controller_version" {
   description = "AWS Load Balancer Controller Helm chart version"

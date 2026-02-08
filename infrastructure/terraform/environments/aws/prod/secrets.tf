@@ -1,6 +1,4 @@
-# =============================================================================
 # Secret Generation and SSM Parameter Store
-# =============================================================================
 
 # Generate secure random passwords
 resource "random_password" "mlflow_db" {

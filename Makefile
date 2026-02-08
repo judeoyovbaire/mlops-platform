@@ -81,9 +81,7 @@ TERRAFORM_DIR_AZURE = infrastructure/terraform/environments/azure/dev
 TERRAFORM_DIR_GCP = infrastructure/terraform/environments/gcp/dev
 PIPELINE_DIR = pipelines/training
 
-# =============================================================================
 # Default Deployment (AWS)
-# =============================================================================
 
 deploy: deploy-aws
 
@@ -93,9 +91,7 @@ destroy: destroy-aws
 
 secrets: secrets-aws
 
-# =============================================================================
 # AWS EKS Deployment
-# =============================================================================
 
 deploy-aws:
 	@echo "Deploying MLOps Platform to AWS EKS..."
@@ -113,9 +109,7 @@ secrets-aws:
 	@echo "Retrieving secrets from AWS SSM..."
 	./scripts/deploy-aws.sh secrets
 
-# =============================================================================
 # Azure AKS Deployment
-# =============================================================================
 
 deploy-azure:
 	@echo "Deploying MLOps Platform to Azure AKS..."
@@ -133,9 +127,7 @@ secrets-azure:
 	@echo "Retrieving secrets from Azure Key Vault..."
 	./scripts/deploy-azure.sh secrets
 
-# =============================================================================
 # GCP GKE Deployment
-# =============================================================================
 
 deploy-gcp:
 	@echo "Deploying MLOps Platform to GCP GKE..."
@@ -153,9 +145,7 @@ secrets-gcp:
 	@echo "Retrieving secrets from GCP Secret Manager..."
 	./scripts/deploy-gcp.sh secrets
 
-# =============================================================================
 # Terraform - AWS (Advanced)
-# =============================================================================
 
 terraform-init: terraform-init-aws
 
@@ -181,9 +171,7 @@ terraform-destroy-aws:
 	@echo "Destroying AWS Terraform resources..."
 	cd $(TERRAFORM_DIR_AWS) && $(TERRAFORM) destroy
 
-# =============================================================================
 # Terraform - Azure (Advanced)
-# =============================================================================
 
 terraform-init-azure:
 	@echo "Initializing Azure Terraform..."
@@ -201,9 +189,7 @@ terraform-destroy-azure:
 	@echo "Destroying Azure Terraform resources..."
 	cd $(TERRAFORM_DIR_AZURE) && $(TERRAFORM) destroy
 
-# =============================================================================
 # Terraform - GCP (Advanced)
-# =============================================================================
 
 terraform-init-gcp:
 	@echo "Initializing GCP Terraform..."
@@ -221,9 +207,7 @@ terraform-destroy-gcp:
 	@echo "Destroying GCP Terraform resources..."
 	cd $(TERRAFORM_DIR_GCP) && $(TERRAFORM) destroy
 
-# =============================================================================
 # Validation & Testing
-# =============================================================================
 
 validate: validate-terraform-aws validate-terraform-azure validate-terraform-gcp validate-python
 	@echo "All validations passed!"
@@ -277,9 +261,7 @@ test-cov:
 	pytest tests/ -v --cov=examples --cov=pipelines --cov-report=term-missing --cov-report=html
 	@echo "Coverage report generated in htmlcov/"
 
-# =============================================================================
 # Development (post-deployment - cloud-agnostic)
-# =============================================================================
 
 port-forward-mlflow:
 	@echo "Forwarding MLflow to localhost:5000..."
@@ -326,9 +308,7 @@ deploy-pipeline:
 	$(KUBECTL) apply -k pipelines/training
 	@echo "Pipeline templates updated."
 
-# =============================================================================
 # Utilities
-# =============================================================================
 
 deps:
 	@echo "Installing development dependencies..."
@@ -351,9 +331,7 @@ logs-mlflow:
 logs-argocd:
 	$(KUBECTL) logs -f deployment/argocd-server -n argocd
 
-# =============================================================================
 # Local Development (Kind cluster)
-# =============================================================================
 
 deploy-local:
 	@echo "Deploying MLOps Platform to local Kind cluster..."

@@ -1,13 +1,4 @@
-# =============================================================================
 # Production Environment Variables - Azure
-# =============================================================================
-#
-# Production-grade configurations for Azure AKS with:
-# - High availability (zone redundancy, HA PostgreSQL)
-# - Security (network isolation, managed identities)
-# - Performance (appropriate VM sizing)
-# - Disaster recovery (extended backups, geo-redundancy)
-# =============================================================================
 
 variable "cluster_name" {
   description = "Name of the AKS cluster"
@@ -39,9 +30,7 @@ variable "tags" {
   }
 }
 
-# =============================================================================
 # Networking
-# =============================================================================
 
 variable "vnet_cidr" {
   description = "CIDR block for the virtual network"
@@ -73,9 +62,7 @@ variable "dns_service_ip" {
   default     = "10.102.0.10"
 }
 
-# =============================================================================
 # API Server Access Control
-# =============================================================================
 
 variable "api_server_authorized_ip_ranges" {
   description = "CIDR blocks authorized to access AKS API server (set for production)"
@@ -83,9 +70,7 @@ variable "api_server_authorized_ip_ranges" {
   default     = [] # Set to your organization's IP ranges
 }
 
-# =============================================================================
 # Node Pools - Production Sizing
-# =============================================================================
 
 variable "system_vm_size" {
   description = "VM size for system node pool"
@@ -147,9 +132,7 @@ variable "gpu_use_spot" {
   default     = false # Production: ON_DEMAND for reliability
 }
 
-# =============================================================================
 # PostgreSQL - Production Grade
-# =============================================================================
 
 variable "postgresql_sku" {
   description = "SKU for PostgreSQL Flexible Server"
@@ -175,9 +158,7 @@ variable "postgresql_ha_enabled" {
   default     = true # Zone-redundant HA for production
 }
 
-# =============================================================================
 # Container Registry
-# =============================================================================
 
 variable "acr_sku" {
   description = "SKU for Azure Container Registry"
@@ -185,9 +166,7 @@ variable "acr_sku" {
   default     = "Premium" # Premium for geo-replication and private endpoints
 }
 
-# =============================================================================
 # Monitoring
-# =============================================================================
 
 variable "enable_azure_monitor" {
   description = "Enable Azure Monitor integration"
@@ -195,9 +174,7 @@ variable "enable_azure_monitor" {
   default     = true # Enabled for production
 }
 
-# =============================================================================
 # Helm Chart Versions (Pinned for production stability)
-# =============================================================================
 
 variable "helm_nginx_ingress_version" {
   description = "NGINX Ingress Controller Helm chart version"

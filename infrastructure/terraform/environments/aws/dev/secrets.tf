@@ -1,13 +1,4 @@
-# =============================================================================
-# Secret Generation and AWS Secrets Manager
-# =============================================================================
-#
-# NOTE: Using AWS Secrets Manager instead of random_password + SSM Parameter Store
-# to avoid storing secrets in Terraform state. Secrets Manager handles:
-# - Secure secret generation
-# - Automatic rotation (optional)
-# - Encryption at rest with KMS
-# - No secrets in Terraform state file
+# Secret Generation via AWS Secrets Manager (avoids secrets in Terraform state)
 
 # MLflow database password - generated and managed by Secrets Manager
 resource "aws_secretsmanager_secret" "mlflow_db_password" {
@@ -73,10 +64,8 @@ resource "aws_secretsmanager_secret_version" "argocd_admin_password" {
   }
 }
 
-# =============================================================================
 # Initial password generation (only used on first apply)
 # These are stored in Secrets Manager, not in Terraform state long-term
-# =============================================================================
 
 resource "random_password" "mlflow_db" {
   length           = 32
@@ -95,9 +84,7 @@ resource "random_password" "argocd_admin" {
   special = false
 }
 
-# =============================================================================
 # Non-secret configuration in SSM for easy access
-# =============================================================================
 
 resource "aws_ssm_parameter" "cluster_endpoint" {
   name        = "/${var.cluster_name}/cluster/endpoint"
@@ -117,9 +104,7 @@ resource "aws_ssm_parameter" "cluster_name_param" {
   tags = var.tags
 }
 
-# =============================================================================
 # Outputs - reference ARNs, not values (to avoid state exposure)
-# =============================================================================
 
 output "mlflow_db_secret_arn" {
   description = "ARN of the MLflow database password secret"

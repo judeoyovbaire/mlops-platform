@@ -1,6 +1,4 @@
-# =============================================================================
 # Tetragon Runtime Security
-# =============================================================================
 # Deploys Tetragon for eBPF-based runtime security monitoring
 
 resource "helm_release" "tetragon" {
@@ -53,9 +51,7 @@ resource "helm_release" "tetragon" {
   depends_on = [module.gke]
 }
 
-# =============================================================================
 # Tetragon Tracing Policies
-# =============================================================================
 
 # Wait for Tetragon CRDs
 resource "time_sleep" "wait_for_tetragon" {

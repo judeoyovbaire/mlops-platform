@@ -1,6 +1,4 @@
-# =============================================================================
 # Kyverno - Policy Engine for Kubernetes
-# =============================================================================
 
 resource "helm_release" "kyverno" {
   name             = "kyverno"
@@ -24,9 +22,7 @@ resource "helm_release" "kyverno" {
   depends_on = [module.aks]
 }
 
-# =============================================================================
 # Kyverno Policies
-# =============================================================================
 
 # Require resource limits on all pods
 resource "kubectl_manifest" "policy_require_resource_limits" {

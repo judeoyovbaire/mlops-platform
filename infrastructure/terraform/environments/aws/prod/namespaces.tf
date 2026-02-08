@@ -1,6 +1,4 @@
-# =============================================================================
 # Kubernetes Namespaces with Pod Security Standards (PSA)
-# =============================================================================
 # PSA enforcement levels:
 # - restricted: Highly restricted, follows Pod hardening best practices
 # - baseline: Minimally restrictive, prevents known privilege escalations
@@ -88,9 +86,7 @@ resource "kubernetes_namespace" "kserve" {
   depends_on = [module.eks]
 }
 
-# =============================================================================
 # Kubernetes Secrets and Service Accounts
-# =============================================================================
 
 # MLflow secrets (using generated password)
 resource "kubernetes_secret" "mlflow_postgres" {

@@ -1,11 +1,6 @@
 # GKE Module Variables
-#
-# Variables for configuring the GKE cluster and associated resources
-# for the MLOps Platform on Google Cloud.
 
-# =============================================================================
 # General Configuration
-# =============================================================================
 
 variable "project_id" {
   description = "GCP project ID"
@@ -62,9 +57,7 @@ variable "labels" {
   }
 }
 
-# =============================================================================
 # Network Configuration
-# =============================================================================
 
 variable "vpc_cidr" {
   description = "CIDR block for the VPC"
@@ -134,9 +127,7 @@ variable "master_authorized_networks" {
   }
 }
 
-# =============================================================================
 # System Node Pool Configuration
-# =============================================================================
 
 variable "system_machine_type" {
   description = "Machine type for system node pool"
@@ -162,9 +153,7 @@ variable "system_disk_size_gb" {
   default     = 100
 }
 
-# =============================================================================
 # Training Node Pool Configuration
-# =============================================================================
 
 variable "training_machine_type" {
   description = "Machine type for training node pool"
@@ -196,9 +185,7 @@ variable "training_use_spot" {
   default     = true
 }
 
-# =============================================================================
 # GPU Node Pool Configuration
-# =============================================================================
 
 variable "gpu_machine_type" {
   description = "Machine type for GPU node pool"
@@ -242,9 +229,7 @@ variable "gpu_use_spot" {
   default     = true
 }
 
-# =============================================================================
 # Node Auto-provisioning (NAP) Configuration
-# =============================================================================
 
 variable "enable_node_autoprovisioning" {
   description = "Enable cluster autoscaler node auto-provisioning"
@@ -282,9 +267,7 @@ variable "nap_max_gpus" {
   default     = 8
 }
 
-# =============================================================================
 # Cloud SQL Configuration
-# =============================================================================
 
 variable "cloudsql_tier" {
   description = "Cloud SQL machine tier"
@@ -316,9 +299,7 @@ variable "cloudsql_database_version" {
   default     = "POSTGRES_17"
 }
 
-# =============================================================================
 # Artifact Registry Configuration
-# =============================================================================
 
 variable "artifact_registry_format" {
   description = "Artifact Registry format (DOCKER, MAVEN, NPM, etc.)"
@@ -332,9 +313,7 @@ variable "artifact_registry_immutable_tags" {
   default     = false
 }
 
-# =============================================================================
 # VPC Flow Logs Configuration
-# =============================================================================
 
 variable "enable_vpc_flow_logs" {
   description = "Enable VPC Flow Logs for network troubleshooting"

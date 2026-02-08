@@ -1,10 +1,6 @@
-# =============================================================================
 # GCP Environment Outputs
-# =============================================================================
 
-# =============================================================================
 # Cluster Information
-# =============================================================================
 
 output "cluster_name" {
   description = "GKE cluster name"
@@ -27,9 +23,7 @@ output "kubectl_config_command" {
   value       = module.gke.kubectl_config_command
 }
 
-# =============================================================================
 # Network Information
-# =============================================================================
 
 output "vpc_name" {
   description = "VPC network name"
@@ -41,9 +35,7 @@ output "subnet_name" {
   value       = module.gke.subnet_name
 }
 
-# =============================================================================
 # Storage Information
-# =============================================================================
 
 output "mlflow_artifacts_bucket" {
   description = "GCS bucket for MLflow artifacts"
@@ -55,9 +47,7 @@ output "artifact_registry_url" {
   value       = module.gke.artifact_registry_url
 }
 
-# =============================================================================
 # Database Information
-# =============================================================================
 
 output "cloudsql_instance_name" {
   description = "Cloud SQL instance name"
@@ -75,9 +65,7 @@ output "cloudsql_private_ip" {
   sensitive   = true
 }
 
-# =============================================================================
 # Secret Manager
-# =============================================================================
 
 output "mlflow_db_password_secret" {
   description = "Secret Manager secret for MLflow DB password"
@@ -94,9 +82,7 @@ output "grafana_admin_password_secret" {
   value       = module.gke.grafana_admin_password_secret
 }
 
-# =============================================================================
 # Service Accounts
-# =============================================================================
 
 output "mlflow_service_account" {
   description = "MLflow service account email"
@@ -108,9 +94,7 @@ output "external_secrets_service_account" {
   value       = module.gke.external_secrets_service_account_email
 }
 
-# =============================================================================
 # Access Information
-# =============================================================================
 
 output "access_info" {
   description = "Access information for deployed services"

@@ -1,11 +1,7 @@
-# =============================================================================
 # Core Helm Releases
-# =============================================================================
 # Deploys essential platform components
 
-# =============================================================================
 # NGINX Ingress Controller
-# =============================================================================
 
 resource "helm_release" "nginx_ingress" {
   name             = "ingress-nginx"
@@ -22,9 +18,7 @@ resource "helm_release" "nginx_ingress" {
   depends_on = [module.gke]
 }
 
-# =============================================================================
 # cert-manager
-# =============================================================================
 
 resource "helm_release" "cert_manager" {
   name             = "cert-manager"
@@ -47,9 +41,7 @@ resource "helm_release" "cert_manager" {
   depends_on = [module.gke]
 }
 
-# =============================================================================
 # ArgoCD
-# =============================================================================
 
 resource "helm_release" "argocd" {
   name             = "argocd"
@@ -71,9 +63,7 @@ resource "helm_release" "argocd" {
   ]
 }
 
-# =============================================================================
 # KServe
-# =============================================================================
 
 # Install KServe CRDs first
 resource "helm_release" "kserve_crds" {
@@ -106,9 +96,7 @@ resource "helm_release" "kserve" {
   ]
 }
 
-# =============================================================================
 # MLflow
-# =============================================================================
 
 resource "helm_release" "mlflow" {
   name       = "mlflow"
@@ -133,9 +121,7 @@ resource "helm_release" "mlflow" {
   ]
 }
 
-# =============================================================================
 # Argo Workflows
-# =============================================================================
 
 resource "helm_release" "argo_workflows" {
   name       = "argo-workflows"
@@ -156,9 +142,7 @@ resource "helm_release" "argo_workflows" {
   ]
 }
 
-# =============================================================================
 # MinIO (S3-compatible storage for Argo artifacts)
-# =============================================================================
 
 resource "helm_release" "minio" {
   name       = "minio"

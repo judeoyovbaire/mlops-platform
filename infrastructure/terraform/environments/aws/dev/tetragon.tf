@@ -1,6 +1,4 @@
-# =============================================================================
 # Tetragon - eBPF-based Runtime Security
-# =============================================================================
 # Tetragon provides kernel-level security observability and enforcement
 # From the Cilium project - better performance than Falco for enforcement
 # Reference: https://tetragon.io/
@@ -76,9 +74,7 @@ resource "helm_release" "tetragon" {
   ]
 }
 
-# =============================================================================
 # Tetragon Tracing Policies - Runtime Security for MLOps
-# =============================================================================
 
 # TracingPolicy: Detect sensitive file access in ML containers
 resource "kubectl_manifest" "tetragon_sensitive_files" {

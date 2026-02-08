@@ -1,13 +1,5 @@
-# =============================================================================
 # GKE Cluster - Production Configuration
-# =============================================================================
-#
-# Production-grade GKE cluster with:
-# - Multi-zone deployment for high availability
-# - Enhanced security (Workload Identity, private nodes)
-# - Production sizing (larger VMs, more nodes)
-# - HA Cloud SQL with automated backups
-# =============================================================================
+# Multi-zone HA, Workload Identity, private nodes, HA Cloud SQL
 
 module "gke" {
   source = "../../../modules/gke"
@@ -31,24 +23,18 @@ module "gke" {
   # Master authorized networks - restrict API server access
   master_authorized_networks = var.master_authorized_networks
 
-  # ==========================================================================
   # System Node Pool - Production
-  # ==========================================================================
   system_machine_type = var.system_machine_type
   system_min_count    = var.system_min_count
   system_max_count    = var.system_max_count
 
-  # ==========================================================================
   # Training Node Pool - Production (ON_DEMAND for reliability)
-  # ==========================================================================
   training_machine_type = var.training_machine_type
   training_min_count    = var.training_min_count
   training_max_count    = var.training_max_count
   training_use_spot     = var.training_use_spot
 
-  # ==========================================================================
   # GPU Node Pool - Production (ON_DEMAND for reliability)
-  # ==========================================================================
   gpu_machine_type      = var.gpu_machine_type
   gpu_accelerator_type  = var.gpu_accelerator_type
   gpu_accelerator_count = var.gpu_accelerator_count
@@ -56,9 +42,7 @@ module "gke" {
   gpu_max_count         = var.gpu_max_count
   gpu_use_spot          = var.gpu_use_spot
 
-  # ==========================================================================
   # Cloud SQL - Production Grade
-  # ==========================================================================
   cloudsql_tier              = var.cloudsql_tier
   cloudsql_disk_size         = var.cloudsql_disk_size
   cloudsql_backup_enabled    = var.cloudsql_backup_enabled

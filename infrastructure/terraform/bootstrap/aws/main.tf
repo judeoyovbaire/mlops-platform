@@ -1,18 +1,4 @@
-# Bootstrap Infrastructure for MLOps Platform
-#
-# This module creates the foundational AWS resources required BEFORE
-# deploying the main MLOps platform:
-#   - S3 bucket for Terraform state
-#   - DynamoDB table for state locking
-#   - GitHub OIDC provider for CI/CD authentication
-#   - IAM role for GitHub Actions
-#
-# Usage:
-#   cd infrastructure/terraform/bootstrap
-#   terraform init
-#   terraform apply
-#
-# After applying, update the backend configuration in environments/dev/main.tf
+# Bootstrap AWS: S3 state bucket, DynamoDB lock table, GitHub OIDC provider, IAM role
 
 terraform {
   required_version = ">= 1.5.7"
@@ -39,9 +25,7 @@ provider "aws" {
   }
 }
 
-# =============================================================================
 # Variables
-# =============================================================================
 
 variable "aws_region" {
   description = "AWS region for all resources"
@@ -67,15 +51,11 @@ variable "github_repo" {
   default     = "mlops-platform"
 }
 
-# =============================================================================
 # Data Sources
-# =============================================================================
 
 data "aws_caller_identity" "current" {}
 
-# =============================================================================
 # KMS Key for Terraform State Encryption
-# =============================================================================
 
 resource "aws_kms_key" "terraform_state" {
   description             = "KMS key for Terraform state bucket encryption"
@@ -123,9 +103,7 @@ resource "aws_kms_alias" "terraform_state" {
   target_key_id = aws_kms_key.terraform_state.key_id
 }
 
-# =============================================================================
 # S3 Bucket for Terraform State
-# =============================================================================
 
 resource "aws_s3_bucket" "terraform_state" {
   bucket = "${var.project_name}-tfstate-${data.aws_caller_identity.current.account_id}"
@@ -191,9 +169,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "terraform_state" {
   }
 }
 
-# =============================================================================
 # DynamoDB Table for State Locking
-# =============================================================================
 
 resource "aws_dynamodb_table" "terraform_locks" {
   name         = "${var.project_name}-terraform-locks"
@@ -216,9 +192,7 @@ resource "aws_dynamodb_table" "terraform_locks" {
   }
 }
 
-# =============================================================================
 # GitHub OIDC Provider
-# =============================================================================
 
 resource "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
@@ -237,9 +211,7 @@ resource "aws_iam_openid_connect_provider" "github" {
   }
 }
 
-# =============================================================================
 # IAM Role for GitHub Actions
-# =============================================================================
 
 resource "aws_iam_role" "github_actions" {
   name        = "${var.project_name}-github-actions"
@@ -530,9 +502,7 @@ resource "aws_iam_role_policy" "terraform_services" {
   })
 }
 
-# =============================================================================
 # Outputs
-# =============================================================================
 
 output "terraform_state_bucket" {
   description = "S3 bucket name for Terraform state"

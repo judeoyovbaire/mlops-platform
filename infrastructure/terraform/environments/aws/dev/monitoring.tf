@@ -1,6 +1,4 @@
-# =============================================================================
 # Observability Stack - Prometheus & Grafana
-# =============================================================================
 
 # Monitoring namespace
 resource "kubernetes_namespace" "monitoring" {

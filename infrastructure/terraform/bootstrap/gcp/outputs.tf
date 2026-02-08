@@ -1,12 +1,6 @@
-# Bootstrap Outputs for GCP MLOps Platform
-#
-# These outputs provide the information needed to configure:
-# - Terraform backend in environments/gcp/dev/providers.tf
-# - GitHub Actions secrets for CI/CD
+# Bootstrap outputs: Terraform backend config and GitHub Actions secrets
 
-# =============================================================================
 # Terraform State
-# =============================================================================
 
 output "terraform_state_bucket" {
   description = "GCS bucket name for Terraform state"
@@ -18,9 +12,7 @@ output "terraform_state_bucket_url" {
   value       = google_storage_bucket.terraform_state.url
 }
 
-# =============================================================================
 # Workload Identity
-# =============================================================================
 
 output "workload_identity_pool_name" {
   description = "Workload Identity Pool name"
@@ -37,9 +29,7 @@ output "workload_identity_provider" {
   value       = google_iam_workload_identity_pool_provider.github.name
 }
 
-# =============================================================================
 # Service Account
-# =============================================================================
 
 output "github_actions_service_account" {
   description = "Service account email for GitHub Actions"
@@ -51,9 +41,7 @@ output "github_actions_service_account_id" {
   value       = google_service_account.github_actions.id
 }
 
-# =============================================================================
 # Project Information
-# =============================================================================
 
 output "project_id" {
   description = "GCP project ID"
@@ -70,9 +58,7 @@ output "region" {
   value       = var.region
 }
 
-# =============================================================================
 # Configuration Outputs
-# =============================================================================
 
 # Backend configuration for copy-paste into environments/gcp/dev/providers.tf
 output "backend_config" {

@@ -1,9 +1,6 @@
-# =============================================================================
 # KEDA - Kubernetes Event-Driven Autoscaling
-# =============================================================================
 # Replaces Karpenter for Azure (Karpenter is AWS-only)
 # KEDA works with Cluster Autoscaler to provide pod-driven node scaling
-# =============================================================================
 
 resource "helm_release" "keda" {
   name             = "keda"
@@ -31,9 +28,7 @@ resource "helm_release" "keda" {
   depends_on = [module.aks]
 }
 
-# =============================================================================
 # KEDA ScaledObjects for MLOps Workloads
-# =============================================================================
 
 # GPU Workload Scaler - Scale based on pending GPU pods
 resource "kubectl_manifest" "keda_gpu_scaledobject" {
