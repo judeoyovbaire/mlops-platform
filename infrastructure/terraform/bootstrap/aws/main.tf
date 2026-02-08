@@ -504,6 +504,14 @@ resource "aws_iam_role_policy" "terraform_services" {
         Resource = "*"
       },
       {
+        Sid    = "SecretsManagerAccess"
+        Effect = "Allow"
+        Action = "secretsmanager:*"
+        Resource = [
+          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.project_name}*"
+        ]
+      },
+      {
         Sid      = "STSAccess"
         Effect   = "Allow"
         Action   = "sts:GetCallerIdentity"
