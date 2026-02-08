@@ -94,6 +94,15 @@ phase1_kubernetes_cleanup() {
     # Force delete Kyverno namespace if stuck
     kubectl delete namespace kyverno --grace-period=0 --force 2>/dev/null || true
 
+    # Remove KServe InferenceService finalizers (controller is destroyed before namespace)
+    print_info "Removing KServe InferenceService finalizers..."
+    for ns in $(kubectl get inferenceservices -A --no-headers 2>/dev/null | awk '{print $1}'); do
+        for isvc in $(kubectl get inferenceservices -n "$ns" --no-headers 2>/dev/null | awk '{print $1}'); do
+            kubectl patch inferenceservice "$isvc" -n "$ns" --type=json \
+                -p='[{"op":"remove","path":"/metadata/finalizers"}]' 2>/dev/null || true
+        done
+    done
+
     # Delete External Secrets resources
     print_info "Removing External Secrets resources..."
     kubectl delete externalsecrets --all -A 2>/dev/null || true

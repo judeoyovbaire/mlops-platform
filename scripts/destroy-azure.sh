@@ -93,23 +93,32 @@ pre_destroy_cleanup() {
         kubectl patch namespace kyverno -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
     fi
 
-    # 4. Clean up KEDA resources (prevents orphaned Azure resources)
+    # 4. Remove KServe InferenceService finalizers (controller is destroyed before namespace)
+    print_info "Removing KServe InferenceService finalizers..."
+    for ns in $(kubectl get inferenceservices -A --no-headers 2>/dev/null | awk '{print $1}'); do
+        for isvc in $(kubectl get inferenceservices -n "$ns" --no-headers 2>/dev/null | awk '{print $1}'); do
+            kubectl patch inferenceservice "$isvc" -n "$ns" --type=json \
+                -p='[{"op":"remove","path":"/metadata/finalizers"}]' 2>/dev/null || true
+        done
+    done
+
+    # 5. Clean up KEDA resources (prevents orphaned Azure resources)
     print_info "Removing KEDA resources..."
     kubectl delete scaledobjects --all -A --ignore-not-found 2>/dev/null || true
     kubectl delete scaledjobs --all -A --ignore-not-found 2>/dev/null || true
     kubectl delete triggerauthentications --all -A --ignore-not-found 2>/dev/null || true
     kubectl delete clustertriggerauthentications --all --ignore-not-found 2>/dev/null || true
 
-    # 5. Delete other webhook configurations that might block
+    # 6. Delete other webhook configurations that might block
     print_info "Removing other webhooks that might block deletion..."
     kubectl delete validatingwebhookconfiguration -l app.kubernetes.io/name=tetragon --ignore-not-found 2>/dev/null || true
 
-    # 6. Delete External Secrets resources
+    # 7. Delete External Secrets resources
     print_info "Removing External Secrets resources..."
     kubectl delete externalsecrets --all -A --ignore-not-found 2>/dev/null || true
     kubectl delete clustersecretstores --all --ignore-not-found 2>/dev/null || true
 
-    # 7. Delete LoadBalancer services to release Azure LB resources
+    # 8. Delete LoadBalancer services to release Azure LB resources
     print_info "Removing LoadBalancer services..."
     kubectl delete svc -A -l app.kubernetes.io/name=ingress-nginx --ignore-not-found 2>/dev/null || true
 

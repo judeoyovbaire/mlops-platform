@@ -90,13 +90,22 @@ pre_destroy_cleanup() {
         kubectl patch namespace kyverno -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
     fi
 
-    # 4. Clean up Karpenter resources (prevents orphaned nodes)
+    # 4. Remove KServe InferenceService finalizers (controller is destroyed before namespace)
+    print_info "Removing KServe InferenceService finalizers..."
+    for ns in $(kubectl get inferenceservices -A --no-headers 2>/dev/null | awk '{print $1}'); do
+        for isvc in $(kubectl get inferenceservices -n "$ns" --no-headers 2>/dev/null | awk '{print $1}'); do
+            kubectl patch inferenceservice "$isvc" -n "$ns" --type=json \
+                -p='[{"op":"remove","path":"/metadata/finalizers"}]' 2>/dev/null || true
+        done
+    done
+
+    # 5. Clean up Karpenter resources (prevents orphaned nodes)
     print_info "Removing Karpenter resources..."
     kubectl delete nodeclaims --all --ignore-not-found 2>/dev/null || true
     kubectl delete nodepools --all --ignore-not-found 2>/dev/null || true
     kubectl delete ec2nodeclasses --all --ignore-not-found 2>/dev/null || true
 
-    # 5. Delete other webhook configurations that might block
+    # 6. Delete other webhook configurations that might block
     print_info "Removing other webhooks that might block deletion..."
     kubectl delete validatingwebhookconfiguration -l app.kubernetes.io/name=tetragon --ignore-not-found 2>/dev/null || true
 
