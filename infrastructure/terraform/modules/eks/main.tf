@@ -2,12 +2,12 @@
 # Creates an EKS cluster with managed node groups for MLOps workloads
 
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.5.7"
 
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.0"
+      version = "~> 6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -30,7 +30,7 @@ data "aws_region" "current" {}
 # VPC for EKS
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 5.0"
+  version = "~> 6.0"
 
   name = "${var.cluster_name}-vpc"
   cidr = var.vpc_cidr
@@ -60,14 +60,14 @@ module "vpc" {
 # EKS Cluster
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.0"
+  version = "~> 21.0"
 
-  cluster_name    = var.cluster_name
-  cluster_version = var.cluster_version
+  name               = var.cluster_name
+  kubernetes_version = var.cluster_version
 
-  cluster_endpoint_public_access       = var.cluster_endpoint_public_access
-  cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
-  cluster_endpoint_private_access      = true
+  endpoint_public_access       = var.cluster_endpoint_public_access
+  endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
+  endpoint_private_access      = true
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -95,16 +95,24 @@ module "eks" {
   }
 
   # Cluster addons
-  cluster_addons = {
+  addons = {
+    eks-pod-identity-agent = {
+      most_recent                 = true
+      resolve_conflicts_on_create = "OVERWRITE"
+      before_compute              = true
+    }
     coredns = {
-      most_recent = true
+      most_recent                 = true
+      resolve_conflicts_on_create = "OVERWRITE"
     }
     kube-proxy = {
-      most_recent = true
+      most_recent                 = true
+      resolve_conflicts_on_create = "OVERWRITE"
     }
     vpc-cni = {
-      most_recent    = true
-      before_compute = true
+      most_recent                 = true
+      resolve_conflicts_on_create = "OVERWRITE"
+      before_compute              = true
       configuration_values = jsonencode({
         env = {
           ENABLE_PREFIX_DELEGATION = "true"
@@ -113,8 +121,9 @@ module "eks" {
       })
     }
     aws-ebs-csi-driver = {
-      most_recent              = true
-      service_account_role_arn = module.ebs_csi_irsa.iam_role_arn
+      most_recent                 = true
+      resolve_conflicts_on_create = "OVERWRITE"
+      service_account_role_arn    = module.ebs_csi_irsa.arn
     }
   }
 
@@ -171,13 +180,13 @@ module "eks" {
         "nvidia.com/gpu.present" = "true"
       }
 
-      taints = [
-        {
+      taints = {
+        gpu = {
           key    = "nvidia.com/gpu"
           value  = "true"
           effect = "NO_SCHEDULE"
         }
-      ]
+      }
 
       tags = var.tags
     }
@@ -188,10 +197,10 @@ module "eks" {
 
 # IRSA for EBS CSI Driver
 module "ebs_csi_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.0"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.0"
 
-  role_name             = "${var.cluster_name}-ebs-csi"
+  name                  = "${var.cluster_name}-ebs-csi"
   attach_ebs_csi_policy = true
 
   oidc_providers = {
@@ -206,10 +215,10 @@ module "ebs_csi_irsa" {
 
 # IRSA for AWS Load Balancer Controller
 module "aws_lb_controller_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.0"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.0"
 
-  role_name                              = "${var.cluster_name}-aws-lb-controller"
+  name                                   = "${var.cluster_name}-aws-lb-controller"
   attach_load_balancer_controller_policy = true
 
   oidc_providers = {
@@ -224,10 +233,10 @@ module "aws_lb_controller_irsa" {
 
 # IRSA for MLflow S3 access
 module "mlflow_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.0"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.0"
 
-  role_name = "${var.cluster_name}-mlflow"
+  name = "${var.cluster_name}-mlflow"
 
   oidc_providers = {
     main = {
@@ -236,7 +245,7 @@ module "mlflow_irsa" {
     }
   }
 
-  role_policy_arns = {
+  policies = {
     mlflow_s3 = aws_iam_policy.mlflow_s3.arn
   }
 
@@ -322,7 +331,7 @@ resource "aws_kms_key" "mlops" {
         Sid    = "Allow CloudWatch Logs Service"
         Effect = "Allow"
         Principal = {
-          Service = "logs.${data.aws_region.current.name}.amazonaws.com"
+          Service = "logs.${data.aws_region.current.region}.amazonaws.com"
         }
         Action = [
           "kms:Encrypt",
@@ -334,7 +343,7 @@ resource "aws_kms_key" "mlops" {
         Resource = "*"
         Condition = {
           ArnLike = {
-            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:*"
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:*"
           }
         }
       }
@@ -462,16 +471,10 @@ resource "aws_db_instance" "mlflow" {
 
 # Karpenter - IRSA
 module "karpenter_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.0"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.0"
 
-  role_name                          = "${var.cluster_name}-karpenter"
-  attach_karpenter_controller_policy = true
-
-  karpenter_controller_cluster_name = module.eks.cluster_name
-  karpenter_controller_node_iam_role_arns = [
-    module.eks.eks_managed_node_groups["general"].iam_role_arn
-  ]
+  name = "${var.cluster_name}-karpenter"
 
   oidc_providers = {
     main = {
@@ -480,24 +483,58 @@ module "karpenter_irsa" {
     }
   }
 
-  # Additional policy for instance profile management (required by Karpenter 1.0+)
-  role_policy_arns = {
-    karpenter_instance_profile = aws_iam_policy.karpenter_instance_profile.arn
+  # Karpenter controller policy (replaces removed attach_karpenter_controller_policy in IAM v6)
+  policies = {
+    karpenter_controller = aws_iam_policy.karpenter_controller.arn
   }
 
   tags = var.tags
 }
 
-# Additional IAM policy for Karpenter (instance profile + EC2 permissions)
-# Karpenter 1.0+ uses the "role" field in EC2NodeClass and dynamically creates instance profiles
-# The built-in module policy has restrictive conditions on RunInstances that fail validation
-resource "aws_iam_policy" "karpenter_instance_profile" {
-  name        = "${var.cluster_name}-karpenter-instance-profile"
-  description = "Policy for Karpenter to manage instance profiles and launch EC2 instances"
+# Comprehensive Karpenter controller policy
+# Replaces the built-in attach_karpenter_controller_policy (removed in IAM module v6)
+# and the previous karpenter_instance_profile policy, consolidated into a single policy
+resource "aws_iam_policy" "karpenter_controller" {
+  name        = "${var.cluster_name}-karpenter-controller"
+  description = "Policy for Karpenter controller to manage EC2 instances and instance profiles"
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      {
+        Sid    = "KarpenterEC2ReadActions"
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeAvailabilityZones",
+          "ec2:DescribeImages",
+          "ec2:DescribeInstances",
+          "ec2:DescribeInstanceTypeOfferings",
+          "ec2:DescribeInstanceTypes",
+          "ec2:DescribeLaunchTemplates",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeSpotPriceHistory"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "KarpenterEC2WriteActions"
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateFleet",
+          "ec2:CreateLaunchTemplate",
+          "ec2:CreateTags",
+          "ec2:DeleteLaunchTemplate",
+          "ec2:RunInstances",
+          "ec2:TerminateInstances"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "aws:RequestedRegion" = data.aws_region.current.region
+          }
+        }
+      },
       {
         Sid    = "KarpenterInstanceProfileManagement"
         Effect = "Allow"
@@ -507,14 +544,7 @@ resource "aws_iam_policy" "karpenter_instance_profile" {
           "iam:GetInstanceProfile",
           "iam:TagInstanceProfile",
           "iam:AddRoleToInstanceProfile",
-          "iam:RemoveRoleFromInstanceProfile"
-        ]
-        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:instance-profile/*"
-      },
-      {
-        Sid    = "KarpenterListInstanceProfiles"
-        Effect = "Allow"
-        Action = [
+          "iam:RemoveRoleFromInstanceProfile",
           "iam:ListInstanceProfiles",
           "iam:ListInstanceProfilesForRole"
         ]
@@ -527,10 +557,28 @@ resource "aws_iam_policy" "karpenter_instance_profile" {
         Resource = aws_iam_role.karpenter_node.arn
       },
       {
-        Sid      = "KarpenterEC2RunInstances"
-        Effect   = "Allow"
-        Action   = "ec2:RunInstances"
-        Resource = "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:launch-template/*"
+        Sid    = "KarpenterSSMReadActions"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter"
+        ]
+        Resource = "arn:aws:ssm:*:*:parameter/aws/service/eks/optimized-ami/*"
+      },
+      {
+        Sid    = "KarpenterPricingActions"
+        Effect = "Allow"
+        Action = [
+          "pricing:GetProducts"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "KarpenterEKSActions"
+        Effect = "Allow"
+        Action = [
+          "eks:DescribeCluster"
+        ]
+        Resource = "arn:aws:eks:*:${data.aws_caller_identity.current.account_id}:cluster/${var.cluster_name}"
       }
     ]
   })

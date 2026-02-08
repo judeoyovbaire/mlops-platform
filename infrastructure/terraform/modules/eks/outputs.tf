@@ -54,12 +54,12 @@ output "mlflow_s3_bucket" {
 
 output "mlflow_irsa_role_arn" {
   description = "IAM role ARN for MLflow IRSA"
-  value       = module.mlflow_irsa.iam_role_arn
+  value       = module.mlflow_irsa.arn
 }
 
 output "aws_lb_controller_irsa_role_arn" {
   description = "IAM role ARN for AWS Load Balancer Controller IRSA"
-  value       = module.aws_lb_controller_irsa.iam_role_arn
+  value       = module.aws_lb_controller_irsa.arn
 }
 
 output "mlflow_db_endpoint" {
@@ -81,7 +81,7 @@ output "configure_kubectl" {
 # Karpenter outputs
 output "karpenter_irsa_role_arn" {
   description = "IAM role ARN for Karpenter IRSA"
-  value       = module.karpenter_irsa.iam_role_arn
+  value       = module.karpenter_irsa.arn
 }
 
 output "karpenter_node_role_name" {

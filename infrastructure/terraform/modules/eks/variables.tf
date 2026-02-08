@@ -121,18 +121,18 @@ variable "training_desired_size" {
 
 variable "training_taints" {
   description = "Taints for training node group"
-  type = list(object({
+  type = map(object({
     key    = string
-    value  = string
+    value  = optional(string)
     effect = string
   }))
-  default = [
-    {
+  default = {
+    training = {
       key    = "workload"
       value  = "training"
       effect = "NO_SCHEDULE"
     }
-  ]
+  }
 }
 
 # GPU node group
