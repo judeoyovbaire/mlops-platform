@@ -1,4 +1,4 @@
-# External Secrets Operator - SSM to K8s Secret Sync
+# External Secrets Operator - Secrets Manager to K8s Secret Sync
 
 # IRSA for External Secrets Operator
 module "external_secrets_irsa" {
@@ -15,14 +15,14 @@ module "external_secrets_irsa" {
   }
 
   policies = {
-    ssm_read = aws_iam_policy.external_secrets_ssm.arn
+    secrets_read = aws_iam_policy.external_secrets_sm.arn
   }
 }
 
-# IAM policy for External Secrets to read from SSM
-resource "aws_iam_policy" "external_secrets_ssm" {
-  name        = "${var.cluster_name}-external-secrets-ssm"
-  description = "Allow External Secrets Operator to read from SSM Parameter Store"
+# IAM policy for External Secrets to read from Secrets Manager
+resource "aws_iam_policy" "external_secrets_sm" {
+  name        = "${var.cluster_name}-external-secrets-sm"
+  description = "Allow External Secrets Operator to read from Secrets Manager"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -30,12 +30,11 @@ resource "aws_iam_policy" "external_secrets_ssm" {
       {
         Effect = "Allow"
         Action = [
-          "ssm:GetParameter",
-          "ssm:GetParameters",
-          "ssm:GetParametersByPath",
-          "ssm:DescribeParameters"
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:ListSecretVersionIds"
         ]
-        Resource = "arn:aws:ssm:${var.aws_region}:*:parameter/${var.cluster_name}/*"
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.cluster_name}/*"
       },
       {
         Effect = "Allow"
@@ -45,7 +44,7 @@ resource "aws_iam_policy" "external_secrets_ssm" {
         Resource = "*"
         Condition = {
           StringEquals = {
-            "kms:ViaService" = "ssm.${var.aws_region}.amazonaws.com"
+            "kms:ViaService" = "secretsmanager.${var.aws_region}.amazonaws.com"
           }
         }
       }
@@ -77,17 +76,17 @@ resource "helm_release" "external_secrets" {
   depends_on = [time_sleep.alb_controller_ready]
 }
 
-# ClusterSecretStore for AWS SSM Parameter Store
+# ClusterSecretStore for AWS Secrets Manager
 resource "kubectl_manifest" "cluster_secret_store" {
   yaml_body = <<-YAML
     apiVersion: external-secrets.io/v1
     kind: ClusterSecretStore
     metadata:
-      name: aws-ssm
+      name: aws-sm
     spec:
       provider:
         aws:
-          service: ParameterStore
+          service: SecretsManager
           region: ${var.aws_region}
           auth:
             jwt:
@@ -99,7 +98,7 @@ resource "kubectl_manifest" "cluster_secret_store" {
   depends_on = [helm_release.external_secrets]
 }
 
-# External Secret for MLflow (syncs SSM to K8s Secret)
+# External Secret for MLflow (syncs Secrets Manager to K8s Secret)
 resource "kubectl_manifest" "mlflow_external_secret" {
   yaml_body = <<-YAML
     apiVersion: external-secrets.io/v1
@@ -110,7 +109,7 @@ resource "kubectl_manifest" "mlflow_external_secret" {
     spec:
       refreshInterval: 1h
       secretStoreRef:
-        name: aws-ssm
+        name: aws-sm
         kind: ClusterSecretStore
       target:
         name: mlflow-db-credentials
@@ -118,7 +117,8 @@ resource "kubectl_manifest" "mlflow_external_secret" {
       data:
         - secretKey: password
           remoteRef:
-            key: /${var.cluster_name}/mlflow/db-password
+            key: ${var.cluster_name}/mlflow/db-password
+            property: password
   YAML
 
   depends_on = [
@@ -138,7 +138,7 @@ resource "kubectl_manifest" "argo_minio_external_secret" {
     spec:
       refreshInterval: 1h
       secretStoreRef:
-        name: aws-ssm
+        name: aws-sm
         kind: ClusterSecretStore
       target:
         name: minio-credentials
@@ -146,7 +146,8 @@ resource "kubectl_manifest" "argo_minio_external_secret" {
       data:
         - secretKey: root-password
           remoteRef:
-            key: /${var.cluster_name}/minio/root-password
+            key: ${var.cluster_name}/minio/root-password
+            property: password
   YAML
 
   depends_on = [

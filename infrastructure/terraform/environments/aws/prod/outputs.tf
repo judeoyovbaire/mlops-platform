@@ -118,8 +118,8 @@ output "access_info" {
     RDS Endpoint: ${module.eks.mlflow_db_endpoint}
 
   External Secrets:
-    ClusterSecretStore: aws-ssm
-    Secrets auto-sync from SSM to Kubernetes every 1h
+    ClusterSecretStore: aws-sm
+    Secrets auto-sync from Secrets Manager to Kubernetes every 1h
 
   Verify deployment:
     kubectl get pods -A
