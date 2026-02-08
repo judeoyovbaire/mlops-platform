@@ -349,7 +349,9 @@ resource "aws_iam_role_policy" "terraform_iam" {
         ]
         Resource = [
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${var.project_name}*",
-          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/AmazonEKS_*"
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/AmazonEKS_*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/AWS_Load_Balancer_Controller*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/EBS_CSI*"
         ]
       },
       {
