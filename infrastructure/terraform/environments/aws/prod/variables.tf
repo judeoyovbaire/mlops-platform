@@ -87,6 +87,12 @@ variable "tags" {
 # Inference Domain
 # =============================================================================
 
+variable "acm_certificate_arn" {
+  description = "ACM certificate ARN for HTTPS ingress. Must be set for production."
+  type        = string
+  default     = ""
+}
+
 variable "kserve_ingress_domain" {
   description = "Domain for KServe inference services"
   type        = string

@@ -229,8 +229,8 @@ resource "google_container_cluster" "main" {
 
   resource_labels = var.labels
 
-  # Deletion protection
-  deletion_protection = false
+  # Deletion protection - enabled in production to prevent accidental deletion
+  deletion_protection = var.environment == "prod"
 
   depends_on = [
     google_compute_subnetwork.gke,

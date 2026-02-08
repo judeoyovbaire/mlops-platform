@@ -14,7 +14,7 @@ resource "azurerm_storage_account" "mlflow" {
   resource_group_name      = azurerm_resource_group.main.name
   location                 = azurerm_resource_group.main.location
   account_tier             = "Standard"
-  account_replication_type = "LRS" # Use GRS for production
+  account_replication_type = var.environment == "prod" ? "GRS" : "LRS"
   min_tls_version          = "TLS1_2"
 
   # Enable blob versioning for model artifacts
@@ -57,7 +57,7 @@ resource "azurerm_key_vault" "main" {
 
   # Soft delete protection
   soft_delete_retention_days = 7
-  purge_protection_enabled   = false # Set true for production
+  purge_protection_enabled   = var.environment == "prod"
 
   # Network rules - deny by default, allow AKS subnet and Azure services
   network_acls {
@@ -119,7 +119,7 @@ resource "azurerm_postgresql_flexible_server" "mlflow" {
   public_network_access_enabled = false
 
   backup_retention_days        = var.postgresql_backup_retention_days
-  geo_redundant_backup_enabled = false # Enable for production
+  geo_redundant_backup_enabled = var.environment == "prod"
 
   # High availability (optional, increases cost)
   dynamic "high_availability" {
@@ -128,6 +128,10 @@ resource "azurerm_postgresql_flexible_server" "mlflow" {
       mode                      = "ZoneRedundant"
       standby_availability_zone = "2"
     }
+  }
+
+  lifecycle {
+    ignore_changes = [administrator_password]
   }
 
   tags = var.tags

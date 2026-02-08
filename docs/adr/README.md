@@ -13,6 +13,9 @@ An Architecture Decision Record captures an important architectural decision mad
 | [001](001-kserve-over-seldon.md) | Use KServe over Seldon Core for Model Serving | Accepted | 2024-01 |
 | [002](002-karpenter-over-cluster-autoscaler.md) | Use Karpenter over Cluster Autoscaler | Accepted | 2024-01 |
 | [003](003-rawdeployment-mode-kserve.md) | Use RawDeployment Mode for KServe | Accepted | 2024-01 |
+| [004](004-multi-cloud-infrastructure-strategy.md) | Multi-Cloud Infrastructure Strategy | Accepted | 2025-01 |
+| [005](005-oidc-authentication-over-static-credentials.md) | OIDC Authentication Over Static Credentials | Accepted | 2025-01 |
+| [006](006-argo-workflows-over-kubeflow-pipelines.md) | Argo Workflows Over Kubeflow Pipelines | Accepted | 2025-01 |
 
 ## Creating a New ADR
 

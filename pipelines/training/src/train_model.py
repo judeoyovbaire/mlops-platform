@@ -7,8 +7,8 @@ to MLflow, and saves the trained model.
 
 import argparse
 import os
-import signal
 import sys
+import threading
 from dataclasses import dataclass
 
 import joblib
@@ -29,32 +29,34 @@ logger = get_logger(__name__)
 MLFLOW_CONNECTION_TIMEOUT = 30
 
 
-class TimeoutError(Exception):
-    """Raised when an operation times out."""
+class MLflowTimeoutError(Exception):
+    """Raised when an MLflow operation times out."""
 
     pass
 
 
-class timeout:
-    """Context manager for timing out operations."""
+class mlflow_timeout:
+    """Cross-platform context manager for timing out operations using threading."""
 
     def __init__(self, seconds: int, error_message: str = "Operation timed out"):
         self.seconds = seconds
         self.error_message = error_message
+        self._timer: threading.Timer | None = None
+        self._timed_out = False
 
-    def _handle_timeout(self, signum, frame):
-        raise TimeoutError(self.error_message)
+    def _handle_timeout(self) -> None:
+        self._timed_out = True
 
-    def __enter__(self):
-        # Only use signal-based timeout on Unix systems
-        if hasattr(signal, "SIGALRM"):
-            signal.signal(signal.SIGALRM, self._handle_timeout)
-            signal.alarm(self.seconds)
+    def __enter__(self) -> "mlflow_timeout":
+        self._timer = threading.Timer(self.seconds, self._handle_timeout)
+        self._timer.start()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if hasattr(signal, "SIGALRM"):
-            signal.alarm(0)
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        if self._timer is not None:
+            self._timer.cancel()
+        if self._timed_out:
+            raise MLflowTimeoutError(self.error_message)
 
 
 @dataclass
@@ -97,7 +99,7 @@ def train_model(
     random_state: int = 42,
     cv_folds: int = 5,
     use_cross_validation: bool = True,
-    mlflow_timeout: int = MLFLOW_CONNECTION_TIMEOUT,
+    mlflow_timeout_seconds: int = MLFLOW_CONNECTION_TIMEOUT,
 ) -> TrainingResult:
     """
     Train a RandomForest classifier and log to MLflow.
@@ -116,7 +118,7 @@ def train_model(
         random_state: Random seed for reproducibility (default: 42).
         cv_folds: Number of cross-validation folds (default: 5).
         use_cross_validation: Whether to perform cross-validation (default: True).
-        mlflow_timeout: Timeout in seconds for MLflow connection (default: 30).
+        mlflow_timeout_seconds: Timeout in seconds for MLflow connection (default: 30).
 
     Returns:
         TrainingResult containing model path, run ID, metrics, and CV scores.
@@ -126,14 +128,29 @@ def train_model(
     """
     logger.info(f"Starting model training with data from {input_path}")
 
+    # Input validation
+    if n_estimators < 1:
+        raise ModelTrainingError(f"n_estimators must be >= 1, got: {n_estimators}")
+    if max_depth < 1:
+        raise ModelTrainingError(f"max_depth must be >= 1, got: {max_depth}")
+    if not 0.0 < test_size < 1.0:
+        raise ModelTrainingError(f"test_size must be between 0 and 1 (exclusive), got: {test_size}")
+    if mlflow_timeout_seconds < 1 or mlflow_timeout_seconds > 300:
+        raise ModelTrainingError(
+            f"mlflow_timeout_seconds must be between 1 and 300, got: {mlflow_timeout_seconds}"
+        )
+
     try:
         # Setup MLflow with timeout to prevent indefinite hangs
-        logger.info(f"Connecting to MLflow at {mlflow_uri} (timeout: {mlflow_timeout}s)")
-        with timeout(mlflow_timeout, f"MLflow connection timed out after {mlflow_timeout}s"):
+        logger.info(f"Connecting to MLflow at {mlflow_uri} (timeout: {mlflow_timeout_seconds}s)")
+        with mlflow_timeout(
+            mlflow_timeout_seconds,
+            f"MLflow connection timed out after {mlflow_timeout_seconds}s",
+        ):
             mlflow.set_tracking_uri(mlflow_uri)
             mlflow.set_experiment(model_name)
         logger.info(f"MLflow tracking URI: {mlflow_uri}, Experiment: {model_name}")
-    except TimeoutError as e:
+    except MLflowTimeoutError as e:
         raise ModelTrainingError(str(e)) from e
     except MlflowException as e:
         raise ModelTrainingError(f"Failed to setup MLflow: {e}") from e
@@ -284,7 +301,7 @@ if __name__ == "__main__":
             args.random_state,
             args.cv_folds,
             not args.no_cv,
-            args.mlflow_timeout,
+            mlflow_timeout_seconds=args.mlflow_timeout,
         )
         cv_info = ""
         if result.cv_mean is not None:

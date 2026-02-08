@@ -10,7 +10,7 @@ import json
 import logging
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -323,7 +323,7 @@ class DriftDetector:
 
         return DriftReport(
             model_name=self.model_name,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             features_analyzed=n_features,
             features_drifted=n_drifted,
             overall_drift_score=overall_score,

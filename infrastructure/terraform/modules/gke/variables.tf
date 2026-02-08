@@ -108,6 +108,17 @@ variable "enable_private_endpoint" {
   default     = true
 }
 
+variable "environment" {
+  description = "Deployment environment"
+  type        = string
+  default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be dev, staging, or prod."
+  }
+}
+
 variable "master_authorized_networks" {
   description = "List of CIDR blocks authorized to access the master. Must be explicitly configured for security."
   type = list(object({
@@ -116,6 +127,11 @@ variable "master_authorized_networks" {
   }))
   # No default - must be explicitly provided for security
   # Example: [{ cidr_block = "10.0.0.0/8", display_name = "Internal" }]
+
+  validation {
+    condition     = length(var.master_authorized_networks) > 0
+    error_message = "At least one authorized network must be configured for cluster security."
+  }
 }
 
 # =============================================================================

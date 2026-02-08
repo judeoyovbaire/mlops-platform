@@ -108,6 +108,10 @@ def load_data(url: str, output_path: str, timeout: int = DEFAULT_TIMEOUT) -> Loa
     """
     logger.info(f"Starting data load from {url}")
 
+    # Validate timeout range
+    if timeout < 1 or timeout > 300:
+        raise DataLoadError(f"Timeout must be between 1 and 300 seconds, got: {timeout}")
+
     # Validate URL format
     validate_url(url)
 

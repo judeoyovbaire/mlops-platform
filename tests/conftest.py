@@ -12,7 +12,7 @@ import pytest
 from sklearn.datasets import load_iris
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def iris_dataframe():
     """Load iris dataset as a pandas DataFrame."""
     iris = load_iris()
@@ -28,13 +28,13 @@ def iris_dataframe():
     return df
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def sample_features():
     """Sample feature array for testing predictions."""
     return np.array([[5.1, 3.5, 1.4, 0.2]])  # setosa
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def sample_batch_features():
     """Batch of sample features for testing."""
     return np.array(

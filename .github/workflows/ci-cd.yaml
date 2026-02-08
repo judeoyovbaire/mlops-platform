@@ -236,11 +236,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Install yamllint
+        run: pip install yamllint
+
       - name: Validate AWS Helm values
         run: |
           for f in infrastructure/helm/aws/*.yaml; do
             echo "Checking $f..."
             python3 -c "import yaml; yaml.safe_load(open('$f'))"
+            yamllint -d relaxed "$f"
           done
 
       - name: Validate Azure Helm values
@@ -248,6 +252,7 @@ jobs:
           for f in infrastructure/helm/azure/*.yaml; do
             echo "Checking $f..."
             python3 -c "import yaml; yaml.safe_load(open('$f'))"
+            yamllint -d relaxed "$f"
           done
 
       - name: Validate GCP Helm values
@@ -255,6 +260,15 @@ jobs:
           for f in infrastructure/helm/gcp/*.yaml; do
             echo "Checking $f..."
             python3 -c "import yaml; yaml.safe_load(open('$f'))"
+            yamllint -d relaxed "$f"
+          done
+
+      - name: Validate Common Helm values
+        run: |
+          for f in infrastructure/helm/common/*.yaml; do
+            echo "Checking $f..."
+            python3 -c "import yaml; yaml.safe_load(open('$f'))"
+            yamllint -d relaxed "$f"
           done
 
   security-scan:
@@ -280,6 +294,20 @@ jobs:
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
+
+      - name: Scan Dockerfiles with Trivy
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: 'config'
+          scan-ref: 'components/'
+          format: 'table'
+          severity: 'HIGH,CRITICAL'
+          skip-dirs: '**/.terraform'
+
+      - name: Audit Python dependencies
+        run: |
+          pip install pip-audit
+          pip-audit --requirement <(pip freeze) --ignore-vuln PYSEC-0 || true
 
 
   test-python:
@@ -749,9 +777,17 @@ jobs:
           path: infrastructure/terraform/environments/aws/${{ github.event.inputs.environment }}/terraform.tfstate.backup
           retention-days: 30
 
-      - name: Terraform Apply
+      - name: Terraform Apply - Stage 1 (EKS Infrastructure)
         working-directory: infrastructure/terraform/environments/aws/${{ github.event.inputs.environment }}
-        run: terraform apply -auto-approve
+        run: |
+          echo "Stage 1: Deploying EKS cluster and infrastructure..."
+          terraform apply -auto-approve -target=module.eks
+
+      - name: Terraform Apply - Stage 2 (Kubernetes Resources)
+        working-directory: infrastructure/terraform/environments/aws/${{ github.event.inputs.environment }}
+        run: |
+          echo "Stage 2: Deploying Helm releases and Kubernetes resources..."
+          terraform apply -auto-approve
 
       - name: Get Outputs
         working-directory: infrastructure/terraform/environments/aws/${{ github.event.inputs.environment }}

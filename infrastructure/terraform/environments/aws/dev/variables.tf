@@ -61,6 +61,12 @@ variable "tags" {
   }
 }
 
+variable "acm_certificate_arn" {
+  description = "ACM certificate ARN for HTTPS ingress. Empty string disables HTTPS redirect."
+  type        = string
+  default     = ""
+}
+
 variable "kserve_ingress_domain" {
   description = "Domain for KServe inference services ingress"
   type        = string

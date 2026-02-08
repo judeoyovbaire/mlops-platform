@@ -51,7 +51,7 @@ extraEnvVars:
 extraArgs:
   host: "0.0.0.0"
   allowed-hosts: "*"
-  workers: "1"
+  workers: "2"
 
 # Disable chart's gunicorn logging (uses --gunicorn-opts which breaks security middleware)
 # MLflow 3.x uses uvicorn by default which supports --allowed-hosts
@@ -104,7 +104,9 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /health
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: "${acm_certificate_arn}"
   hosts:
     - host: mlflow.local
       paths:

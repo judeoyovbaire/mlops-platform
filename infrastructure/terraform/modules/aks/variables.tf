@@ -23,6 +23,17 @@ variable "kubernetes_version" {
   default     = "1.29"
 }
 
+variable "environment" {
+  description = "Deployment environment"
+  type        = string
+  default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be dev, staging, or prod."
+  }
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)

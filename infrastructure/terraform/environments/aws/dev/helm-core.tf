@@ -144,10 +144,11 @@ resource "helm_release" "mlflow" {
 
   values = [
     templatefile("${path.module}/../../../../helm/aws/mlflow-values.yaml", {
-      db_host    = split(":", module.eks.mlflow_db_endpoint)[0]
-      db_name    = module.eks.mlflow_db_name
-      s3_bucket  = module.eks.mlflow_s3_bucket
-      aws_region = var.aws_region
+      db_host             = split(":", module.eks.mlflow_db_endpoint)[0]
+      db_name             = module.eks.mlflow_db_name
+      s3_bucket           = module.eks.mlflow_s3_bucket
+      aws_region          = var.aws_region
+      acm_certificate_arn = var.acm_certificate_arn
     })
   ]
 

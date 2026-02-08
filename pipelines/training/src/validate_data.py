@@ -81,6 +81,14 @@ def validate_data(
     """
     logger.info(f"Starting validation of {input_path}")
 
+    # Input validation
+    if not 0.0 <= null_threshold <= 1.0:
+        raise DataValidationError(
+            f"null_threshold must be between 0.0 and 1.0, got: {null_threshold}"
+        )
+    if min_rows < 1:
+        raise DataValidationError(f"min_rows must be >= 1, got: {min_rows}")
+
     try:
         df = pd.read_csv(input_path)
     except FileNotFoundError as e:
@@ -117,7 +125,7 @@ def validate_data(
     for col in df.columns:
         if df[col].isnull().any():
             null_pct = df[col].isnull().sum() / len(df) * 100
-            if df[col].dtype in ["float64", "int64"]:
+            if pd.api.types.is_numeric_dtype(df[col]):
                 # Numeric: impute with median
                 median_val = df[col].median()
                 df[col] = df[col].fillna(median_val)
