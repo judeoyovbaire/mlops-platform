@@ -487,6 +487,15 @@ resource "aws_iam_role_policy" "terraform_services" {
         Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}*"
       },
       {
+        Sid    = "SSMPublicParameterAccess"
+        Effect = "Allow"
+        Action = "ssm:GetParameter"
+        Resource = [
+          "arn:aws:ssm:${var.aws_region}::parameter/aws/service/eks/*",
+          "arn:aws:ssm:${var.aws_region}::parameter/aws/service/bottlerocket/*"
+        ]
+      },
+      {
         Sid      = "SSMDescribe"
         Effect   = "Allow"
         Action   = "ssm:DescribeParameters"
