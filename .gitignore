@@ -29,6 +29,19 @@ env/
 *-secrets.yaml
 secrets/
 
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Cloud credentials (never commit)
+kubeconfig*
+.kube/
+gcp-credentials*.json
+service-account-key*.json
+*aws_credentials*
+
 # Helm
 *.tgz
 charts/

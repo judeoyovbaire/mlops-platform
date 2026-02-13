@@ -43,7 +43,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
-  TERRAFORM_VERSION: "1.10.0"
+  TERRAFORM_VERSION: "1.14.5"
   AWS_REGION: "eu-west-1"
   AZURE_LOCATION: "westeurope"
   GCP_REGION: "europe-west4"

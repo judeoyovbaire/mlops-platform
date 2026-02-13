@@ -27,7 +27,7 @@ variable "zones" {
 variable "kubernetes_version" {
   description = "Kubernetes version for GKE"
   type        = string
-  default     = "1.32"
+  default     = "1.33"
 }
 
 variable "release_channel" {
@@ -205,19 +205,19 @@ variable "cloudsql_high_availability" {
 variable "helm_nginx_ingress_version" {
   description = "NGINX Ingress Controller Helm chart version"
   type        = string
-  default     = "4.14.1"
+  default     = "4.14.3"
 }
 
 variable "helm_cert_manager_version" {
   description = "cert-manager Helm chart version"
   type        = string
-  default     = "v1.19.1"
+  default     = "v1.19.3"
 }
 
 variable "helm_argocd_version" {
   description = "ArgoCD Helm chart version"
   type        = string
-  default     = "7.9.0"
+  default     = "9.4.2"
 }
 
 variable "helm_kserve_version" {
@@ -235,7 +235,7 @@ variable "helm_mlflow_version" {
 variable "helm_argo_workflows_version" {
   description = "Argo Workflows Helm chart version"
   type        = string
-  default     = "0.46.1"
+  default     = "0.47.3"
 }
 
 variable "helm_minio_version" {
@@ -247,25 +247,25 @@ variable "helm_minio_version" {
 variable "helm_prometheus_stack_version" {
   description = "kube-prometheus-stack Helm chart version"
   type        = string
-  default     = "72.6.2"
+  default     = "81.6.7"
 }
 
 variable "helm_kyverno_version" {
   description = "Kyverno Helm chart version"
   type        = string
-  default     = "3.3.4"
+  default     = "3.6.2"
 }
 
 variable "helm_tetragon_version" {
   description = "Tetragon Helm chart version"
   type        = string
-  default     = "1.3.0"
+  default     = "1.6.0"
 }
 
 variable "helm_external_secrets_version" {
   description = "External Secrets Operator Helm chart version"
   type        = string
-  default     = "1.1.1"
+  default     = "1.2.1"
 }
 
 variable "helm_loki_version" {

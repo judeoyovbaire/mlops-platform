@@ -3,7 +3,7 @@
 
 .PHONY: help deploy deploy-aws deploy-azure deploy-gcp status status-aws status-azure status-gcp \
         destroy destroy-aws destroy-azure destroy-gcp secrets secrets-aws secrets-azure secrets-gcp \
-        validate lint test test-unit test-cov clean deps \
+        validate lint format test test-unit test-cov clean deps \
         terraform-init terraform-plan terraform-apply terraform-destroy \
         terraform-init-aws terraform-plan-aws terraform-apply-aws terraform-destroy-aws \
         terraform-init-azure terraform-plan-azure terraform-apply-azure terraform-destroy-azure \
@@ -57,6 +57,7 @@ help:
 	@echo "Validation & Testing:"
 	@echo "  make validate           - Validate all manifests"
 	@echo "  make lint               - Lint Python and Terraform code"
+	@echo "  make format             - Auto-format Python and Terraform code"
 	@echo "  make test               - Run tests"
 	@echo ""
 	@echo "Development (after deployment):"
@@ -249,6 +250,15 @@ lint-terraform:
 	@echo "Linting Terraform code..."
 	$(TERRAFORM) fmt -check -recursive infrastructure/terraform/
 
+format:
+	@echo "Formatting code..."
+	@if command -v ruff > /dev/null; then \
+		ruff format pipelines/ examples/; \
+		ruff check --fix pipelines/ examples/; \
+	fi
+	$(TERRAFORM) fmt -recursive infrastructure/terraform/
+	@echo "Formatting complete!"
+
 test: test-unit
 	@echo "All tests passed!"
 
@@ -312,7 +322,7 @@ deploy-pipeline:
 
 deps:
 	@echo "Installing development dependencies..."
-	pip install ruff mypy pytest kfp mlflow pandas scikit-learn boto3
+	pip install -e ".[dev]"
 
 clean:
 	@echo "Cleaning generated files..."

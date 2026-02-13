@@ -92,14 +92,14 @@ The platform uses a layered architecture that maximizes code reuse while leverag
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                         Infrastructure Layer (Cloud-Specific)               │
 │                                                                             │
-│  AWS EKS                           │  Azure AKS                             │
-│  ─────────────────────────────────│──────────────────────────────────────   │
-│  • Karpenter (GPU autoscaling)    │  • KEDA (event-driven autoscaling)      │
-│  • ALB Ingress Controller         │  • NGINX Ingress Controller             │
-│  • S3 + RDS PostgreSQL            │  • Blob Storage + PostgreSQL Flexible   │
-│  • IRSA (pod identity)            │  • Workload Identity                    │
-│  • SSM Parameter Store            │  • Azure Key Vault                      │
-│  • ECR (container registry)       │  • ACR (container registry)             │
+│  AWS EKS                    │  Azure AKS                │  GCP GKE                    │
+│  ──────────────────────────│──────────────────────────│────────────────────────────  │
+│  • Karpenter (GPU scaling) │  • KEDA (event-driven)   │  • NAP (auto-provisioning)  │
+│  • ALB Ingress Controller  │  • NGINX Ingress         │  • NGINX Ingress            │
+│  • S3 + RDS PostgreSQL     │  • Blob + PostgreSQL     │  • GCS + Cloud SQL          │
+│  • IRSA (pod identity)     │  • Workload Identity     │  • Workload Identity Fed    │
+│  • Secrets Manager         │  • Azure Key Vault       │  • Secret Manager           │
+│  • ECR (registry)          │  • ACR (registry)        │  • Artifact Registry        │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -363,9 +363,9 @@ infrastructure/terraform/
 
 ### Helm Releases (via Terraform)
 
-Both environments deploy the same components with cloud-specific configurations:
+All environments deploy the same components with cloud-specific configurations:
 
-| Component                    | AWS Chart                                | Azure Chart                    |
+| Component                    | AWS Chart                                | Azure/GCP Chart                |
 |------------------------------|------------------------------------------|--------------------------------|
 | Ingress                      | eks-charts/aws-load-balancer-controller  | ingress-nginx/ingress-nginx    |
 | cert-manager                 | jetstack/cert-manager                    | jetstack/cert-manager          |
@@ -375,10 +375,13 @@ Both environments deploy the same components with cloud-specific configurations:
 | MLflow                       | community-charts/mlflow                  | community-charts/mlflow        |
 | Argo Workflows               | argo/argo-workflows                      | argo/argo-workflows            |
 | Prometheus Stack             | prometheus-community/kube-prometheus-stack | prometheus-community/kube-prometheus-stack |
+| Loki                         | grafana/loki                             | grafana/loki                   |
+| Tempo                        | grafana/tempo                            | grafana/tempo                  |
+| OpenTelemetry Collector      | open-telemetry/opentelemetry-collector   | open-telemetry/opentelemetry-collector |
 | External Secrets             | external-secrets/external-secrets        | external-secrets/external-secrets |
 | Kyverno                      | kyverno/kyverno                          | kyverno/kyverno                |
 | Tetragon                     | cilium/tetragon                          | cilium/tetragon                |
-| GPU Autoscaling              | karpenter/karpenter                      | kedacore/keda                  |
+| GPU Autoscaling              | karpenter/karpenter                      | kedacore/keda (Azure)          |
 
 ## Data Flow
 
@@ -614,7 +617,7 @@ The platform includes ServiceMonitors for metrics collection:
 - ServiceMonitor: mlflow          # MLflow tracking server
 - ServiceMonitor: kserve-inference # Inference services
 - ServiceMonitor: keda            # KEDA metrics (Azure)
-- PodMonitor: kubeflow-pipelines  # Pipeline runs
+- PodMonitor: argo-workflows      # Pipeline runs
 ```
 
 ### Alerting Rules
@@ -718,12 +721,13 @@ Push to main
     │
     ├── validate-manifests (kubeconform)
     ├── lint-python (ruff)
-    ├── validate-terraform (AWS + Azure)
+    ├── validate-terraform (AWS + Azure + GCP)
     ├── security-scan (trivy)
     └── test-python (pipeline compilation)
          │
          ├── terraform-plan-aws (parallel)
-         └── terraform-plan-azure (parallel)
+         ├── terraform-plan-azure (parallel)
+         └── terraform-plan-gcp (parallel)
               │
               └── All pass → Ready for deployment
 ```
@@ -862,22 +866,26 @@ See [drift detection component](../components/drift-detection/) for implementati
 
 ## Component Versions
 
-Current versions deployed by the platform (aligned across both clouds):
+Current versions deployed by the platform (aligned across all clouds):
 
 | Component | Version | Notes |
 |-----------|---------|-------|
 | MLflow | 3.x (chart 1.8.1) | Helm chart with cloud-native storage |
 | KServe | 0.16.0 | CNCF Incubating, RawDeployment mode |
-| Argo Workflows | 0.46.1 | ML pipeline execution engine |
-| Karpenter (AWS) | 1.8.0 | GPU autoscaling with SPOT support |
-| KEDA (Azure) | 2.18.3 | Event-driven pod autoscaling |
-| ArgoCD | 7.9.0 | Chart deploys ArgoCD v2.x |
-| AWS ALB Controller | 1.16.0 | Kubernetes Ingress with ALB |
-| NGINX Ingress | 4.14.1 | Kubernetes Ingress with Azure LB |
-| cert-manager | 1.19.1 | TLS certificate management |
-| Prometheus Stack | 72.6.2 | Monitoring and alerting |
-| External Secrets | 1.1.1 | SSM / Key Vault integration |
-| Kyverno | 3.3.4 | Policy engine |
-| Tetragon | 1.3.0 | Runtime security |
+| Argo Workflows | 0.47.3 | ML pipeline execution engine |
+| Karpenter (AWS) | 1.8.3 | GPU autoscaling with SPOT support |
+| KEDA (Azure) | 2.19.0 | Event-driven pod autoscaling |
+| ArgoCD | 9.4.2 | Chart deploys ArgoCD v2.x |
+| AWS ALB Controller | 1.17.1 | Kubernetes Ingress with ALB |
+| NGINX Ingress | 4.14.3 | Kubernetes Ingress (Azure/GCP) |
+| cert-manager | 1.19.3 | TLS certificate management |
+| Prometheus Stack | 81.6.7 | Monitoring and alerting |
+| Loki | 6.24.0 | Log aggregation |
+| Tempo | 1.15.0 | Distributed tracing |
+| OpenTelemetry Collector | 0.108.0 | Unified telemetry pipeline |
+| External Secrets | 1.2.1 | SSM / Key Vault / Secret Manager integration |
+| Kyverno | 3.6.2 | Policy engine |
+| Tetragon | 1.6.0 | Runtime security |
+| MinIO | 5.4.0 | S3-compatible object storage |
 | Chaos Mesh | 2.8.1 | Chaos engineering and resilience testing |
 | vLLM | 0.8.0 | High-throughput LLM inference |

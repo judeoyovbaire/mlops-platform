@@ -96,13 +96,13 @@ variable "helm_aws_lb_controller_version" {
 variable "helm_cert_manager_version" {
   description = "cert-manager Helm chart version"
   type        = string
-  default     = "v1.19.2"
+  default     = "v1.19.3"
 }
 
 variable "helm_argocd_version" {
   description = "ArgoCD Helm chart version"
   type        = string
-  default     = "9.3.4"
+  default     = "9.4.2"
 }
 
 variable "helm_kserve_version" {
@@ -120,7 +120,7 @@ variable "helm_mlflow_version" {
 variable "helm_argo_workflows_version" {
   description = "Argo Workflows Helm chart version"
   type        = string
-  default     = "0.47.1"
+  default     = "0.47.3"
 }
 
 variable "helm_minio_version" {
@@ -132,7 +132,7 @@ variable "helm_minio_version" {
 variable "helm_prometheus_stack_version" {
   description = "kube-prometheus-stack Helm chart version"
   type        = string
-  default     = "81.2.0"
+  default     = "81.6.7"
 }
 
 variable "helm_karpenter_version" {

@@ -245,7 +245,7 @@ flowchart LR
 | **Pod Identity** | IRSA | Workload Identity | Workload Identity Federation |
 | **Secrets** | External Secrets + SSM | External Secrets + Key Vault | External Secrets + Secret Manager |
 | **Security** | PSA, Kyverno, Tetragon | PSA, Kyverno, Tetragon | PSA, Kyverno, Tetragon |
-| **Monitoring** | Prometheus + Grafana | Prometheus + Grafana | Prometheus + Grafana |
+| **Monitoring** | Prometheus + Grafana + Loki + Tempo | Prometheus + Grafana + Loki + Tempo | Prometheus + Grafana + Loki + Tempo |
 | **Network Observability** | VPC Flow Logs | NSG Flow Logs + Traffic Analytics | VPC Flow Logs |
 | **Backup** | AWS Backup (RDS) | Built-in PostgreSQL Backup | Cloud SQL Backup |
 | **Cost Management** | Cost Dashboard (Grafana) | Cost Dashboard (Grafana) | Cost Dashboard (Grafana) |
@@ -255,19 +255,25 @@ flowchart LR
 
 | Component | Technology | Version | Purpose |
 |-----------|------------|---------|---------|
-| Pipeline Orchestration | Argo Workflows | 0.46.1 | ML workflow automation |
-| Experiment Tracking | MLflow | 3.x | Model versioning & metrics |
+| Pipeline Orchestration | Argo Workflows | 0.47.3 | ML workflow automation |
+| Experiment Tracking | MLflow | 3.x (chart 1.8.1) | Model versioning & metrics |
 | Model Serving | KServe | 0.16.0 | Production inference (CNCF) |
-| GPU Autoscaling (AWS) | Karpenter | 1.8.0 | Dynamic GPU node provisioning |
-| Event Autoscaling (Azure) | KEDA | 2.18.3 | Event-driven pod scaling |
+| GPU Autoscaling (AWS) | Karpenter | 1.8.3 | Dynamic GPU node provisioning |
+| Event Autoscaling (Azure) | KEDA | 2.19.0 | Event-driven pod scaling |
 | GPU Autoscaling (GCP) | GKE NAP | - | Node Auto-provisioning |
-| GitOps | ArgoCD | 7.9.0 | Declarative deployments |
-| Ingress (AWS) | AWS ALB Controller | 1.16.0 | External load balancing |
-| Ingress (Azure/GCP) | NGINX Ingress | 4.14.1 | External load balancing |
-| TLS | cert-manager | 1.19.1 | Certificate management |
-| Monitoring | Prometheus + Grafana | 72.6.2 | Observability |
-| Resilience Testing | Chaos Mesh | 2.7.0 | Chaos engineering |
-| Infrastructure | Terraform | 1.6+ | IaC for EKS/AKS/GKE |
+| GitOps | ArgoCD | 9.4.2 | Declarative deployments |
+| Ingress (AWS) | AWS ALB Controller | 1.17.1 | External load balancing |
+| Ingress (Azure/GCP) | NGINX Ingress | 4.14.3 | External load balancing |
+| TLS | cert-manager | 1.19.3 | Certificate management |
+| Monitoring | Prometheus + Grafana | 81.6.7 | Observability |
+| Log Aggregation | Loki | 6.24.0 | Centralized logging |
+| Distributed Tracing | Tempo | 1.15.0 | Request tracing |
+| Telemetry | OpenTelemetry Collector | 0.108.0 | Unified telemetry pipeline |
+| Security Policy | Kyverno | 3.6.2 | Policy-as-code engine |
+| Runtime Security | Tetragon | 1.6.0 | eBPF runtime monitoring |
+| Secrets | External Secrets Operator | 1.2.1 | Cloud secrets sync |
+| Resilience Testing | Chaos Mesh | 2.8.1 | Chaos engineering |
+| Infrastructure | Terraform | 1.14+ | IaC for EKS/AKS/GKE |
 | CI/CD | GitHub Actions | - | Automated testing |
 
 ## Project Structure
@@ -345,7 +351,7 @@ mlops-platform/
 - gke-gcloud-auth-plugin (`gcloud components install gke-gcloud-auth-plugin`)
 
 **Common:**
-- Terraform 1.6+
+- Terraform 1.10+
 - kubectl
 - Helm 3.x
 - Python 3.10+
@@ -433,6 +439,7 @@ make destroy-gcp           # Destroy GCP resources
 # Validation & Testing
 make validate              # Validate Terraform and Python
 make lint                  # Lint Python and Terraform code
+make format                # Auto-format Python and Terraform code
 make test                  # Run unit tests
 
 # Development (after deployment - works with any cloud)
@@ -566,7 +573,7 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 | Resource | Purpose |
 |----------|---------|
 | VPC Network | Networking with Cloud NAT for egress |
-| GKE Standard Cluster | Managed Kubernetes (v1.32, Stable channel) |
+| GKE Standard Cluster | Managed Kubernetes (v1.33, Stable channel) |
 | Node Pools | System (e2-standard-4), Training (Spot), GPU (T4, Spot) |
 | GCS Bucket | MLflow artifact storage |
 | Cloud SQL PostgreSQL | MLflow metadata backend (v17) |

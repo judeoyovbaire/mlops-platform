@@ -151,7 +151,7 @@ spec:
           - name: output-data
             path: /tmp/data.csv
       container:
-        image: python:3.10.16-slim
+        image: python:3.11.14-slim
         command: [python, /src/load_data.py]
         args:
           - --url
@@ -194,7 +194,7 @@ spec:
           - name: output-data
             path: /tmp/validated.csv
       container:
-        image: python:3.10.16-slim
+        image: python:3.11.14-slim
         command: [sh, -c]
         args:
           - pip install -r /src/requirements.txt && python /src/validate_data.py --input /tmp/input.csv --output /tmp/validated.csv --min-rows "{{inputs.parameters.min-rows}}" --null-threshold "{{inputs.parameters.null-threshold}}"
@@ -236,7 +236,7 @@ spec:
             path: /tmp/features_scaler.joblib
             optional: true
       container:
-        image: python:3.10.16-slim
+        image: python:3.11.14-slim
         command: [sh, -c]
         args:
           - pip install -r /src/requirements.txt && python /src/feature_engineering.py --input /tmp/input.csv --output /tmp/features.csv --target "{{inputs.parameters.target-column}}"
@@ -296,7 +296,7 @@ spec:
             path: /tmp/scaler.joblib
             optional: true
       container:
-        image: python:3.10.16-slim
+        image: python:3.11.14-slim
         command: [sh, -c]
         args:
           - |
@@ -349,7 +349,7 @@ spec:
           - name: model-alias
           - name: run-id
       container:
-        image: python:3.10.16-slim
+        image: python:3.11.14-slim
         command: [sh, -c]
         args:
           - |
