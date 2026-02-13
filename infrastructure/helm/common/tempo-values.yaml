@@ -1,0 +1,39 @@
+# Tempo Helm Values - Trace Storage Backend
+# Chart: grafana/tempo
+# Mode: Single Binary - suitable for dev environments
+# For production, use distributed mode with cloud object storage
+#
+# Tempo receives traces from the OpenTelemetry Collector (not directly from apps).
+# Grafana queries Tempo for trace visualization and search.
+
+tempo:
+  reportingEnabled: false
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://prometheus-kube-prometheus-prometheus.monitoring:9090/api/v1/write"
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+
+  # OTLP receiver for traces from the OpenTelemetry Collector
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+
+persistence:
+  enabled: true
+  size: 10Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

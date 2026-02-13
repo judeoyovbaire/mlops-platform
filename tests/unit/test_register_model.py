@@ -4,6 +4,7 @@ import pytest
 
 from pipelines.training.src.exceptions import (
     InvalidThresholdError,
+    ModelRegistrationError,
 )
 from pipelines.training.src.register_model import (
     RegistrationResult,
@@ -120,3 +121,44 @@ class TestRegisterModel:
         assert result.registered is False
         assert result.version is None
         assert result.alias is None
+
+
+class TestRegisterModelTimeout:
+    """Tests for register_model timeout behavior."""
+
+    def test_invalid_timeout_too_low(self, mock_mlflow_client):
+        """Test that timeout below 1 raises error."""
+        with pytest.raises(ModelRegistrationError, match="mlflow_timeout_seconds"):
+            register_model(
+                model_name="test-model",
+                mlflow_uri="http://localhost:5000",
+                threshold=0.9,
+                alias="champion",
+                run_id="test-run-123",
+                mlflow_timeout_seconds=0,
+            )
+
+    def test_invalid_timeout_too_high(self, mock_mlflow_client):
+        """Test that timeout above 300 raises error."""
+        with pytest.raises(ModelRegistrationError, match="mlflow_timeout_seconds"):
+            register_model(
+                model_name="test-model",
+                mlflow_uri="http://localhost:5000",
+                threshold=0.9,
+                alias="champion",
+                run_id="test-run-123",
+                mlflow_timeout_seconds=301,
+            )
+
+    def test_valid_timeout_accepted(self, mock_mlflow_client):
+        """Test that valid timeout is accepted."""
+        result = register_model(
+            model_name="test-model",
+            mlflow_uri="http://localhost:5000",
+            threshold=0.9,
+            alias="champion",
+            run_id="test-run-123",
+            mlflow_timeout_seconds=60,
+        )
+        assert result.success is True
+        assert result.registered is True

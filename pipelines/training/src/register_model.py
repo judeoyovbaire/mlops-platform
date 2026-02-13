@@ -13,8 +13,13 @@ import mlflow
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
 
-from pipelines.training.src.exceptions import InvalidThresholdError, ModelRegistrationError
+from pipelines.training.src.exceptions import (
+    InvalidThresholdError,
+    MLflowTimeoutError,
+    ModelRegistrationError,
+)
 from pipelines.training.src.logging_utils import get_logger
+from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, mlflow_timeout
 
 logger = get_logger(__name__)
 
@@ -54,6 +59,7 @@ def register_model(
     threshold: float,
     alias: str,
     run_id: str,
+    mlflow_timeout_seconds: int = MLFLOW_CONNECTION_TIMEOUT,
 ) -> RegistrationResult:
     """
     Register a model to MLflow Model Registry if it meets threshold.
@@ -64,6 +70,7 @@ def register_model(
         threshold: Minimum accuracy required for registration.
         alias: Alias to assign to the registered model version.
         run_id: MLflow run ID containing the model.
+        mlflow_timeout_seconds: Timeout in seconds for MLflow connection (default: 30).
 
     Returns:
         RegistrationResult containing registration status and details.
@@ -76,10 +83,22 @@ def register_model(
 
     validate_threshold(threshold)
 
+    if mlflow_timeout_seconds < 1 or mlflow_timeout_seconds > 300:
+        raise ModelRegistrationError(
+            f"mlflow_timeout_seconds must be between 1 and 300, got: {mlflow_timeout_seconds}"
+        )
+
     try:
-        mlflow.set_tracking_uri(mlflow_uri)
-        client = MlflowClient()
+        logger.info(f"Connecting to MLflow at {mlflow_uri} (timeout: {mlflow_timeout_seconds}s)")
+        with mlflow_timeout(
+            mlflow_timeout_seconds,
+            f"MLflow connection timed out after {mlflow_timeout_seconds}s",
+        ):
+            mlflow.set_tracking_uri(mlflow_uri)
+            client = MlflowClient()
         logger.info(f"Connected to MLflow at {mlflow_uri}")
+    except MLflowTimeoutError as e:
+        raise ModelRegistrationError(str(e)) from e
     except MlflowException as e:
         raise ModelRegistrationError(f"Failed to connect to MLflow: {e}") from e
 
@@ -147,12 +166,23 @@ if __name__ == "__main__":
     parser.add_argument("--threshold", type=float, required=True, help="Accuracy threshold")
     parser.add_argument("--alias", required=True, help="Model alias (e.g., champion)")
     parser.add_argument("--run-id", required=True, help="MLflow Run ID")
+    parser.add_argument(
+        "--mlflow-timeout",
+        type=int,
+        default=MLFLOW_CONNECTION_TIMEOUT,
+        help="MLflow connection timeout in seconds (default: 30)",
+    )
 
     args = parser.parse_args()
 
     try:
         result = register_model(
-            args.model_name, args.mlflow_uri, args.threshold, args.alias, args.run_id
+            args.model_name,
+            args.mlflow_uri,
+            args.threshold,
+            args.alias,
+            args.run_id,
+            mlflow_timeout_seconds=args.mlflow_timeout,
         )
         if result.registered:
             print(f"Registered {result.model_name} v{result.version} with alias '{result.alias}'")

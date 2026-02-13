@@ -43,4 +43,7 @@ module "aks" {
 
   # Monitoring
   enable_azure_monitor = var.enable_azure_monitor
+
+  # API Server Access Control
+  api_server_authorized_ip_ranges = var.api_server_authorized_ip_ranges
 }

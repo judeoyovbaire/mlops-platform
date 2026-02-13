@@ -152,3 +152,37 @@ variable "helm_external_secrets_version" {
   type        = string
   default     = "1.2.1"
 }
+
+variable "helm_loki_version" {
+  description = "Loki Helm chart version"
+  type        = string
+  default     = "6.24.0"
+}
+
+variable "helm_tempo_version" {
+  description = "Tempo Helm chart version"
+  type        = string
+  default     = "1.15.0"
+}
+
+variable "helm_otel_collector_version" {
+  description = "OpenTelemetry Collector Helm chart version"
+  type        = string
+  default     = "0.108.0"
+}
+
+# -----------------------------------------------------------------------------
+# Cluster API Access Control
+# -----------------------------------------------------------------------------
+
+variable "cluster_endpoint_public_access" {
+  description = "Enable public access to EKS API endpoint. Required for CI/CD access from GitHub Actions."
+  type        = bool
+  default     = true
+}
+
+variable "cluster_endpoint_public_access_cidrs" {
+  description = "CIDR blocks allowed to access the EKS API public endpoint. Restrict to your organization's IP ranges for production-grade security."
+  type        = list(string)
+  default     = ["0.0.0.0/0"] # Open for portfolio/demo - restrict for real deployments
+}

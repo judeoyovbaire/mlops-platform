@@ -216,7 +216,7 @@ resource "kubectl_manifest" "kyverno_restrict_registries" {
           Only allow container images from trusted registries.
           Prevents supply chain attacks in ML pipelines.
     spec:
-      validationFailureAction: Audit
+      validationFailureAction: Enforce
       background: true
       rules:
         - name: validate-registries
@@ -234,6 +234,48 @@ resource "kubectl_manifest" "kyverno_restrict_registries" {
               spec:
                 containers:
                   - image: "*.amazonaws.com/* | gcr.io/* | ghcr.io/* | docker.io/* | quay.io/* | kserve/* | seldonio/* | tensorflow/* | pytorch/* | huggingface/*"
+  YAML
+
+  depends_on = [helm_release.kyverno]
+}
+
+# Policy: Disallow privileged containers
+resource "kubectl_manifest" "kyverno_disallow_privileged" {
+  yaml_body = <<-YAML
+    apiVersion: kyverno.io/v1
+    kind: ClusterPolicy
+    metadata:
+      name: disallow-privileged-containers
+      annotations:
+        policies.kyverno.io/title: Disallow Privileged Containers
+        policies.kyverno.io/category: Pod Security Standards (Baseline)
+        policies.kyverno.io/severity: high
+        policies.kyverno.io/description: >-
+          Privileged containers are not allowed in ML namespaces.
+          Enforced in all environments for security.
+    spec:
+      validationFailureAction: Enforce
+      background: true
+      rules:
+        - name: privileged-containers
+          match:
+            any:
+              - resources:
+                  kinds:
+                    - Pod
+                  namespaces:
+                    - mlops
+                    - mlflow
+                    - argo
+                    - kserve
+          validate:
+            message: "Privileged mode is not allowed. Set securityContext.privileged to false or omit it."
+            deny:
+              conditions:
+                any:
+                  - key: "{{ request.object.spec.containers[].securityContext.privileged || 'false' }}"
+                    operator: AnyIn
+                    value: ["true"]
   YAML
 
   depends_on = [helm_release.kyverno]

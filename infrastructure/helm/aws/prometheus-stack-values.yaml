@@ -144,11 +144,16 @@ grafana:
       label: grafana_datasource
       labelValue: "1"
 
-  # Default datasources
+  # Additional datasources for observability stack
   additionalDataSources:
     - name: Loki
       type: loki
-      url: http://loki:3100
+      url: http://loki.monitoring:3100
+      access: proxy
+      isDefault: false
+    - name: Tempo
+      type: tempo
+      url: http://tempo.monitoring:3100
       access: proxy
       isDefault: false
 

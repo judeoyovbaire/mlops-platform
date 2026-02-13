@@ -27,6 +27,60 @@ resource "helm_release" "prometheus_stack" {
   ]
 }
 
+# Loki - Log Aggregation
+resource "helm_release" "loki" {
+  name       = "loki"
+  repository = "https://grafana.github.io/helm-charts"
+  chart      = "loki"
+  version    = var.helm_loki_version
+  namespace  = "monitoring"
+
+  values = [file("${path.module}/../../../../helm/common/loki-values.yaml")]
+
+  timeout = 600
+
+  depends_on = [
+    kubernetes_namespace.monitoring,
+    helm_release.prometheus_stack
+  ]
+}
+
+# Tempo - Trace Storage Backend
+resource "helm_release" "tempo" {
+  name       = "tempo"
+  repository = "https://grafana.github.io/helm-charts"
+  chart      = "tempo"
+  version    = var.helm_tempo_version
+  namespace  = "monitoring"
+
+  values = [file("${path.module}/../../../../helm/common/tempo-values.yaml")]
+
+  timeout = 600
+
+  depends_on = [
+    kubernetes_namespace.monitoring,
+    helm_release.prometheus_stack
+  ]
+}
+
+# OpenTelemetry Collector - Unified Telemetry Pipeline
+resource "helm_release" "otel_collector" {
+  name       = "otel-collector"
+  repository = "https://open-telemetry.github.io/opentelemetry-helm-charts"
+  chart      = "opentelemetry-collector"
+  version    = var.helm_otel_collector_version
+  namespace  = "monitoring"
+
+  values = [file("${path.module}/../../../../helm/common/otel-collector-values.yaml")]
+
+  timeout = 600
+
+  depends_on = [
+    kubernetes_namespace.monitoring,
+    helm_release.tempo
+  ]
+}
+
 # ServiceMonitors for Platform Components
 
 # MLflow ServiceMonitor

@@ -169,6 +169,82 @@ resource "kubectl_manifest" "disallow_privileged" {
   depends_on = [time_sleep.wait_for_kyverno]
 }
 
+# Restrict image registries to trusted sources
+resource "kubectl_manifest" "restrict_image_registries" {
+  yaml_body = <<-YAML
+    apiVersion: kyverno.io/v1
+    kind: ClusterPolicy
+    metadata:
+      name: restrict-image-registries
+      annotations:
+        policies.kyverno.io/title: Restrict Image Registries
+        policies.kyverno.io/category: Security
+        policies.kyverno.io/severity: high
+        policies.kyverno.io/description: >-
+          Only allow container images from trusted registries.
+          Prevents supply chain attacks in ML pipelines.
+    spec:
+      validationFailureAction: Enforce
+      background: true
+      rules:
+        - name: validate-registries
+          match:
+            any:
+              - resources:
+                  kinds:
+                    - Pod
+                  namespaces:
+                    - mlops
+                    - kserve
+          validate:
+            message: "Images must come from approved registries: GCR, Artifact Registry, ghcr.io, docker.io, quay.io"
+            pattern:
+              spec:
+                containers:
+                  - image: "gcr.io/* | *.gcr.io/* | *-docker.pkg.dev/* | ghcr.io/* | docker.io/* | quay.io/* | kserve/* | tensorflow/* | pytorch/* | huggingface/*"
+  YAML
+
+  depends_on = [time_sleep.wait_for_kyverno]
+}
+
+# Disallow latest tag for container images
+resource "kubectl_manifest" "disallow_latest_tag" {
+  yaml_body = <<-YAML
+    apiVersion: kyverno.io/v1
+    kind: ClusterPolicy
+    metadata:
+      name: disallow-latest-tag
+      annotations:
+        policies.kyverno.io/title: Disallow Latest Tag
+        policies.kyverno.io/category: Best Practices
+        policies.kyverno.io/severity: medium
+        policies.kyverno.io/description: >-
+          Container images must use explicit version tags, not 'latest'.
+          Ensures reproducibility of ML model deployments.
+    spec:
+      validationFailureAction: Audit
+      background: true
+      rules:
+        - name: validate-image-tag
+          match:
+            any:
+              - resources:
+                  kinds:
+                    - Pod
+                  namespaces:
+                    - mlops
+                    - kserve
+          validate:
+            message: "Using 'latest' tag is not allowed. Specify a version tag for reproducibility."
+            pattern:
+              spec:
+                containers:
+                  - image: "!*:latest"
+  YAML
+
+  depends_on = [time_sleep.wait_for_kyverno]
+}
+
 # Generate default network policies for namespaces
 resource "kubectl_manifest" "generate_network_policies" {
   yaml_body = <<-YAML

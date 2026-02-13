@@ -9,10 +9,10 @@ module "eks" {
   private_subnets = var.private_subnets
   public_subnets  = var.public_subnets
 
-  # Enable public endpoint for GitHub Actions CI/CD access
-  # Private endpoint is also enabled for in-cluster communication
-  cluster_endpoint_public_access       = true
-  cluster_endpoint_public_access_cidrs = ["0.0.0.0/0"]
+  # Public endpoint access - parameterized for flexibility
+  # Restrict to your organization's IP ranges for production-grade security
+  cluster_endpoint_public_access       = var.cluster_endpoint_public_access
+  cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
 
   # Cost optimization for dev: single NAT gateway
   single_nat_gateway = true

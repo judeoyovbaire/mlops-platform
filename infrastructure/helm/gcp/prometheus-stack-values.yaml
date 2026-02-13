@@ -49,11 +49,16 @@ grafana:
       enabled: true
       defaultDatasourceEnabled: true
 
-  # Additional data sources
+  # Additional data sources for observability stack
   additionalDataSources:
     - name: Loki
       type: loki
       url: http://loki.monitoring:3100
+      access: proxy
+      isDefault: false
+    - name: Tempo
+      type: tempo
+      url: http://tempo.monitoring:3100
       access: proxy
       isDefault: false
 

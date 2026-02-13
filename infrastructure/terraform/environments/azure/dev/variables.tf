@@ -249,3 +249,31 @@ variable "helm_external_secrets_version" {
   type        = string
   default     = "1.1.1"
 }
+
+variable "helm_loki_version" {
+  description = "Loki Helm chart version"
+  type        = string
+  default     = "6.24.0"
+}
+
+variable "helm_tempo_version" {
+  description = "Tempo Helm chart version"
+  type        = string
+  default     = "1.15.0"
+}
+
+variable "helm_otel_collector_version" {
+  description = "OpenTelemetry Collector Helm chart version"
+  type        = string
+  default     = "0.108.0"
+}
+
+# -----------------------------------------------------------------------------
+# API Server Access Control
+# -----------------------------------------------------------------------------
+
+variable "api_server_authorized_ip_ranges" {
+  description = "CIDR blocks authorized to access the AKS API server. Empty list allows all IPs. Restrict to your organization's IP ranges for production-grade security."
+  type        = list(string)
+  default     = [] # Open for portfolio/demo - set specific CIDRs for real deployments
+}

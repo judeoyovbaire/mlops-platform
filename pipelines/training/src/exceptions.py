@@ -76,3 +76,9 @@ class InvalidThresholdError(ModelRegistrationError):
     """Raised when a threshold value is invalid."""
 
     pass
+
+
+class MLflowTimeoutError(PipelineError):
+    """Raised when an MLflow operation times out."""
+
+    pass

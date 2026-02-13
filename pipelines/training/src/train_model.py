@@ -8,7 +8,6 @@ to MLflow, and saves the trained model.
 import argparse
 import os
 import sys
-import threading
 from dataclasses import dataclass
 
 import joblib
@@ -20,43 +19,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import cross_val_score, train_test_split
 
-from pipelines.training.src.exceptions import ModelTrainingError
+from pipelines.training.src.exceptions import MLflowTimeoutError, ModelTrainingError
 from pipelines.training.src.logging_utils import get_logger
+from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, mlflow_timeout
 
 logger = get_logger(__name__)
-
-# Default timeout for MLflow connection (seconds)
-MLFLOW_CONNECTION_TIMEOUT = 30
-
-
-class MLflowTimeoutError(Exception):
-    """Raised when an MLflow operation times out."""
-
-    pass
-
-
-class mlflow_timeout:
-    """Cross-platform context manager for timing out operations using threading."""
-
-    def __init__(self, seconds: int, error_message: str = "Operation timed out"):
-        self.seconds = seconds
-        self.error_message = error_message
-        self._timer: threading.Timer | None = None
-        self._timed_out = False
-
-    def _handle_timeout(self) -> None:
-        self._timed_out = True
-
-    def __enter__(self) -> "mlflow_timeout":
-        self._timer = threading.Timer(self.seconds, self._handle_timeout)
-        self._timer.start()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        if self._timer is not None:
-            self._timer.cancel()
-        if self._timed_out:
-            raise MLflowTimeoutError(self.error_message)
 
 
 @dataclass

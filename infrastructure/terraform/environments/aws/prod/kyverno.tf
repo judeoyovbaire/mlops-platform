@@ -239,6 +239,48 @@ resource "kubectl_manifest" "kyverno_restrict_registries" {
   depends_on = [helm_release.kyverno]
 }
 
+# Policy: Disallow privileged containers
+resource "kubectl_manifest" "kyverno_disallow_privileged" {
+  yaml_body = <<-YAML
+    apiVersion: kyverno.io/v1
+    kind: ClusterPolicy
+    metadata:
+      name: disallow-privileged-containers
+      annotations:
+        policies.kyverno.io/title: Disallow Privileged Containers
+        policies.kyverno.io/category: Pod Security Standards (Baseline)
+        policies.kyverno.io/severity: high
+        policies.kyverno.io/description: >-
+          Privileged containers are not allowed in ML namespaces.
+          Enforced in all environments for security.
+    spec:
+      validationFailureAction: Enforce
+      background: true
+      rules:
+        - name: privileged-containers
+          match:
+            any:
+              - resources:
+                  kinds:
+                    - Pod
+                  namespaces:
+                    - mlops
+                    - mlflow
+                    - argo
+                    - kserve
+          validate:
+            message: "Privileged mode is not allowed. Set securityContext.privileged to false or omit it."
+            deny:
+              conditions:
+                any:
+                  - key: "{{ request.object.spec.containers[].securityContext.privileged || 'false' }}"
+                    operator: AnyIn
+                    value: ["true"]
+  YAML
+
+  depends_on = [helm_release.kyverno]
+}
+
 # Policy: Add default network policy to new namespaces
 resource "kubectl_manifest" "kyverno_generate_netpol" {
   yaml_body = <<-YAML

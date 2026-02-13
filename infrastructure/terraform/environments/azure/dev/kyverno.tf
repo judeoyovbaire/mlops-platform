@@ -152,7 +152,7 @@ resource "kubectl_manifest" "policy_restrict_registries" {
         policies.kyverno.io/category: Security
         policies.kyverno.io/severity: high
     spec:
-      validationFailureAction: Audit
+      validationFailureAction: Enforce
       background: true
       rules:
         - name: validate-registries
@@ -176,6 +176,46 @@ resource "kubectl_manifest" "policy_restrict_registries" {
                       ghcr.io/* | docker.io/* | gcr.io/* |
                       quay.io/* | mcr.microsoft.com/* |
                       *.azurecr.io/* | registry.k8s.io/*
+  YAML
+
+  depends_on = [helm_release.kyverno]
+}
+
+# Disallow privileged containers
+resource "kubectl_manifest" "policy_disallow_privileged" {
+  yaml_body = <<-YAML
+    apiVersion: kyverno.io/v1
+    kind: ClusterPolicy
+    metadata:
+      name: disallow-privileged-containers
+      annotations:
+        policies.kyverno.io/title: Disallow Privileged Containers
+        policies.kyverno.io/category: Pod Security Standards (Baseline)
+        policies.kyverno.io/severity: high
+    spec:
+      validationFailureAction: Enforce
+      background: true
+      rules:
+        - name: privileged-containers
+          match:
+            any:
+              - resources:
+                  kinds:
+                    - Pod
+          exclude:
+            any:
+              - resources:
+                  namespaces:
+                    - kube-system
+                    - kyverno
+          validate:
+            message: "Privileged mode is not allowed. Set securityContext.privileged to false or omit it."
+            deny:
+              conditions:
+                any:
+                  - key: "{{ request.object.spec.containers[].securityContext.privileged || 'false' }}"
+                    operator: AnyIn
+                    value: ["true"]
   YAML
 
   depends_on = [helm_release.kyverno]

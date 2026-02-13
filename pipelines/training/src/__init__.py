@@ -13,6 +13,7 @@ from pipelines.training.src.exceptions import (
     InvalidThresholdError,
     InvalidURLError,
     MissingColumnError,
+    MLflowTimeoutError,
     ModelRegistrationError,
     ModelTrainingError,
     NetworkError,
@@ -29,6 +30,7 @@ from pipelines.training.src.logging_utils import (
     log_step_start,
     set_correlation_id,
 )
+from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, mlflow_timeout
 from pipelines.training.src.register_model import register_model
 from pipelines.training.src.train_model import train_model
 from pipelines.training.src.validate_data import validate_data
@@ -40,6 +42,9 @@ __all__ = [
     "feature_engineering",
     "train_model",
     "register_model",
+    # MLflow utilities
+    "mlflow_timeout",
+    "MLFLOW_CONNECTION_TIMEOUT",
     # Logging utilities
     "get_logger",
     "get_correlation_id",
@@ -61,4 +66,5 @@ __all__ = [
     "NetworkError",
     "EmptyDataError",
     "InvalidThresholdError",
+    "MLflowTimeoutError",
 ]
