@@ -64,6 +64,7 @@ jobs:
   lint-python:
     name: Lint Python
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -103,6 +104,7 @@ jobs:
   validate-terraform:
     name: Validate Terraform
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -208,6 +210,7 @@ jobs:
   validate-kubernetes:
     name: Validate Kubernetes
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -232,6 +235,7 @@ jobs:
   validate-helm:
     name: Validate Helm
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -274,6 +278,7 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -313,6 +318,7 @@ jobs:
   test-python:
     name: Test Python
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -364,6 +370,7 @@ jobs:
   terraform-plan-aws:
     name: Terraform Plan (AWS)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [lint-python, validate-terraform, validate-kubernetes, validate-helm, security-scan, test-python]
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
@@ -506,6 +513,7 @@ jobs:
   terraform-plan-azure:
     name: Terraform Plan (Azure)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [lint-python, validate-terraform, validate-kubernetes, validate-helm, security-scan, test-python]
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
@@ -615,6 +623,7 @@ jobs:
   terraform-plan-gcp:
     name: Terraform Plan (GCP)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [lint-python, validate-terraform, validate-kubernetes, validate-helm, security-scan, test-python]
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
@@ -717,6 +726,7 @@ jobs:
   deploy-infra-aws:
     name: Deploy Infrastructure (AWS)
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: [terraform-plan-aws]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'aws' && github.event.inputs.action == 'deploy-infra'
     environment: ${{ github.event.inputs.environment }}
@@ -813,6 +823,7 @@ jobs:
   deploy-infra-azure:
     name: Deploy Infrastructure (Azure)
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: [terraform-plan-azure]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'azure' && github.event.inputs.action == 'deploy-infra'
     environment: ${{ github.event.inputs.environment }}
@@ -919,6 +930,7 @@ jobs:
   deploy-infra-gcp:
     name: Deploy Infrastructure (GCP)
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: [terraform-plan-gcp]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'gcp' && github.event.inputs.action == 'deploy-infra'
     environment: ${{ github.event.inputs.environment }}
@@ -1001,6 +1013,7 @@ jobs:
   deploy-model-aws:
     name: Deploy Model (AWS)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [terraform-plan-aws]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'aws' && github.event.inputs.action == 'deploy-model'
     environment: ${{ github.event.inputs.environment }}
@@ -1088,6 +1101,7 @@ jobs:
   deploy-model-azure:
     name: Deploy Model (Azure)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [terraform-plan-azure]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'azure' && github.event.inputs.action == 'deploy-model'
     environment: ${{ github.event.inputs.environment }}
@@ -1188,6 +1202,7 @@ jobs:
   deploy-model-gcp:
     name: Deploy Model (GCP)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [terraform-plan-gcp]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'gcp' && github.event.inputs.action == 'deploy-model'
     environment: ${{ github.event.inputs.environment }}
@@ -1284,6 +1299,7 @@ jobs:
   e2e-test:
     name: E2E Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [test-python]
     if: |
       github.event_name == 'schedule' ||
@@ -1357,6 +1373,7 @@ jobs:
   summary:
     name: Pipeline Summary
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [terraform-plan-aws, terraform-plan-azure, terraform-plan-gcp]
     if: always() && (github.event_name == 'push' || github.event_name == 'pull_request')
     steps:

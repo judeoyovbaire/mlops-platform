@@ -12,6 +12,9 @@ spec:
   entrypoint: ml-pipeline
   serviceAccountName: argo-workflows-server
 
+  # Maximum runtime for the entire workflow (1 hour)
+  activeDeadlineSeconds: 3600
+
   # Security context for all pods in this workflow
   securityContext:
     runAsNonRoot: true
@@ -121,6 +124,8 @@ spec:
                   from: "{{tasks.feature-engineering.outputs.artifacts.output-data}}"
                 - name: scaler
                   from: "{{tasks.feature-engineering.outputs.artifacts.scaler}}"
+                - name: encoder
+                  from: "{{tasks.feature-engineering.outputs.artifacts.encoder}}"
 
           - name: register-model
             template: register-model
@@ -235,6 +240,9 @@ spec:
           - name: scaler
             path: /tmp/features_scaler.joblib
             optional: true
+          - name: encoder
+            path: /tmp/features_encoder.joblib
+            optional: true
       container:
         image: python:3.11.14-slim
         command: [sh, -c]
@@ -280,6 +288,9 @@ spec:
             path: /tmp/input.csv
           - name: scaler
             path: /tmp/scaler.joblib
+            optional: true
+          - name: encoder
+            path: /tmp/encoder.joblib
             optional: true
       outputs:
         parameters:

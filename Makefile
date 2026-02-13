@@ -28,7 +28,7 @@ help:
 	@echo "  make destroy            - Destroy AWS resources"
 	@echo "  make secrets            - Retrieve secrets from AWS"
 	@echo ""
-	@echo "AWS EKS Deployment:
+	@echo "AWS EKS Deployment:"
 	@echo "  make deploy-aws         - Deploy to AWS EKS (~15-20 min)"
 	@echo "  make status-aws         - Check AWS deployment status"
 	@echo "  make destroy-aws        - Destroy AWS resources"

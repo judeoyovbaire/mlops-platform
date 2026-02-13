@@ -18,7 +18,7 @@ terraform {
     }
     kubectl = {
       source  = "gavinbunney/kubectl"
-      version = "~> 1.14"
+      version = "~> 1.18"
     }
     helm = {
       source  = "hashicorp/helm"
@@ -27,6 +27,10 @@ terraform {
     random = {
       source  = "hashicorp/random"
       version = "~> 3.6"
+    }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.9"
     }
   }
 

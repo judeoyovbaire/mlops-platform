@@ -12,3 +12,4 @@ configMapGenerator:
       - src/feature_engineering.py
       - src/train_model.py
       - src/register_model.py
+      - requirements.txt

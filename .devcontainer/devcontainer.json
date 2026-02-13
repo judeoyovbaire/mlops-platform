@@ -1,0 +1,41 @@
+{
+  "name": "MLOps Platform",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/terraform:1": {},
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "helm": "latest",
+      "kubectl": "latest",
+      "minikube": "none"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "hashicorp.terraform",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "redhat.vscode-yaml",
+        "ms-kubernetes-tools.vscode-kubernetes-tools"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true
+        },
+        "terraform.languageServer.enable": true
+      }
+    }
+  },
+  "postCreateCommand": "pip install -e '.[dev]' && echo 'Dev environment ready!'",
+  "forwardPorts": [5000, 8080, 2746, 3000],
+  "portsAttributes": {
+    "5000": { "label": "MLflow", "onAutoForward": "notify" },
+    "8080": { "label": "ArgoCD", "onAutoForward": "notify" },
+    "2746": { "label": "Argo Workflows", "onAutoForward": "notify" },
+    "3000": { "label": "Grafana", "onAutoForward": "notify" }
+  }
+}
