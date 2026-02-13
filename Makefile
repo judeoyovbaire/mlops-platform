@@ -326,8 +326,6 @@ deps:
 
 clean:
 	@echo "Cleaning generated files..."
-	rm -f $(PIPELINE_DIR)/*.yaml
-	rm -f $(PIPELINE_DIR)/*.json
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
 	rm -f $(TERRAFORM_DIR_AWS)/tfplan

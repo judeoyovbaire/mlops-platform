@@ -13,13 +13,22 @@ import mlflow
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
 
-from pipelines.training.src.exceptions import (
-    InvalidThresholdError,
-    MLflowTimeoutError,
-    ModelRegistrationError,
-)
-from pipelines.training.src.logging_utils import get_logger
-from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, mlflow_timeout
+try:
+    from pipelines.training.src.exceptions import (
+        InvalidThresholdError,
+        MLflowTimeoutError,
+        ModelRegistrationError,
+    )
+    from pipelines.training.src.logging_utils import get_logger
+    from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, mlflow_timeout
+except ImportError:
+    from exceptions import (
+        InvalidThresholdError,
+        MLflowTimeoutError,
+        ModelRegistrationError,
+    )
+    from logging_utils import get_logger
+    from mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, mlflow_timeout
 
 logger = get_logger(__name__)
 

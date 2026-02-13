@@ -16,11 +16,18 @@ import joblib
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from pipelines.training.src.exceptions import (
-    FeatureEngineeringError,
-    MissingColumnError,
-)
-from pipelines.training.src.logging_utils import get_logger
+try:
+    from pipelines.training.src.exceptions import (
+        FeatureEngineeringError,
+        MissingColumnError,
+    )
+    from pipelines.training.src.logging_utils import get_logger
+except ImportError:
+    from exceptions import (
+        FeatureEngineeringError,
+        MissingColumnError,
+    )
+    from logging_utils import get_logger
 
 logger = get_logger(__name__)
 

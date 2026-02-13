@@ -29,18 +29,6 @@ def iris_dataframe():
 
 
 @pytest.fixture
-def mock_mlflow(mocker):
-    """Mock MLflow for unit tests that don't need real tracking."""
-    mock = mocker.patch("mlflow.set_tracking_uri")
-    mocker.patch("mlflow.set_experiment")
-    mocker.patch("mlflow.start_run")
-    mocker.patch("mlflow.log_params")
-    mocker.patch("mlflow.log_metrics")
-    mocker.patch("mlflow.sklearn.log_model")
-    return mock
-
-
-@pytest.fixture
 def temp_dir():
     """Create a temporary directory for test files."""
     with tempfile.TemporaryDirectory() as tmpdir:

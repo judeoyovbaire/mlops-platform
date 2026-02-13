@@ -157,12 +157,9 @@ spec:
             path: /tmp/data.csv
       container:
         image: python:3.11.14-slim
-        command: [python, /src/load_data.py]
+        command: [sh, -c]
         args:
-          - --url
-          - "{{inputs.parameters.dataset-url}}"
-          - --output
-          - /tmp/data.csv
+          - pip install -r /src/requirements.txt && python /src/load_data.py --url "{{inputs.parameters.dataset-url}}" --output /tmp/data.csv
         volumeMounts:
           - name: scripts
             mountPath: /src

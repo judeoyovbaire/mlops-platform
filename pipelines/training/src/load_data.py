@@ -15,8 +15,12 @@ from dataclasses import dataclass
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 
-from pipelines.training.src.exceptions import DataLoadError, InvalidURLError, NetworkError
-from pipelines.training.src.logging_utils import get_logger
+try:
+    from pipelines.training.src.exceptions import DataLoadError, InvalidURLError, NetworkError
+    from pipelines.training.src.logging_utils import get_logger
+except ImportError:
+    from exceptions import DataLoadError, InvalidURLError, NetworkError
+    from logging_utils import get_logger
 
 logger = get_logger(__name__)
 

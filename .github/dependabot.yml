@@ -40,11 +40,11 @@ updates:
     commit-message:
       prefix: "chore(deps)"
 
-  # Terraform modules
+  # Terraform environments
   # Note: Major version updates are ignored as they typically contain breaking changes
   # that require manual migration. Review and update manually when needed.
   - package-ecosystem: "terraform"
-    directory: "/infrastructure/terraform/environments/dev"
+    directory: "/infrastructure/terraform/environments/aws/dev"
     schedule:
       interval: "monthly"
       day: "monday"
@@ -57,7 +57,6 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     ignore:
-      # Ignore major version updates (breaking changes)
       - dependency-name: "hashicorp/helm"
         update-types: ["version-update:semver-major"]
       - dependency-name: "hashicorp/aws"
@@ -71,6 +70,45 @@ updates:
       - dependency-name: "terraform-aws-modules/vpc/aws"
         update-types: ["version-update:semver-major"]
 
+  - package-ecosystem: "terraform"
+    directory: "/infrastructure/terraform/environments/azure/dev"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "terraform"
+    commit-message:
+      prefix: "chore(deps)"
+    ignore:
+      - dependency-name: "hashicorp/helm"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "hashicorp/kubernetes"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "terraform"
+    directory: "/infrastructure/terraform/environments/gcp/dev"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "terraform"
+    commit-message:
+      prefix: "chore(deps)"
+    ignore:
+      - dependency-name: "hashicorp/helm"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "hashicorp/kubernetes"
+        update-types: ["version-update:semver-major"]
+
+  # Terraform modules
   - package-ecosystem: "terraform"
     directory: "/infrastructure/terraform/modules/eks"
     schedule:
@@ -96,6 +134,44 @@ updates:
       - dependency-name: "terraform-aws-modules/eks/aws"
         update-types: ["version-update:semver-major"]
       - dependency-name: "terraform-aws-modules/vpc/aws"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "terraform"
+    directory: "/infrastructure/terraform/modules/aks"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "terraform"
+    commit-message:
+      prefix: "chore(deps)"
+    ignore:
+      - dependency-name: "hashicorp/helm"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "hashicorp/kubernetes"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "terraform"
+    directory: "/infrastructure/terraform/modules/gke"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "terraform"
+    commit-message:
+      prefix: "chore(deps)"
+    ignore:
+      - dependency-name: "hashicorp/helm"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "hashicorp/kubernetes"
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "terraform"

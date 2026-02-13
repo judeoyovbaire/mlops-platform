@@ -7,7 +7,10 @@ indefinite hangs when the tracking server is unreachable.
 
 import threading
 
-from pipelines.training.src.exceptions import MLflowTimeoutError
+try:
+    from pipelines.training.src.exceptions import MLflowTimeoutError
+except ImportError:
+    from exceptions import MLflowTimeoutError
 
 # Default timeout for MLflow connection (seconds)
 MLFLOW_CONNECTION_TIMEOUT = 30

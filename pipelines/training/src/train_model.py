@@ -19,9 +19,14 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import cross_val_score, train_test_split
 
-from pipelines.training.src.exceptions import MLflowTimeoutError, ModelTrainingError
-from pipelines.training.src.logging_utils import get_logger
-from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, mlflow_timeout
+try:
+    from pipelines.training.src.exceptions import MLflowTimeoutError, ModelTrainingError
+    from pipelines.training.src.logging_utils import get_logger
+    from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, mlflow_timeout
+except ImportError:
+    from exceptions import MLflowTimeoutError, ModelTrainingError
+    from logging_utils import get_logger
+    from mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, mlflow_timeout
 
 logger = get_logger(__name__)
 
