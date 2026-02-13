@@ -81,6 +81,19 @@ resource "helm_release" "otel_collector" {
   ]
 }
 
+# Grafana Dashboards - ConfigMaps for sidecar auto-discovery
+resource "kubectl_manifest" "grafana_mlops_overview_dashboard" {
+  yaml_body = file("${path.module}/../../../../kubernetes/dashboards/mlops-overview-dashboard.yaml")
+
+  depends_on = [helm_release.prometheus_stack]
+}
+
+resource "kubectl_manifest" "grafana_cloud_cost_dashboard" {
+  yaml_body = file("${path.module}/../../../../kubernetes/dashboards/cloud-cost-dashboard.yaml")
+
+  depends_on = [helm_release.prometheus_stack]
+}
+
 # ServiceMonitors for Platform Components
 
 # MLflow ServiceMonitor

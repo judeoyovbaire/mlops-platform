@@ -375,7 +375,7 @@ data:
           "pluginVersion": "10.0.0",
           "targets": [
             {
-              "expr": "sum(container_memory_usage_bytes{namespace=~\"mlops|mlflow|kubeflow|kserve\"}) by (namespace) / sum(container_spec_memory_limit_bytes{namespace=~\"mlops|mlflow|kubeflow|kserve\"}) by (namespace)",
+              "expr": "sum(container_memory_usage_bytes{namespace=~\"mlops|mlflow|argo|kserve\"}) by (namespace) / sum(container_spec_memory_limit_bytes{namespace=~\"mlops|mlflow|argo|kserve\"}) by (namespace)",
               "legendFormat": "{{ namespace }}",
               "refId": "A"
             }
@@ -430,7 +430,7 @@ data:
           "pluginVersion": "10.0.0",
           "targets": [
             {
-              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"mlops|mlflow|kubeflow|kserve\"}[5m])) by (namespace) / sum(container_spec_cpu_quota{namespace=~\"mlops|mlflow|kubeflow|kserve\"}/container_spec_cpu_period{namespace=~\"mlops|mlflow|kubeflow|kserve\"}) by (namespace)",
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"mlops|mlflow|argo|kserve\"}[5m])) by (namespace) / sum(container_spec_cpu_quota{namespace=~\"mlops|mlflow|argo|kserve\"}/container_spec_cpu_period{namespace=~\"mlops|mlflow|argo|kserve\"}) by (namespace)",
               "legendFormat": "{{ namespace }}",
               "refId": "A"
             }

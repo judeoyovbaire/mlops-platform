@@ -151,6 +151,55 @@ alertmanager:
     hosts:
       - alertmanager.local
 
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['alertname', 'namespace', 'severity']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: 'null'
+      routes:
+        - match:
+            alertname: Watchdog
+          receiver: 'null'
+        - match:
+            severity: critical
+          receiver: 'critical-alerts'
+        - match:
+            severity: warning
+          receiver: 'warning-alerts'
+    receivers:
+      - name: 'null'
+      - name: 'critical-alerts'
+        # -- Production: uncomment and configure Slack or PagerDuty --
+        # slack_configs:
+        #   - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        #     channel: '#mlops-critical'
+        #     title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+        #     text: '{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}'
+        #     send_resolved: true
+        # pagerduty_configs:
+        #   - service_key: 'YOUR_PAGERDUTY_SERVICE_KEY'
+        webhook_configs:
+          - url: 'http://alertmanager-webhook-logger.monitoring:9095/webhook'
+            send_resolved: true
+      - name: 'warning-alerts'
+        # slack_configs:
+        #   - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        #     channel: '#mlops-warnings'
+        #     send_resolved: true
+        webhook_configs:
+          - url: 'http://alertmanager-webhook-logger.monitoring:9095/webhook'
+            send_resolved: true
+    inhibit_rules:
+      - source_match:
+          severity: 'critical'
+        target_match:
+          severity: 'warning'
+        equal: ['alertname', 'namespace']
+
 # Node Exporter
 nodeExporter:
   enabled: true

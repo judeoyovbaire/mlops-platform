@@ -87,8 +87,26 @@ alertmanager:
     receivers:
       - name: 'null'
       - name: 'critical-alerts'
-        # Configure notification channels (Slack, PagerDuty, etc.) for production
+        # -- Production: uncomment and configure Slack or PagerDuty --
+        # slack_configs:
+        #   - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        #     channel: '#mlops-critical'
+        #     title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+        #     text: '{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}'
+        #     send_resolved: true
+        # pagerduty_configs:
+        #   - service_key: 'YOUR_PAGERDUTY_SERVICE_KEY'
+        webhook_configs:
+          - url: 'http://alertmanager-webhook-logger.monitoring:9095/webhook'
+            send_resolved: true
       - name: 'warning-alerts'
+        # slack_configs:
+        #   - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        #     channel: '#mlops-warnings'
+        #     send_resolved: true
+        webhook_configs:
+          - url: 'http://alertmanager-webhook-logger.monitoring:9095/webhook'
+            send_resolved: true
     inhibit_rules:
       - source_match:
           severity: 'critical'
@@ -209,13 +227,13 @@ prometheus:
             action: keep
             regex: "8080|9090"
 
-      # Kubeflow Pipelines
-      - job_name: 'kubeflow-pipelines'
+      # Argo Workflows metrics
+      - job_name: 'argo-workflows'
         kubernetes_sd_configs:
           - role: pod
             namespaces:
               names:
-                - kubeflow
+                - argo
         relabel_configs:
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
             action: keep
@@ -348,13 +366,13 @@ additionalPrometheusRulesMap:
               description: "More than 10% of pipelines are failing"
 
           - alert: PipelineStuck
-            expr: sum(kube_pod_status_phase{namespace="kubeflow", phase="Pending"}) by (pod) > 0
+            expr: sum(kube_pod_status_phase{namespace="argo", phase="Pending"}) by (pod) > 0
             for: 30m
             labels:
               severity: warning
             annotations:
               summary: "Pipeline pod stuck in Pending"
-              description: "Pod {{ $labels.pod }} has been pending for 30 minutes"
+              description: "Pod {{ $labels.pod }} in argo namespace has been pending for 30 minutes"
 
       - name: mlops.gpu
         rules:

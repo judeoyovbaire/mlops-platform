@@ -158,3 +158,21 @@ variable "helm_external_secrets_version" {
   type        = string
   default     = "1.2.1"
 }
+
+variable "helm_loki_version" {
+  description = "Loki Helm chart version"
+  type        = string
+  default     = "6.24.0"
+}
+
+variable "helm_tempo_version" {
+  description = "Tempo Helm chart version"
+  type        = string
+  default     = "1.15.0"
+}
+
+variable "helm_otel_collector_version" {
+  description = "OpenTelemetry Collector Helm chart version"
+  type        = string
+  default     = "0.108.0"
+}
