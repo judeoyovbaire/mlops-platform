@@ -78,6 +78,7 @@ def get_tracer(service_name: str = "ml-pipeline") -> Tracer:
 # Fallback no-op tracer for environments without the OTel SDK
 # ------------------------------------------------------------------
 
+
 class _NoOpSpan:
     """Minimal span stand-in."""
 

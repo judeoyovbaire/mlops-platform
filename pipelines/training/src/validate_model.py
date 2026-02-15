@@ -181,8 +181,7 @@ if __name__ == "__main__":
             print(f"Model validation PASSED (accuracy={result.accuracy:.4f})")
         else:
             print(
-                f"Model validation FAILED: {result.error_message} "
-                f"(accuracy={result.accuracy:.4f})",
+                f"Model validation FAILED: {result.error_message} (accuracy={result.accuracy:.4f})",
                 file=sys.stderr,
             )
             sys.exit(1)

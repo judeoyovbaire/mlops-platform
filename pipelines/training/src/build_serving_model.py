@@ -190,7 +190,9 @@ if __name__ == "__main__":
     parser.add_argument("--run-id", required=True, help="MLflow run ID")
     parser.add_argument("--mlflow-uri", required=True, help="MLflow tracking URI")
     parser.add_argument("--numeric-cols", nargs="*", default=[], help="Numeric column names")
-    parser.add_argument("--categorical-cols", nargs="*", default=[], help="Categorical column names")
+    parser.add_argument(
+        "--categorical-cols", nargs="*", default=[], help="Categorical column names"
+    )
     parser.add_argument("--sample-input", default=None, help="Path to sample input CSV")
 
     args = parser.parse_args()
