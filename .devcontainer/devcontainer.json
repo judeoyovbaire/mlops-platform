@@ -1,6 +1,6 @@
 {
   "name": "MLOps Platform",
-  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+"image": "mcr.microsoft.com/devcontainers/python:3.12",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/terraform:1": {},
