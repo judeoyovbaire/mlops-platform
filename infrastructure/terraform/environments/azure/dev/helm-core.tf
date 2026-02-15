@@ -167,14 +167,10 @@ resource "helm_release" "minio" {
     value = "256Mi"
   }
 
-  set_sensitive {
-    name  = "rootUser"
-    value = "admin"
-  }
-
-  set_sensitive {
-    name  = "rootPassword"
-    value = random_password.minio.result
+  # Use ExternalSecret-managed credentials (avoids secrets in Helm release metadata)
+  set {
+    name  = "existingSecret"
+    value = "minio-credentials"
   }
 
   set {
@@ -187,7 +183,10 @@ resource "helm_release" "minio" {
     value = "none"
   }
 
-  depends_on = [helm_release.argo_workflows]
+  depends_on = [
+    helm_release.argo_workflows,
+    kubectl_manifest.minio_external_secret
+  ]
 }
 
 resource "random_password" "minio" {

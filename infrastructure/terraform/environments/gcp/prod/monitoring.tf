@@ -85,6 +85,24 @@ resource "helm_release" "otel_collector" {
   ]
 }
 
+# Promtail - Log Shipping Agent (ships logs to Loki)
+resource "helm_release" "promtail" {
+  name       = "promtail"
+  repository = "https://grafana.github.io/helm-charts"
+  chart      = "promtail"
+  version    = var.helm_promtail_version
+  namespace  = "monitoring"
+
+  values = [file("${path.module}/../../../../helm/common/promtail-values.yaml")]
+
+  timeout = 300
+
+  depends_on = [
+    kubernetes_namespace.monitoring,
+    helm_release.loki
+  ]
+}
+
 # Grafana Dashboards - ConfigMaps for sidecar auto-discovery
 resource "kubectl_manifest" "grafana_mlops_overview_dashboard" {
   yaml_body = file("${path.module}/../../../../kubernetes/dashboards/mlops-overview-dashboard.yaml")
@@ -238,4 +256,16 @@ resource "kubectl_manifest" "mlops_prometheus_rules" {
   YAML
 
   depends_on = [helm_release.prometheus_stack]
+}
+
+# Network Policies - Managed via Terraform for lifecycle tracking
+data "kubectl_file_documents" "network_policies" {
+  content = file("${path.module}/../../../../kubernetes/network-policies.yaml")
+}
+
+resource "kubectl_manifest" "network_policies" {
+  for_each  = data.kubectl_file_documents.network_policies.manifests
+  yaml_body = each.value
+
+  depends_on = [module.gke]
 }

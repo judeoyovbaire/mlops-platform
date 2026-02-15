@@ -46,11 +46,11 @@ spec:
       - mlops
 
 ---
-# PodMonitor for Argo Workflow runs
+# ServiceMonitor for Argo Workflows controller metrics
 apiVersion: monitoring.coreos.com/v1
-kind: PodMonitor
+kind: ServiceMonitor
 metadata:
-  name: argo-workflows
+  name: argo-workflows-controller
   namespace: argo
   labels:
     app: argo-workflows
@@ -58,8 +58,8 @@ metadata:
 spec:
   selector:
     matchLabels:
-      workflows.argoproj.io/workflow: ""
-  podMetricsEndpoints:
+      app.kubernetes.io/name: argo-workflows-workflow-controller
+  endpoints:
     - port: metrics
       path: /metrics
       interval: 30s

@@ -176,3 +176,9 @@ variable "helm_otel_collector_version" {
   type        = string
   default     = "0.108.0"
 }
+
+variable "helm_promtail_version" {
+  description = "Promtail Helm chart version"
+  type        = string
+  default     = "6.16.6"
+}

@@ -117,6 +117,38 @@ resource "kubectl_manifest" "grafana_external_secret" {
   ]
 }
 
+# MinIO Credentials
+resource "kubectl_manifest" "minio_external_secret" {
+  yaml_body = <<-YAML
+    apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: minio-credentials
+      namespace: argo
+    spec:
+      refreshInterval: 1h
+      secretStoreRef:
+        name: azure-keyvault
+        kind: ClusterSecretStore
+      target:
+        name: minio-credentials
+        creationPolicy: Owner
+        template:
+          data:
+            rootUser: admin
+            rootPassword: "{{ .password }}"
+      data:
+        - secretKey: password
+          remoteRef:
+            key: minio-root-password
+  YAML
+
+  depends_on = [
+    kubectl_manifest.cluster_secret_store_azure,
+    helm_release.argo_workflows
+  ]
+}
+
 # ArgoCD Admin Password
 resource "kubectl_manifest" "argocd_external_secret" {
   yaml_body = <<-YAML

@@ -144,7 +144,11 @@ resource "kubectl_manifest" "argo_minio_external_secret" {
         name: minio-credentials
         creationPolicy: Owner
       data:
-        - secretKey: root-password
+        - secretKey: rootUser
+          remoteRef:
+            key: ${var.cluster_name}/minio/root-password
+            property: username
+        - secretKey: rootPassword
           remoteRef:
             key: ${var.cluster_name}/minio/root-password
             property: password

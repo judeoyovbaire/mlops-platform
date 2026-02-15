@@ -11,7 +11,7 @@ metadata:
     pipeline: pretrained
 spec:
   entrypoint: hf-pipeline
-  serviceAccountName: argo-workflows-server
+  serviceAccountName: argo-workflow
 
   # Maximum runtime (30 minutes — model download can be slow)
   activeDeadlineSeconds: 1800
@@ -24,7 +24,7 @@ spec:
   arguments:
     parameters:
       - name: pipeline-image
-        value: "mlops-platform/hf-pretrained:latest"
+        value: "mlops-platform/hf-pretrained:v1.0.0"
       - name: model-id
         value: "distilbert/distilbert-base-uncased-finetuned-sst-2-english"
       - name: task

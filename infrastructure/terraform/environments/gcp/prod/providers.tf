@@ -1,7 +1,7 @@
 # Terraform Configuration and Providers - Production
 
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.5.7"
 
   # GCS Backend for Terraform State
   backend "gcs" {

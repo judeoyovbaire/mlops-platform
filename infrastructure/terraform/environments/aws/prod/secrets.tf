@@ -18,6 +18,11 @@ resource "random_password" "argocd_admin" {
   special = false
 }
 
+resource "random_password" "grafana_admin" {
+  length  = 24
+  special = false
+}
+
 # Store secrets in AWS SSM Parameter Store (SecureString)
 resource "aws_ssm_parameter" "mlflow_db_password" {
   name        = "/${var.cluster_name}/mlflow/db-password"

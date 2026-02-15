@@ -309,11 +309,6 @@ jobs:
           severity: 'HIGH,CRITICAL'
           skip-dirs: '**/.terraform'
 
-      - name: Audit Python dependencies
-        run: |
-          pip install pip-audit
-          pip-audit --requirement <(pip freeze) --ignore-vuln PYSEC-0 || true
-
 
   test-python:
     name: Test Python
@@ -360,6 +355,11 @@ jobs:
         with:
           name: coverage-report
           path: coverage.xml
+
+      - name: Audit Python dependencies
+        run: |
+          pip install pip-audit
+          pip-audit --requirement <(pip freeze) --ignore-vuln PYSEC-0 || true
 
       - name: Validate Argo Workflow YAML
         run: |
@@ -860,11 +860,10 @@ jobs:
 
       - name: Install kubelogin
         run: |
-          curl -LO https://github.com/Azure/kubelogin/releases/download/v0.1.4/kubelogin-linux-amd64.zip
+          curl -LO https://github.com/Azure/kubelogin/releases/download/v0.2.10/kubelogin-linux-amd64.zip
           unzip kubelogin-linux-amd64.zip -d kubelogin
           sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
           kubelogin --version
-
       - name: Terraform Init
         working-directory: infrastructure/terraform/environments/azure/${{ github.event.inputs.environment }}
         env:
@@ -873,6 +872,24 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           ARM_USE_OIDC: true
         run: terraform init
+
+      - name: Backup Terraform State
+        working-directory: infrastructure/terraform/environments/azure/${{ github.event.inputs.environment }}
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        run: |
+          terraform state pull > terraform.tfstate.backup
+          echo "State backed up before apply"
+
+      - name: Upload State Backup
+        uses: actions/upload-artifact@v6
+        with:
+          name: terraform-state-backup-azure-${{ github.event.inputs.environment }}-${{ github.run_id }}
+          path: infrastructure/terraform/environments/azure/${{ github.event.inputs.environment }}/terraform.tfstate.backup
+          retention-days: 30
 
       - name: Terraform Apply - Stage 1 (AKS Infrastructure)
         working-directory: infrastructure/terraform/environments/azure/${{ github.event.inputs.environment }}
@@ -974,6 +991,19 @@ jobs:
         working-directory: infrastructure/terraform/environments/gcp/${{ github.event.inputs.environment }}
         run: terraform init
 
+      - name: Backup Terraform State
+        working-directory: infrastructure/terraform/environments/gcp/${{ github.event.inputs.environment }}
+        run: |
+          terraform state pull > terraform.tfstate.backup
+          echo "State backed up before apply"
+
+      - name: Upload State Backup
+        uses: actions/upload-artifact@v6
+        with:
+          name: terraform-state-backup-gcp-${{ github.event.inputs.environment }}-${{ github.run_id }}
+          path: infrastructure/terraform/environments/gcp/${{ github.event.inputs.environment }}/terraform.tfstate.backup
+          retention-days: 30
+
       - name: Terraform Apply - Stage 1 (GKE Infrastructure)
         working-directory: infrastructure/terraform/environments/gcp/${{ github.event.inputs.environment }}
         run: |
@@ -1058,14 +1088,14 @@ jobs:
 
       - name: Install kubelogin
         run: |
-          curl -LO https://github.com/Azure/kubelogin/releases/download/v0.1.4/kubelogin-linux-amd64.zip
+          curl -LO https://github.com/Azure/kubelogin/releases/download/v0.2.10/kubelogin-linux-amd64.zip
           unzip kubelogin-linux-amd64.zip -d kubelogin
           sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
           kubelogin --version
 
       - name: Configure kubectl
         run: |
-          az aks get-credentials \
+          az aks get-credentials
             --resource-group mlops-platform-${{ github.event.inputs.environment }}-rg \
             --name mlops-platform-${{ github.event.inputs.environment }} \
             --overwrite-existing

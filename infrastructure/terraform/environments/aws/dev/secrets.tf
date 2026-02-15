@@ -84,6 +84,11 @@ resource "random_password" "argocd_admin" {
   special = false
 }
 
+resource "random_password" "grafana_admin" {
+  length  = 24
+  special = false
+}
+
 # Non-secret configuration in SSM for easy access
 
 resource "aws_ssm_parameter" "cluster_endpoint" {

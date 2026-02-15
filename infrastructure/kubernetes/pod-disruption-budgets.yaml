@@ -46,34 +46,6 @@ spec:
       app: argo-server
 
 ---
-# Istio Ingress Gateway (KServe traffic)
-# Critical for model inference traffic routing
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: istio-ingressgateway-pdb
-  namespace: istio-system
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      app: istio-ingressgateway
-
----
-# Istiod Control Plane
-# Required for service mesh operations
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: istiod-pdb
-  namespace: istio-system
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      app: istiod
-
----
 # KServe Controller
 # Manages InferenceService deployments
 apiVersion: policy/v1

@@ -10,7 +10,7 @@ metadata:
     pipeline: training
 spec:
   entrypoint: ml-pipeline
-  serviceAccountName: argo-workflows-server
+  serviceAccountName: argo-workflow
 
   # Maximum runtime for the entire workflow (1 hour)
   activeDeadlineSeconds: 3600
@@ -33,7 +33,7 @@ spec:
   arguments:
     parameters:
       - name: pipeline-image
-        value: "mlops-platform/ml-training:latest"
+        value: "mlops-platform/ml-training:v1.0.0"
       - name: dataset-url
         value: "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv"
       - name: target-column

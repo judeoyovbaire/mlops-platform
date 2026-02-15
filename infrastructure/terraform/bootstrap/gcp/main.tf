@@ -1,7 +1,7 @@
 # Bootstrap GCP: Project, GCS state bucket, Workload Identity Pool, service account, IAM bindings
 
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.5.7"
 
   required_providers {
     google = {

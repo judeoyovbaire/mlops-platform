@@ -3,16 +3,16 @@
 # Node Pools (System, Training/Spot, GPU/Spot), Azure CNI + Calico
 
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.5.7"
 
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.0"
+      version = "~> 4.0"
     }
     azuread = {
       source  = "hashicorp/azuread"
-      version = "~> 2.0"
+      version = "~> 3.0"
     }
     random = {
       source  = "hashicorp/random"
@@ -95,7 +95,7 @@ resource "azurerm_kubernetes_cluster" "main" {
     max_count                   = var.system_max_count
     max_pods                    = 110 # Increased from default 30 for Azure CNI
     vnet_subnet_id              = azurerm_subnet.aks.id
-    enable_auto_scaling         = true
+    auto_scaling_enabled        = true
     os_disk_size_gb             = 100
     temporary_name_for_rotation = "systemtmp"
 
@@ -133,15 +133,16 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
 
   # Azure Monitor (optional)
-  dynamic "oms_agent" {
+  dynamic "monitor_metrics" {
     for_each = var.enable_azure_monitor ? [1] : []
     content {
-      log_analytics_workspace_id = azurerm_log_analytics_workspace.main[0].id
+      annotations_allowed = null
+      labels_allowed      = null
     }
   }
 
   # Auto-upgrade channel
-  automatic_channel_upgrade = "patch"
+  automatic_upgrade_channel = "patch"
 
   # Maintenance window
   maintenance_window_auto_upgrade {
@@ -165,7 +166,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "training" {
   vm_size               = var.training_vm_size
   min_count             = var.training_min_count
   max_count             = var.training_max_count
-  enable_auto_scaling   = true
+  auto_scaling_enabled  = true
   priority              = "Spot"
   eviction_policy       = "Delete"
   spot_max_price        = -1 # Pay market price
@@ -192,7 +193,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "gpu" {
   vm_size               = var.gpu_vm_size
   min_count             = var.gpu_min_count
   max_count             = var.gpu_max_count
-  enable_auto_scaling   = true
+  auto_scaling_enabled  = true
   priority              = var.gpu_use_spot ? "Spot" : "Regular"
   eviction_policy       = var.gpu_use_spot ? "Delete" : null
   spot_max_price        = var.gpu_use_spot ? -1 : null

@@ -7,5 +7,6 @@ resources:
   - pod-disruption-budgets.yaml
   - resource-quotas.yaml
   - drift-retrain-trigger.yaml
+  - governance/model-registry-policies.yaml
   - dashboards/mlops-overview-dashboard.yaml
   - dashboards/cloud-cost-dashboard.yaml

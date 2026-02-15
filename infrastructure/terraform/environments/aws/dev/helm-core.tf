@@ -208,15 +208,10 @@ resource "helm_release" "minio" {
     value = "512Mi"
   }
 
+  # Use ExternalSecret-managed credentials (avoids secrets in Helm release metadata)
   set {
-    name  = "rootUser"
-    value = "minio"
-  }
-
-  # Use generated password from SSM
-  set {
-    name  = "rootPassword"
-    value = random_password.minio.result
+    name  = "existingSecret"
+    value = "minio-credentials"
   }
 
   set {
