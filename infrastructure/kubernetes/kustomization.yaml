@@ -6,5 +6,6 @@ resources:
   - network-policies.yaml
   - pod-disruption-budgets.yaml
   - resource-quotas.yaml
+  - drift-retrain-trigger.yaml
   - dashboards/mlops-overview-dashboard.yaml
   - dashboards/cloud-cost-dashboard.yaml

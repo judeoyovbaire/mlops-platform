@@ -168,6 +168,23 @@ spec:
                 - name: run-id
                   value: "{{tasks.train-model.outputs.parameters.run-id}}"
 
+          - name: build-serving-model
+            template: build-serving-model
+            dependencies: [register-model]
+            arguments:
+              parameters:
+                - name: mlflow-tracking-uri
+                  value: "{{workflow.parameters.mlflow-tracking-uri}}"
+                - name: run-id
+                  value: "{{tasks.train-model.outputs.parameters.run-id}}"
+              artifacts:
+                - name: model
+                  from: "{{tasks.train-model.outputs.artifacts.model}}"
+                - name: scaler
+                  from: "{{tasks.train-model.outputs.artifacts.scaler}}"
+                - name: input-data
+                  from: "{{tasks.feature-engineering.outputs.artifacts.output-data}}"
+
     # Step 1: Load data from URL
     - name: load-data
       retryStrategy:
@@ -423,6 +440,46 @@ spec:
           - "{{inputs.parameters.model-alias}}"
           - --run-id
           - "{{inputs.parameters.run-id}}"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+
+    # Step 7: Build serving model with bundled preprocessing
+    - name: build-serving-model
+      inputs:
+        parameters:
+          - name: mlflow-tracking-uri
+          - name: run-id
+        artifacts:
+          - name: model
+            path: /tmp/model.joblib
+          - name: scaler
+            path: /tmp/scaler.joblib
+            optional: true
+          - name: input-data
+            path: /tmp/input.csv
+      container:
+        image: "{{workflow.parameters.pipeline-image}}"
+        command: [python, /app/src/build_serving_model.py]
+        args:
+          - --model
+          - /tmp/model.joblib
+          - --scaler
+          - /tmp/scaler.joblib
+          - --run-id
+          - "{{inputs.parameters.run-id}}"
+          - --mlflow-uri
+          - "{{inputs.parameters.mlflow-tracking-uri}}"
+          - --sample-input
+          - /tmp/input.csv
         resources:
           requests:
             cpu: 100m

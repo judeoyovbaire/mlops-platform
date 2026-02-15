@@ -5,6 +5,7 @@ This module exports all pipeline step functions for easy importing.
 """
 
 try:
+    from pipelines.training.src.build_serving_model import build_serving_model
     from pipelines.training.src.exceptions import (
         DataLoadError,
         DataValidationError,
@@ -33,9 +34,12 @@ try:
     )
     from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
     from pipelines.training.src.register_model import register_model
+    from pipelines.training.src.schema import IrisSchema
     from pipelines.training.src.train_model import train_model
     from pipelines.training.src.validate_data import validate_data
+    from pipelines.training.src.validate_model import validate_model
 except ImportError:
+    from build_serving_model import build_serving_model  # type: ignore[no-redef]
     from exceptions import (  # type: ignore[no-redef]
         DataLoadError,
         DataValidationError,
@@ -64,8 +68,10 @@ except ImportError:
     )
     from mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout  # type: ignore[no-redef]
     from register_model import register_model  # type: ignore[no-redef]
+    from schema import IrisSchema  # type: ignore[no-redef]
     from train_model import train_model  # type: ignore[no-redef]
     from validate_data import validate_data  # type: ignore[no-redef]
+    from validate_model import validate_model  # type: ignore[no-redef]
 
 __all__ = [
     # Functions
@@ -73,7 +79,11 @@ __all__ = [
     "validate_data",
     "feature_engineering",
     "train_model",
+    "validate_model",
     "register_model",
+    "build_serving_model",
+    # Schema
+    "IrisSchema",
     # MLflow utilities
     "run_with_timeout",
     "MLFLOW_CONNECTION_TIMEOUT",

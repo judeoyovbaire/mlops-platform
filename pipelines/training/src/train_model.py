@@ -109,140 +109,147 @@ def train_model(
         span.set_attribute("n_estimators", n_estimators)
         span.set_attribute("max_depth", max_depth)
 
-    # Input validation
-    if n_estimators < 1:
-        raise ModelTrainingError(f"n_estimators must be >= 1, got: {n_estimators}")
-    if max_depth < 1:
-        raise ModelTrainingError(f"max_depth must be >= 1, got: {max_depth}")
-    if not 0.0 < test_size < 1.0:
-        raise ModelTrainingError(f"test_size must be between 0 and 1 (exclusive), got: {test_size}")
-    if mlflow_timeout_seconds < 1 or mlflow_timeout_seconds > 300:
-        raise ModelTrainingError(
-            f"mlflow_timeout_seconds must be between 1 and 300, got: {mlflow_timeout_seconds}"
-        )
-
-    try:
-        # Setup MLflow with timeout to prevent indefinite hangs
-        logger.info(f"Connecting to MLflow at {mlflow_uri} (timeout: {mlflow_timeout_seconds}s)")
-
-        def _setup_mlflow() -> None:
-            mlflow.set_tracking_uri(mlflow_uri)
-            mlflow.set_experiment(model_name)
-
-        run_with_timeout(
-            _setup_mlflow,
-            seconds=mlflow_timeout_seconds,
-            error_message=f"MLflow connection timed out after {mlflow_timeout_seconds}s",
-        )
-        logger.info(f"MLflow tracking URI: {mlflow_uri}, Experiment: {model_name}")
-    except MLflowTimeoutError as e:
-        raise ModelTrainingError(str(e)) from e
-    except MlflowException as e:
-        raise ModelTrainingError(f"Failed to setup MLflow: {e}") from e
-
-    try:
-        # Load data
-        df = pd.read_csv(input_path)
-        logger.info(f"Loaded {len(df)} rows from {input_path}")
-    except FileNotFoundError as e:
-        raise ModelTrainingError(f"Input file not found: {input_path}") from e
-    except pd.errors.EmptyDataError as e:
-        raise ModelTrainingError(f"Input file is empty: {input_path}") from e
-
-    if target not in df.columns:
-        raise ModelTrainingError(
-            f"Target column '{target}' not found. Available: {list(df.columns)}"
-        )
-
-    X = df.drop(columns=[target])
-    y = df[target]
-
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state
-    )
-    logger.info(f"Train set: {len(X_train)}, Test set: {len(X_test)}")
-
-    try:
-        with mlflow.start_run() as run:
-            run_id = run.info.run_id
-            logger.info(f"Starting MLflow run: {run_id}")
-
-            # Log parameters
-            params = {
-                "n_estimators": n_estimators,
-                "max_depth": max_depth,
-                "test_size": test_size,
-                "random_state": random_state,
-                "cv_folds": cv_folds,
-                "use_cross_validation": use_cross_validation,
-            }
-            mlflow.log_params(params)
-            logger.info(f"Training parameters: {params}")
-
-            # Train model (limit n_jobs to avoid oversubscription in Kubernetes)
-            n_jobs = min(4, os.cpu_count() or 1)
-            model = RandomForestClassifier(
-                n_estimators=n_estimators,
-                max_depth=max_depth,
-                random_state=random_state,
-                n_jobs=n_jobs,
+        # Input validation
+        if n_estimators < 1:
+            raise ModelTrainingError(f"n_estimators must be >= 1, got: {n_estimators}")
+        if max_depth < 1:
+            raise ModelTrainingError(f"max_depth must be >= 1, got: {max_depth}")
+        if not 0.0 < test_size < 1.0:
+            raise ModelTrainingError(
+                f"test_size must be between 0 and 1 (exclusive), got: {test_size}"
+            )
+        if mlflow_timeout_seconds < 1 or mlflow_timeout_seconds > 300:
+            raise ModelTrainingError(
+                f"mlflow_timeout_seconds must be between 1 and 300, got: {mlflow_timeout_seconds}"
             )
 
-            # Perform cross-validation if enabled
-            cv_mean = None
-            cv_std = None
-            if use_cross_validation and len(X) >= cv_folds:
-                logger.info(f"Performing {cv_folds}-fold cross-validation")
-                cv_scores = cross_val_score(
-                    model, X, y, cv=cv_folds, scoring="accuracy", n_jobs=n_jobs
+        try:
+            # Setup MLflow with timeout to prevent indefinite hangs
+            logger.info(
+                f"Connecting to MLflow at {mlflow_uri} (timeout: {mlflow_timeout_seconds}s)"
+            )
+
+            def _setup_mlflow() -> None:
+                mlflow.set_tracking_uri(mlflow_uri)
+                mlflow.set_experiment(model_name)
+
+            run_with_timeout(
+                _setup_mlflow,
+                seconds=mlflow_timeout_seconds,
+                error_message=f"MLflow connection timed out after {mlflow_timeout_seconds}s",
+            )
+            logger.info(f"MLflow tracking URI: {mlflow_uri}, Experiment: {model_name}")
+        except MLflowTimeoutError as e:
+            raise ModelTrainingError(str(e)) from e
+        except MlflowException as e:
+            raise ModelTrainingError(f"Failed to setup MLflow: {e}") from e
+
+        try:
+            # Load data
+            df = pd.read_csv(input_path)
+            logger.info(f"Loaded {len(df)} rows from {input_path}")
+        except FileNotFoundError as e:
+            raise ModelTrainingError(f"Input file not found: {input_path}") from e
+        except pd.errors.EmptyDataError as e:
+            raise ModelTrainingError(f"Input file is empty: {input_path}") from e
+
+        if target not in df.columns:
+            raise ModelTrainingError(
+                f"Target column '{target}' not found. Available: {list(df.columns)}"
+            )
+
+        X = df.drop(columns=[target])
+        y = df[target]
+
+        # Split data
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=random_state
+        )
+        logger.info(f"Train set: {len(X_train)}, Test set: {len(X_test)}")
+
+        try:
+            with mlflow.start_run() as run:
+                run_id = run.info.run_id
+                logger.info(f"Starting MLflow run: {run_id}")
+
+                # Log parameters
+                params = {
+                    "n_estimators": n_estimators,
+                    "max_depth": max_depth,
+                    "test_size": test_size,
+                    "random_state": random_state,
+                    "cv_folds": cv_folds,
+                    "use_cross_validation": use_cross_validation,
+                }
+                mlflow.log_params(params)
+                logger.info(f"Training parameters: {params}")
+
+                # Train model (limit n_jobs to avoid oversubscription in Kubernetes)
+                n_jobs = min(4, os.cpu_count() or 1)
+                model = RandomForestClassifier(
+                    n_estimators=n_estimators,
+                    max_depth=max_depth,
+                    random_state=random_state,
+                    n_jobs=n_jobs,
                 )
-                cv_mean = float(np.mean(cv_scores))
-                cv_std = float(np.std(cv_scores))
-                logger.info(f"CV Scores: {cv_scores}")
-                logger.info(f"CV Mean: {cv_mean:.4f} (+/- {cv_std:.4f})")
-                mlflow.log_metrics({"cv_mean_accuracy": cv_mean, "cv_std_accuracy": cv_std})
 
-            # Train final model on training set
-            model.fit(X_train, y_train)
-            logger.info("Model training completed")
+                # Perform cross-validation if enabled
+                cv_mean = None
+                cv_std = None
+                if use_cross_validation and len(X) >= cv_folds:
+                    logger.info(f"Performing {cv_folds}-fold cross-validation")
+                    cv_scores = cross_val_score(
+                        model, X, y, cv=cv_folds, scoring="accuracy", n_jobs=n_jobs
+                    )
+                    cv_mean = float(np.mean(cv_scores))
+                    cv_std = float(np.std(cv_scores))
+                    logger.info(f"CV Scores: {cv_scores}")
+                    logger.info(f"CV Mean: {cv_mean:.4f} (+/- {cv_std:.4f})")
+                    mlflow.log_metrics({"cv_mean_accuracy": cv_mean, "cv_std_accuracy": cv_std})
 
-            # Evaluate on test set
-            y_pred = model.predict(X_test)
-            accuracy = accuracy_score(y_test, y_pred)
-            f1 = f1_score(y_test, y_pred, average="weighted")
+                # Train final model on training set
+                model.fit(X_train, y_train)
+                logger.info("Model training completed")
 
-            logger.info(f"Metrics - Accuracy: {accuracy:.4f}, F1: {f1:.4f}")
-            mlflow.log_metrics({"accuracy": accuracy, "f1_score": f1})
+                # Evaluate on test set
+                y_pred = model.predict(X_test)
+                accuracy = accuracy_score(y_test, y_pred)
+                f1 = f1_score(y_test, y_pred, average="weighted")
 
-            # Log model to MLflow
-            mlflow.sklearn.log_model(model, "model", input_example=X_train.head(1))
+                span.set_attribute("accuracy", accuracy)
+                span.set_attribute("f1_score", f1)
 
-            # Save outputs locally
-            os.makedirs(os.path.dirname(model_output_path), exist_ok=True)
-            joblib.dump(model, model_output_path)
-            logger.info(f"Model saved to {model_output_path}")
+                logger.info(f"Metrics - Accuracy: {accuracy:.4f}, F1: {f1:.4f}")
+                mlflow.log_metrics({"accuracy": accuracy, "f1_score": f1})
 
-            # Save run ID and accuracy for next pipeline steps
-            with open(run_id_output_path, "w") as f:
-                f.write(run_id)
-            with open(accuracy_output_path, "w") as f:
-                f.write(str(accuracy))
+                # Log model to MLflow
+                mlflow.sklearn.log_model(model, "model", input_example=X_train.head(1))
 
-            return TrainingResult(
-                model_path=model_output_path,
-                run_id=run_id,
-                accuracy=accuracy,
-                f1=f1,
-                cv_mean=cv_mean,
-                cv_std=cv_std,
-                success=True,
-            )
+                # Save outputs locally
+                os.makedirs(os.path.dirname(model_output_path), exist_ok=True)
+                joblib.dump(model, model_output_path)
+                logger.info(f"Model saved to {model_output_path}")
 
-    except MlflowException as e:
-        raise ModelTrainingError(f"MLflow error during training: {e}") from e
-    except Exception as e:
-        raise ModelTrainingError(f"Training failed: {e}") from e
+                # Save run ID and accuracy for next pipeline steps
+                with open(run_id_output_path, "w") as f:
+                    f.write(run_id)
+                with open(accuracy_output_path, "w") as f:
+                    f.write(str(accuracy))
+
+                return TrainingResult(
+                    model_path=model_output_path,
+                    run_id=run_id,
+                    accuracy=accuracy,
+                    f1=f1,
+                    cv_mean=cv_mean,
+                    cv_std=cv_std,
+                    success=True,
+                )
+
+        except MlflowException as e:
+            raise ModelTrainingError(f"MLflow error during training: {e}") from e
+        except Exception as e:
+            raise ModelTrainingError(f"Training failed: {e}") from e
 
 
 if __name__ == "__main__":
