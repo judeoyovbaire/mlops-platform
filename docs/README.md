@@ -6,7 +6,7 @@ Comprehensive documentation for the MLOps Platform.
 
 | Document | Description |
 |----------|-------------|
-| [Quick Start](QUICKSTART.md) | Deploy your first model in 5 minutes |
+| [Quick Start](../QUICKSTART.md) | Deploy your first model in 5 minutes |
 | [Architecture](architecture.md) | System design and component details |
 | [Secrets Management](secrets-management.md) | Credential rotation and security |
 | [Performance Tuning](performance-tuning.md) | Optimize inference, training, and infrastructure |

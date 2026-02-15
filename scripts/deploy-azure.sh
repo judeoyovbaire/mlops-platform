@@ -120,9 +120,8 @@ setup_tfvars() {
 # All secrets are AUTO-GENERATED and stored in Azure Key Vault
 # No manual password configuration required!
 
-cluster_name       = "${CLUSTER_NAME}"
-location           = "${AZURE_LOCATION}"
-resource_group_name = "${RESOURCE_GROUP}"
+cluster_name   = "${CLUSTER_NAME}"
+azure_location = "${AZURE_LOCATION}"
 
 tags = {
   Environment = "dev"

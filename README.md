@@ -44,38 +44,7 @@ Data Scientist                    Platform (Automated)
 
 ## Multi-Cloud Architecture
 
-Deploy to **AWS**, **Azure**, or **GCP** - same MLOps capabilities, cloud-native implementations:
-
-```
-┌───────────────────────────────────────────────────────────────────────────┐
-│                         MLOps Platform                                    │
-├───────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                 │
-│  │     Argo     │    │   MLflow     │    │   KServe     │                 │
-│  │  Workflows   │───▶│  Tracking &  │───▶│   Model      │                 │
-│  │              │    │  Registry    │    │   Serving    │                 │
-│  └──────────────┘    └──────────────┘    └──────────────┘                 │
-│         │                   │                   │                         │
-│         ▼                   ▼                   ▼                         │
-│  ┌────────────────────────────────────────────────────────────────────┐   │
-│  │                 Kubernetes (EKS / AKS / GKE)                       │   │
-│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐   │   │
-│  │  │ GPU     │  │ Storage │  │ Ingress │  │ Prom/   │  │ ArgoCD  │   │   │
-│  │  │ Nodes   │  │ Backend │  │         │  │ Grafana │  │ GitOps  │   │   │
-│  │  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘   │   │
-│  └────────────────────────────────────────────────────────────────────┘   │
-│                                                                           │
-└───────────────────────────────────────────────────────────────────────────┘
-
-AWS EKS                       │  Azure AKS                   │  GCP GKE
-──────────────────────────────│──────────────────────────────│───────────────────────────
-• Karpenter (GPU scaling)     │  • KEDA (event-driven)       │  • Node Auto-provisioning
-• S3 + RDS PostgreSQL         │  • Blob + PostgreSQL Flex    │  • GCS + Cloud SQL
-• ALB Ingress Controller      │  • NGINX Ingress             │  • NGINX Ingress
-• IRSA (pod identity)         │  • Workload Identity         │  • Workload Identity Fed
-• SSM Parameter Store         │  • Azure Key Vault           │  • Secret Manager
-```
+Deploy to **AWS**, **Azure**, or **GCP** — same MLOps capabilities, cloud-native implementations.
 
 ## Architecture Diagrams
 
@@ -245,7 +214,7 @@ flowchart LR
 | **Pod Identity** | IRSA | Workload Identity | Workload Identity Federation |
 | **Secrets** | External Secrets + SSM | External Secrets + Key Vault | External Secrets + Secret Manager |
 | **Security** | PSA, Kyverno, Tetragon | PSA, Kyverno, Tetragon | PSA, Kyverno, Tetragon |
-| **Monitoring** | Prometheus + Grafana + Loki + Tempo | Prometheus + Grafana + Loki + Tempo | Prometheus + Grafana + Loki + Tempo |
+| **Monitoring** | Prometheus + Grafana + Loki + Alloy + Tempo | Prometheus + Grafana + Loki + Alloy + Tempo | Prometheus + Grafana + Loki + Alloy + Tempo |
 | **Network Observability** | VPC Flow Logs | NSG Flow Logs + Traffic Analytics | VPC Flow Logs |
 | **Backup** | AWS Backup (RDS) | Built-in PostgreSQL Backup | Cloud SQL Backup |
 | **Cost Management** | Cost Dashboard (Grafana) | Cost Dashboard (Grafana) | Cost Dashboard (Grafana) |
@@ -268,12 +237,13 @@ flowchart LR
 | Monitoring | Prometheus + Grafana | 81.6.9 | Observability |
 | Log Aggregation | Loki | 6.24.0 | Centralized logging |
 | Distributed Tracing | Tempo | 1.15.0 | Request tracing |
+| Log Shipping | Grafana Alloy | 0.12.0 | Pod log collection to Loki |
 | Telemetry | OpenTelemetry Collector | 0.108.0 | Unified telemetry pipeline |
 | Security Policy | Kyverno | 3.6.2 | Policy-as-code engine |
 | Runtime Security | Tetragon | 1.6.0 | eBPF runtime monitoring |
 | Secrets | External Secrets Operator | 1.2.1 | Cloud secrets sync |
 | Resilience Testing | Chaos Mesh | 2.8.1 | Chaos engineering |
-| Infrastructure | Terraform | 1.14+ | IaC for EKS/AKS/GKE |
+| Infrastructure | Terraform | >= 1.5.7 | IaC for EKS/AKS/GKE |
 | CI/CD | GitHub Actions | - | Automated testing |
 
 ## Project Structure
@@ -355,134 +325,34 @@ mlops-platform/
 - gke-gcloud-auth-plugin (`gcloud components install gke-gcloud-auth-plugin`)
 
 **Common:**
-- Terraform 1.14+
+- Terraform >= 1.5.7
 - kubectl
 - Helm 3.x
 - Python 3.10+
 
-### Quick Start - AWS
+### Quick Start
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/judeoyovbaire/mlops-platform.git
 cd mlops-platform
 
-# 2. Bootstrap AWS resources (S3 state bucket, GitHub OIDC)
-cd infrastructure/terraform/bootstrap/aws
+# 1. Bootstrap cloud resources (run once per cloud)
+cd infrastructure/terraform/bootstrap/aws    # or azure/ or gcp/
 terraform init && terraform apply
+cd -
 
-# 3. Deploy the platform (~15-20 minutes)
-make deploy-aws
+# 2. Deploy the platform (~15-25 minutes)
+make deploy-aws     # or deploy-azure, deploy-gcp
 
-# 4. Access the dashboards
-make port-forward-mlflow   # MLflow at localhost:5000
-make port-forward-argocd   # ArgoCD at localhost:8080
+# 3. Access dashboards
+make port-forward-mlflow   # http://localhost:5000
+make port-forward-argocd   # https://localhost:8080
+make port-forward-grafana  # http://localhost:3000
 ```
 
-### Quick Start - Azure
+See **[QUICKSTART.md](QUICKSTART.md)** for deploying a model, running a training pipeline, and testing inference end-to-end.
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/judeoyovbaire/mlops-platform.git
-cd mlops-platform
-
-# 2. Bootstrap Azure resources (Storage Account, GitHub OIDC)
-cd infrastructure/terraform/bootstrap/azure
-terraform init && terraform apply
-
-# 3. Deploy the platform (~15-25 minutes)
-make deploy-azure
-
-# 4. Access the dashboards
-make port-forward-mlflow   # MLflow at localhost:5000
-make port-forward-argocd   # ArgoCD at localhost:8080
-```
-
-### Quick Start - GCP
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/judeoyovbaire/mlops-platform.git
-cd mlops-platform
-
-# 2. Bootstrap GCP resources (GCS state bucket, Workload Identity)
-cd infrastructure/terraform/bootstrap/gcp
-terraform init && terraform apply
-
-# 3. Deploy the platform (~15-25 minutes)
-make deploy-gcp
-
-# 4. Access the dashboards
-make port-forward-mlflow   # MLflow at localhost:5000
-make port-forward-argocd   # ArgoCD at localhost:8080
-```
-
-### Using the Makefile
-
-```bash
-make help                  # Show all available commands
-
-# AWS Deployment
-make deploy-aws            # Deploy to AWS EKS
-make status-aws            # Check AWS deployment status
-make secrets-aws           # Retrieve secrets from AWS SSM
-make destroy-aws           # Destroy AWS resources
-
-# Azure Deployment
-make deploy-azure          # Deploy to Azure AKS
-make status-azure          # Check Azure deployment status
-make secrets-azure         # Retrieve secrets from Azure Key Vault
-make destroy-azure         # Destroy Azure resources
-
-# GCP Deployment
-make deploy-gcp            # Deploy to GCP GKE
-make status-gcp            # Check GCP deployment status
-make secrets-gcp           # Retrieve secrets from GCP Secret Manager
-make destroy-gcp           # Destroy GCP resources
-
-# Validation & Testing
-make validate              # Validate Terraform and Python
-make lint                  # Lint Python and Terraform code
-make format                # Auto-format Python and Terraform code
-make test                  # Run unit tests
-
-# Development (after deployment - works with any cloud)
-make port-forward-mlflow   # Forward MLflow to localhost:5000
-make port-forward-argocd   # Forward ArgoCD to localhost:8080
-make port-forward-grafana  # Forward Grafana to localhost:3000
-make deploy-example        # Deploy example inference service
-```
-
-### Deploy a Model with KServe
-
-```bash
-# Deploy example inference services
-kubectl apply -f examples/kserve/inferenceservice-examples.yaml
-
-# Check status
-kubectl get inferenceservice -n mlops
-
-# Test inference
-curl -X POST "http://<SERVICE_URL>/v1/models/sklearn-iris:predict" \
-  -H "Content-Type: application/json" \
-  -d '{"instances": [[5.1, 3.5, 1.4, 0.2]]}'
-```
-
-### Run a Training Pipeline
-
-```bash
-# Apply the workflow template
-kubectl apply -f pipelines/training/ml-training-workflow.yaml
-
-# Run the training pipeline
-kubectl create -f pipelines/training/ml-training-workflow.yaml -n argo
-
-# Check workflow status
-kubectl get workflows -n argo
-
-# View logs
-argo logs -n argo <workflow-name>
-```
+Run `make help` for all available commands.
 
 ## CI/CD Pipeline
 
@@ -496,29 +366,6 @@ Single unified pipeline with OIDC authentication for all clouds (no static crede
 | **Manual: `gcp` + `deploy-infra`** | Deploy GCP GKE infrastructure via Terraform |
 | **Manual: `deploy-model`** | Deploy example InferenceServices to KServe |
 | **Local: `make destroy-*`** | Destroy infrastructure (safety - not in pipeline) |
-
-### Pipeline Flow
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           CI/CD PIPELINE                                    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ON PUSH/PR (automatic):                                                    │
-│  ├── Lint Python (ruff)                                                     │
-│  ├── Validate Terraform (AWS + Azure + GCP)                                 │
-│  ├── Validate Kubernetes manifests                                          │
-│  ├── Security scan (Trivy)                                                  │
-│  ├── Run tests (pytest)                                                     │
-│  └── Terraform plan (parallel: AWS, Azure, and GCP)                         │
-│                                                                             │
-│  MANUAL TRIGGER (Actions → CI/CD → Run workflow):                           │
-│  ├── Cloud: aws/azure/gcp                                                   │
-│  ├── deploy-infra  → Creates EKS/AKS/GKE cluster (~15-25 min)               │
-│  └── deploy-model  → Deploys example InferenceServices                      │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
 
 ### Setup GitHub Secrets
 
@@ -606,13 +453,13 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 | Resource | Configuration | Monthly Cost |
 |----------|---------------|--------------|
 | AKS Control Plane | Free tier | $0 |
-| System Nodes | 2x Standard_D4s_v3 | ~$280 |
+| System Nodes | 2x Standard_D2s_v3 | ~$140 |
 | Training Nodes | Standard_D8s_v3 (Spot, scale-to-zero) | ~$30-50 |
 | GPU Nodes | Standard_NC6s_v3 (Spot, scale-to-zero) | ~$50-100 |
 | PostgreSQL | B_Standard_B1ms | ~$15 |
 | Storage Account | Standard LRS | ~$5 |
 | Key Vault + Load Balancer | Standard | ~$23 |
-| **Total** | | **~$400-470/month** |
+| **Total** | | **~$260-330/month** |
 
 **GCP (europe-west4):**
 
@@ -636,34 +483,14 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 ## Roadmap
 
 ### Completed
-- [x] AWS EKS cluster with GPU support (Terraform)
-- [x] Azure AKS cluster with GPU support (Terraform)
-- [x] GCP GKE cluster with GPU support (Terraform)
-- [x] MLflow 3.x with cloud-native storage backends
-- [x] KServe for model serving
-- [x] ArgoCD for GitOps
-- [x] Argo Workflows for ML pipelines
-- [x] Karpenter for GPU autoscaling (AWS)
-- [x] KEDA for event-driven autoscaling (Azure)
-- [x] GKE Node Auto-provisioning for GPU autoscaling (GCP)
-- [x] CI/CD pipeline with multi-cloud support
-- [x] Security hardening (PSA, Kyverno policies, Tetragon runtime security)
-- [x] Observability (Prometheus, Grafana, alerts)
-- [x] External Secrets integration (SSM / Key Vault / Secret Manager)
-- [x] Distributed training examples (Kubeflow Training Operator)
-- [x] Data versioning examples (DVC integration)
-- [x] AWS Backup for RDS with daily/weekly schedules
-- [x] VPC Flow Logs (AWS, Azure NSG, GCP)
-- [x] Grafana cost dashboard for resource optimization
-- [x] Chaos Mesh for resilience testing
-- [x] Production environment configuration (AWS, Azure, GCP)
-- [x] Comprehensive test coverage (Terraform modules, CI pipeline integration)
-- [x] Model monitoring & data drift detection (Grafana dashboards, drift detector)
-- [x] Cost optimization automation (idle resource scanner, cost report generator)
-- [x] Model registry governance (Kyverno policies for versioning, approval workflows)
-- [x] Performance tuning guide
-
-- [x] HuggingFace pretrained model pipeline (fetch, register in MLflow, deploy via KServe)
+- [x] **Multi-cloud infrastructure** — EKS, AKS, GKE with GPU autoscaling (Karpenter / KEDA / NAP)
+- [x] **ML platform** — MLflow 3.x, KServe, Argo Workflows, ArgoCD
+- [x] **Observability** — Prometheus, Grafana, Loki, Alloy, Tempo, cost dashboards
+- [x] **Security** — PSA, Kyverno, Tetragon, External Secrets, network policies
+- [x] **CI/CD** — GitHub Actions with OIDC auth, multi-cloud plan/deploy, Trivy scanning
+- [x] **Production readiness** — dev/prod configs, backup, VPC Flow Logs, drift detection
+- [x] **Examples** — distributed training, data versioning, canary deploys, chaos testing, LLM inference
+- [x] **Pipelines** — Iris training pipeline + HuggingFace pretrained model pipeline
 
 ### Future Enhancements
 - [ ] A/B testing framework for model comparison
@@ -708,7 +535,7 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 
 | Category | Documents |
 |----------|-----------|
-| **Getting Started** | [Quick Start Guide](docs/QUICKSTART.md) - Deploy your first model in 5 minutes |
+| **Getting Started** | [Quick Start Guide](QUICKSTART.md) - Deploy your first model in 5 minutes |
 | **Architecture** | [Architecture Deep Dive](docs/architecture.md) - System design and components |
 | **Security** | [Secrets Management](docs/secrets-management.md) - Credential rotation |
 | **Operations** | [Operations Runbook](docs/runbooks/operations.md) - Day-to-day procedures |

@@ -3,7 +3,7 @@
 
 aws_region     = "eu-west-1"
 cluster_name   = "mlops-platform-dev"
-cluster_version = "1.33"
+cluster_version = "1.34"
 
 # VPC configuration
 vpc_cidr        = "10.0.0.0/16"

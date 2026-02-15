@@ -1,4 +1,8 @@
-bucket         = "mlops-platform-tfstate-183590992229"
+# Backend configuration for AWS S3 remote state
+# Copy this file to backend.conf and update with your bootstrap outputs:
+#   terraform -chdir=infrastructure/terraform/bootstrap/aws output
+
+bucket         = "mlops-platform-tfstate-<YOUR_ACCOUNT_ID>"
 key            = "mlops-platform/aws/dev/terraform.tfstate"
 region         = "eu-west-1"
 encrypt        = true

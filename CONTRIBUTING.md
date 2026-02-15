@@ -21,9 +21,13 @@ This project adheres to a code of conduct. By participating, you are expected to
 ### Prerequisites
 
 - Python 3.10+
-- Terraform 1.6+
+- Terraform >= 1.5.7
 - kubectl
+- Helm 3.x
 - AWS CLI v2
+- Azure CLI (`az`)
+- Google Cloud SDK (`gcloud`)
+- kubelogin (for AKS authentication)
 - Docker (for local testing)
 
 ### Local Development Setup

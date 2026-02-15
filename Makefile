@@ -18,7 +18,7 @@ help:
 	@echo "======================================"
 	@echo ""
 	@echo "Local Development:"
-	@echo "  make deploy-local       - Deploy to local Kind cluster"
+	@echo "  make deploy-local       - Deploy to local Kind cluster (core services only, no monitoring)"
 	@echo "  make status-local       - Check local cluster status"
 	@echo "  make destroy-local      - Destroy local Kind cluster"
 	@echo ""
@@ -82,8 +82,9 @@ TERRAFORM_DIR_AZURE = infrastructure/terraform/environments/azure/dev
 TERRAFORM_DIR_GCP = infrastructure/terraform/environments/gcp/dev
 PIPELINE_DIR = pipelines/training
 PRETRAINED_DIR = pipelines/pretrained
-PIPELINE_IMAGE ?= mlops-platform/ml-training:latest
-PRETRAINED_IMAGE ?= mlops-platform/hf-pretrained:latest
+GIT_TAG := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+PIPELINE_IMAGE ?= mlops-platform/ml-training:$(GIT_TAG)
+PRETRAINED_IMAGE ?= mlops-platform/hf-pretrained:$(GIT_TAG)
 
 # Default Deployment (AWS)
 

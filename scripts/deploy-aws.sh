@@ -145,7 +145,7 @@ deploy() {
     # Configure kubectl
     print_info "Configuring kubectl..."
     CLUSTER_NAME=$(terraform output -raw cluster_name)
-    AWS_REGION=$(terraform output -raw configure_kubectl | grep -oP '(?<=--region )\S+')
+    AWS_REGION=$(terraform output -raw configure_kubectl | grep -oE '\-\-region [a-z0-9-]+' | awk '{print $2}')
     aws eks update-kubeconfig --region "${AWS_REGION}" --name "${CLUSTER_NAME}"
 
     print_status "Deployment complete!"
