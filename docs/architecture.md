@@ -903,7 +903,7 @@ Current versions deployed by the platform (aligned across all clouds):
 | AWS ALB Controller | 1.17.1 | Kubernetes Ingress with ALB |
 | NGINX Ingress | 4.14.3 | Kubernetes Ingress (Azure/GCP) |
 | cert-manager | 1.19.3 | TLS certificate management |
-| Prometheus Stack | 81.6.7 | Monitoring and alerting |
+| Prometheus Stack | 81.6.9 | Monitoring and alerting |
 | Loki | 6.24.0 | Log aggregation |
 | Tempo | 1.15.0 | Distributed tracing |
 | OpenTelemetry Collector | 0.108.0 | Unified telemetry pipeline |

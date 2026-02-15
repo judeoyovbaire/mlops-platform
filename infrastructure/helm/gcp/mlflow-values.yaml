@@ -5,7 +5,7 @@ replicaCount: 1
 # Use chart's default image which includes psycopg2 for PostgreSQL
 image:
   repository: burakince/mlflow
-  tag: "3.7.0"
+  tag: "3.9.0"
   pullPolicy: IfNotPresent
 
 # Service account with GKE Workload Identity

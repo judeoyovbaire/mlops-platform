@@ -24,7 +24,7 @@ jobs:
       - name: Setup Kustomize
         uses: yokawasa/action-setup-kube-tools@v0.13.1
         with:
-          kustomize: "5.3.0"
+          kustomize: "5.5.0"
 
       - name: Build release artifacts
         run: |
@@ -94,10 +94,10 @@ jobs:
             ```
 
             ### Components
-            - MLflow v3.7.0
+            - MLflow v3.9.0
             - KServe v0.16.0
             - ArgoCD v7.9.0
-            - Argo Workflows v0.46.1
+            - Argo Workflows v0.47.3
             - Karpenter v1.8.0 (AWS) / KEDA v2.18.3 (Azure) / NAP (GCP)
             - Prometheus Stack v72.6.2
 

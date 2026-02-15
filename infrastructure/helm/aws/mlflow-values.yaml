@@ -1,4 +1,4 @@
-# MLflow Helm Chart Values for AWS EKS (chart version 1.8.1)
+# MLflow Helm Chart Values for AWS EKS (chart version 1.8.1, MLflow 3.9.0)
 # Uses RDS PostgreSQL and S3 for artifacts
 
 replicaCount: 1
@@ -7,7 +7,7 @@ replicaCount: 1
 # The official ghcr.io/mlflow/mlflow image does NOT include database drivers
 image:
   repository: burakince/mlflow
-  tag: "3.7.0"
+  tag: "3.9.0"
   pullPolicy: IfNotPresent
 
 serviceAccount:
@@ -43,7 +43,7 @@ artifactRoot:
 extraEnvVars:
   AWS_DEFAULT_REGION: "${aws_region}"
 
-# MLflow 3.x security: allow connections from kubelet for health checks
+# MLflow 3.9 security: allow connections from kubelet for health checks
 # Setting log.enabled=false prevents chart from adding --gunicorn-opts,
 # which allows uvicorn (default) to be used with security middleware flags
 extraArgs:

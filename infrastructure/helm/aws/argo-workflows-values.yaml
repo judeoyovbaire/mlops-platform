@@ -78,12 +78,12 @@ workflowTemplates:
   enabled: true
 
 # Use emissary executor (recommended)
-# Tag should match Argo Workflows version (chart 0.46.1 = app v3.6.x)
+# Tag should match Argo Workflows version (chart 0.47.3 = app v3.7.x)
 executor:
   image:
     registry: quay.io
     repository: argoproj/argoexec
-    tag: v3.6.4
+    tag: v3.7.2
 
 # RBAC configuration
 createAggregateRoles: true

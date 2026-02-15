@@ -1,4 +1,4 @@
-# Argo Workflows Helm Values - GCP GKE (argo/argo-workflows v0.46.1)
+# Argo Workflows Helm Values - GCP GKE (argo/argo-workflows v0.47.3)
 # ML pipeline orchestration with GCS artifact storage
 
 # Controller configuration

@@ -253,7 +253,7 @@ variable "helm_minio_version" {
 variable "helm_prometheus_stack_version" {
   description = "kube-prometheus-stack Helm chart version"
   type        = string
-  default     = "81.6.7"
+  default     = "81.6.9"
 }
 
 variable "helm_kyverno_version" {

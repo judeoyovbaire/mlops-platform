@@ -265,7 +265,7 @@ flowchart LR
 | Ingress (AWS) | AWS ALB Controller | 1.17.1 | External load balancing |
 | Ingress (Azure/GCP) | NGINX Ingress | 4.14.3 | External load balancing |
 | TLS | cert-manager | 1.19.3 | Certificate management |
-| Monitoring | Prometheus + Grafana | 81.6.7 | Observability |
+| Monitoring | Prometheus + Grafana | 81.6.9 | Observability |
 | Log Aggregation | Loki | 6.24.0 | Centralized logging |
 | Distributed Tracing | Tempo | 1.15.0 | Request tracing |
 | Telemetry | OpenTelemetry Collector | 0.108.0 | Unified telemetry pipeline |
@@ -320,10 +320,14 @@ mlops-platform/
 │       ├── aws/                # AWS-specific Helm values
 │       ├── azure/              # Azure-specific Helm values
 │       └── gcp/                # GCP-specific Helm values
-├── pipelines/training/         # Argo Workflow pipeline definitions
-│   ├── src/                    # Pipeline Python scripts
-│   ├── kustomization.yaml      # ConfigMap generator
-│   └── ml-training-workflow.yaml
+├── pipelines/
+│   ├── training/               # Iris training pipeline (Argo Workflow)
+│   │   ├── src/                # Pipeline Python scripts
+│   │   ├── kustomization.yaml  # ConfigMap generator
+│   │   └── ml-training-workflow.yaml
+│   └── pretrained/             # HuggingFace pretrained model pipeline
+│       ├── src/                # fetch_model.py, register_model.py
+│       └── hf-pretrained-workflow.yaml
 ├── scripts/
 │   ├── common/                 # Shared script utilities
 │   ├── cost-optimization/      # Cost analysis and reporting scripts
@@ -351,7 +355,7 @@ mlops-platform/
 - gke-gcloud-auth-plugin (`gcloud components install gke-gcloud-auth-plugin`)
 
 **Common:**
-- Terraform 1.10+
+- Terraform 1.14+
 - kubectl
 - Helm 3.x
 - Python 3.10+
@@ -659,6 +663,8 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 - [x] Model registry governance (Kyverno policies for versioning, approval workflows)
 - [x] Performance tuning guide
 
+- [x] HuggingFace pretrained model pipeline (fetch, register in MLflow, deploy via KServe)
+
 ### Future Enhancements
 - [ ] A/B testing framework for model comparison
 - [ ] Feature store integration (Feast)
@@ -674,6 +680,7 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 | [Distributed Training](examples/distributed-training/) | PyTorch DDP with Kubeflow Training Operator | Advanced |
 | [LLM Inference](examples/llm-inference/) | Mistral-7B with vLLM on GPU | Advanced |
 | [Drift Detection](examples/drift-detection/) | Model monitoring with Evidently | Advanced |
+| [HuggingFace Sentiment](examples/kserve/huggingface-sentiment.yaml) | Pretrained HF model via KServe | Intermediate |
 | [Chaos Testing](examples/chaos-testing/) | Resilience testing with Chaos Mesh | Advanced |
 
 ## Why These Tools?
