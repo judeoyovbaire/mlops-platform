@@ -72,3 +72,6 @@ logs/
 # Compiled pipeline outputs
 *.yaml.compiled
 ml_training_pipeline.yaml
+
+# AI assistant config (local only)
+CLAUDE.md
