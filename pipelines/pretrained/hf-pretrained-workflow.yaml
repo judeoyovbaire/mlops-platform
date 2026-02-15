@@ -1,0 +1,156 @@
+# Argo Workflow Template for HuggingFace Pretrained Model Pipeline
+# Demonstrates: fetching a pretrained model from HuggingFace Hub,
+# validating it with sanity inference, and registering in MLflow.
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: hf-pretrained-pipeline
+  namespace: argo
+  labels:
+    app: mlops
+    pipeline: pretrained
+spec:
+  entrypoint: hf-pipeline
+  serviceAccountName: argo-workflows-server
+
+  # Maximum runtime (30 minutes — model download can be slow)
+  activeDeadlineSeconds: 1800
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+  arguments:
+    parameters:
+      - name: pipeline-image
+        value: "mlops-platform/hf-pretrained:latest"
+      - name: model-id
+        value: "distilbert/distilbert-base-uncased-finetuned-sst-2-english"
+      - name: task
+        value: "text-classification"
+      - name: model-name
+        value: "sentiment-classifier"
+      - name: mlflow-tracking-uri
+        value: "http://mlflow.mlflow.svc.cluster.local:5000"
+      - name: model-alias
+        value: "champion"
+
+  artifactRepositoryRef:
+    configMap: artifact-repositories
+    key: default-artifact-repository
+
+  templates:
+    # Main pipeline DAG
+    - name: hf-pipeline
+      dag:
+        tasks:
+          - name: fetch-model
+            template: fetch-model
+            arguments:
+              parameters:
+                - name: model-id
+                  value: "{{workflow.parameters.model-id}}"
+                - name: task
+                  value: "{{workflow.parameters.task}}"
+
+          - name: register-model
+            template: register-model
+            dependencies: [fetch-model]
+            arguments:
+              parameters:
+                - name: model-name
+                  value: "{{workflow.parameters.model-name}}"
+                - name: mlflow-tracking-uri
+                  value: "{{workflow.parameters.mlflow-tracking-uri}}"
+                - name: model-alias
+                  value: "{{workflow.parameters.model-alias}}"
+              artifacts:
+                - name: model-artifacts
+                  from: "{{tasks.fetch-model.outputs.artifacts.model-artifacts}}"
+
+    # Step 1: Fetch and validate pretrained model from HuggingFace Hub
+    - name: fetch-model
+      retryStrategy:
+        limit: 2
+        retryPolicy: "OnError"
+      inputs:
+        parameters:
+          - name: model-id
+          - name: task
+      outputs:
+        artifacts:
+          - name: model-artifacts
+            path: /tmp/hf-model
+      container:
+        image: "{{workflow.parameters.pipeline-image}}"
+        command: [python, /app/src/fetch_model.py]
+        args:
+          - --model-id
+          - "{{inputs.parameters.model-id}}"
+          - --output-dir
+          - /tmp/hf-model
+          - --task
+          - "{{inputs.parameters.task}}"
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+
+    # Step 2: Register model in MLflow
+    - name: register-model
+      retryStrategy:
+        limit: 2
+        retryPolicy: "OnError"
+      inputs:
+        parameters:
+          - name: model-name
+          - name: mlflow-tracking-uri
+          - name: model-alias
+        artifacts:
+          - name: model-artifacts
+            path: /tmp/hf-model
+      container:
+        image: "{{workflow.parameters.pipeline-image}}"
+        command: [python, /app/src/register_model.py]
+        args:
+          - --metadata
+          - /tmp/hf-model/metadata.json
+          - --model-name
+          - "{{inputs.parameters.model-name}}"
+          - --mlflow-uri
+          - "{{inputs.parameters.mlflow-tracking-uri}}"
+          - --alias
+          - "{{inputs.parameters.model-alias}}"
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+
+---
+# Workflow to run the pretrained model pipeline
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: hf-pretrained-
+  namespace: argo
+  labels:
+    app: mlops
+    pipeline: pretrained
+spec:
+  workflowTemplateRef:
+    name: hf-pretrained-pipeline

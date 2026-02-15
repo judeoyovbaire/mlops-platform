@@ -81,7 +81,9 @@ TERRAFORM_DIR_AWS = infrastructure/terraform/environments/aws/dev
 TERRAFORM_DIR_AZURE = infrastructure/terraform/environments/azure/dev
 TERRAFORM_DIR_GCP = infrastructure/terraform/environments/gcp/dev
 PIPELINE_DIR = pipelines/training
+PRETRAINED_DIR = pipelines/pretrained
 PIPELINE_IMAGE ?= mlops-platform/ml-training:latest
+PRETRAINED_IMAGE ?= mlops-platform/hf-pretrained:latest
 
 # Default Deployment (AWS)
 
@@ -323,6 +325,11 @@ build-pipeline-image:
 	@echo "Building ML training pipeline image..."
 	docker build -t $(PIPELINE_IMAGE) $(PIPELINE_DIR)
 	@echo "Built $(PIPELINE_IMAGE)"
+
+build-pretrained-image:
+	@echo "Building HuggingFace pretrained pipeline image..."
+	docker build -t $(PRETRAINED_IMAGE) $(PRETRAINED_DIR)
+	@echo "Built $(PRETRAINED_IMAGE)"
 
 # Utilities
 

@@ -76,6 +76,29 @@ spec:
       storageUri: gs://your-bucket/models/your-model
 ```
 
+## HuggingFace Sentiment Analysis
+
+Deploy a pretrained sentiment analysis model using KServe's native HuggingFace runtime:
+
+```bash
+kubectl apply -f huggingface-sentiment.yaml
+```
+
+Wait for readiness:
+
+```bash
+kubectl wait --for=condition=Ready inferenceservice/hf-sentiment -n mlops --timeout=600s
+```
+
+Test:
+
+```bash
+kubectl port-forward svc/hf-sentiment-predictor -n mlops 8080:80
+curl -X POST http://localhost:8080/v1/models/sentiment:predict \
+  -H "Content-Type: application/json" \
+  -d '{"instances": ["I love this product!"]}'
+```
+
 ## Related Examples
 
 - `examples/llm-inference/` - LLM serving with vLLM

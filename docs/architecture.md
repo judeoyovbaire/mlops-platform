@@ -235,7 +235,19 @@ spec:
 | TinyLlama-1.1B      | 1.1B | ~4GB       | Testing, demos  |
 | CodeLlama-7B        | 7B   | ~14GB      | Code generation |
 
-### 5. GPU Autoscaling
+### 5. HuggingFace Pretrained Model Pipeline
+
+In addition to training from scratch, the platform supports deploying pretrained models from HuggingFace Hub — a pattern used by many production teams who fine-tune or deploy existing models rather than training from scratch.
+
+**Pipeline Steps:**
+1. **Fetch Model** — Downloads model + tokenizer from HuggingFace Hub, runs sanity inference
+2. **Register Model** — Logs model to MLflow using `mlflow.transformers.log_model()`, sets alias
+
+**Serving:** KServe's native HuggingFace runtime (`modelFormat: huggingface`) serves models directly, handling tokenization and inference with no custom code.
+
+**Default Model:** `distilbert/distilbert-base-uncased-finetuned-sst-2-english` (sentiment analysis, ~260MB, CPU-only). The pipeline is parameterized so any HF model can be swapped in via workflow parameters.
+
+### 6. GPU Autoscaling
 
 **AWS: Karpenter**
 
