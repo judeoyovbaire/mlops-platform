@@ -99,15 +99,15 @@ resource "helm_release" "otel_collector" {
   ]
 }
 
-# Promtail - Log Shipping Agent (ships logs to Loki)
-resource "helm_release" "promtail" {
-  name       = "promtail"
+# Grafana Alloy - Log Shipping Agent (ships logs to Loki)
+resource "helm_release" "alloy" {
+  name       = "alloy"
   repository = "https://grafana.github.io/helm-charts"
-  chart      = "promtail"
-  version    = var.helm_promtail_version
+  chart      = "alloy"
+  version    = var.helm_alloy_version
   namespace  = kubernetes_namespace.monitoring.metadata[0].name
 
-  values = [file("${path.module}/../../../../helm/common/promtail-values.yaml")]
+  values = [file("${path.module}/../../../../helm/common/alloy-values.yaml")]
 
   timeout = 300
 

@@ -171,10 +171,10 @@ variable "helm_otel_collector_version" {
   default     = "0.108.0"
 }
 
-variable "helm_promtail_version" {
-  description = "Promtail Helm chart version"
+variable "helm_alloy_version" {
+  description = "Grafana Alloy Helm chart version"
   type        = string
-  default     = "6.16.6"
+  default     = "0.12.0"
 }
 
 # -----------------------------------------------------------------------------
