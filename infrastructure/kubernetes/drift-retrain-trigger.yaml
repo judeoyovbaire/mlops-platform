@@ -1,0 +1,94 @@
+# Argo Events resources that close the MLOps loop:
+#   1. EventSource — receives Alertmanager webhook when DataDriftDetected fires
+#   2. Sensor      — submits an ml-training-pipeline Workflow on that event
+#
+# Prerequisites:
+#   - Argo Events controller + EventBus deployed in the argo-events namespace
+#   - Alertmanager configured with a webhook receiver pointing to the EventSource
+#     service (see alertmanager-config section in monitoring Helm values)
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: alertmanager-drift
+  namespace: argo-events
+  labels:
+    app: mlops
+    component: drift-retrain
+spec:
+  service:
+    ports:
+      - port: 12000
+        targetPort: 12000
+  webhook:
+    drift-alert:
+      port: "12000"
+      endpoint: /drift
+      method: POST
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: drift-retrain-sensor
+  namespace: argo-events
+  labels:
+    app: mlops
+    component: drift-retrain
+spec:
+  dependencies:
+    - name: drift-alert
+      eventSourceName: alertmanager-drift
+      eventName: drift-alert
+      filters:
+        data:
+          # Only trigger on DataDriftDetected alerts that are firing
+          - path: body.alerts.0.labels.alertname
+            type: string
+            value:
+              - "DataDriftDetected"
+          - path: body.status
+            type: string
+            value:
+              - "firing"
+
+  triggers:
+    - template:
+        name: retrain-pipeline
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: drift-retrain-
+                namespace: argo
+                labels:
+                  app: mlops
+                  trigger: drift-detection
+              spec:
+                workflowTemplateRef:
+                  name: ml-training-pipeline
+                arguments:
+                  parameters:
+                    # These use the workflow-template defaults; override here
+                    # if the drift alert carries a specific model name.
+                    - name: model-name
+                      value: "iris-classifier"
+          # Rate-limit: at most one retrain per hour
+          parameters:
+            - src:
+                dependencyName: drift-alert
+                dataKey: body.alerts.0.labels.model_name
+              dest: spec.arguments.parameters.0.value
+      retryStrategy:
+        steps: 3
+        duration: 60s
+      policy:
+        k8s:
+          backoff:
+            duration: 60s
+            factor: 2
+            steps: 3

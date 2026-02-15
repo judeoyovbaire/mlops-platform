@@ -209,6 +209,18 @@ spec:
             summary: "Kyverno policy violation detected"
             description: "Policy {{ $labels.policy_name }} has been violated. Check resources for compliance."
 
+        # Data drift detected — triggers automated retraining via Argo Events
+        - alert: DataDriftDetected
+          expr: |
+            model_data_drift_score{namespace="mlops"} > 0.15
+          for: 10m
+          labels:
+            severity: warning
+            automation: retrain
+          annotations:
+            summary: "Data drift detected for {{ $labels.model_name }}"
+            description: "Drift score {{ $value | printf \"%.3f\" }} exceeds threshold 0.15 for model {{ $labels.model_name }}. Automated retraining will be triggered."
+
         # Model prediction queue depth (for batch inference)
         - alert: HighPredictionQueueDepth
           expr: |

@@ -21,9 +21,19 @@ spec:
     runAsUser: 1000
     fsGroup: 1000
 
+  # OpenTelemetry configuration for all pipeline steps
+  podSpecPatch: |
+    containers:
+      - name: main
+        env:
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: "otel-collector.monitoring:4317"
+
   # Pipeline parameters with defaults
   arguments:
     parameters:
+      - name: pipeline-image
+        value: "mlops-platform/ml-training:latest"
       - name: dataset-url
         value: "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv"
       - name: target-column
@@ -127,9 +137,24 @@ spec:
                 - name: encoder
                   from: "{{tasks.feature-engineering.outputs.artifacts.encoder}}"
 
+          - name: validate-model
+            template: validate-model
+            dependencies: [train-model]
+            arguments:
+              parameters:
+                - name: target-column
+                  value: "{{workflow.parameters.target-column}}"
+                - name: accuracy-threshold
+                  value: "{{workflow.parameters.accuracy-threshold}}"
+              artifacts:
+                - name: model
+                  from: "{{tasks.train-model.outputs.artifacts.model}}"
+                - name: input-data
+                  from: "{{tasks.feature-engineering.outputs.artifacts.output-data}}"
+
           - name: register-model
             template: register-model
-            dependencies: [train-model]
+            dependencies: [validate-model]
             arguments:
               parameters:
                 - name: model-name
@@ -156,13 +181,13 @@ spec:
           - name: output-data
             path: /tmp/data.csv
       container:
-        image: python:3.11.14-slim
-        command: [sh, -c]
+        image: "{{workflow.parameters.pipeline-image}}"
+        command: [python, /app/src/load_data.py]
         args:
-          - pip install -r /src/requirements.txt && python /src/load_data.py --url "{{inputs.parameters.dataset-url}}" --output /tmp/data.csv
-        volumeMounts:
-          - name: scripts
-            mountPath: /src
+          - --url
+          - "{{inputs.parameters.dataset-url}}"
+          - --output
+          - /tmp/data.csv
         resources:
           requests:
             cpu: 100m
@@ -174,10 +199,6 @@ spec:
           allowPrivilegeEscalation: false
           capabilities:
             drop: ["ALL"]
-      volumes:
-        - name: scripts
-          configMap:
-            name: ml-training-scripts
 
     # Step 2: Validate data quality
     - name: validate-data
@@ -196,13 +217,17 @@ spec:
           - name: output-data
             path: /tmp/validated.csv
       container:
-        image: python:3.11.14-slim
-        command: [sh, -c]
+        image: "{{workflow.parameters.pipeline-image}}"
+        command: [python, /app/src/validate_data.py]
         args:
-          - pip install -r /src/requirements.txt && python /src/validate_data.py --input /tmp/input.csv --output /tmp/validated.csv --min-rows "{{inputs.parameters.min-rows}}" --null-threshold "{{inputs.parameters.null-threshold}}"
-        volumeMounts:
-          - name: scripts
-            mountPath: /src
+          - --input
+          - /tmp/input.csv
+          - --output
+          - /tmp/validated.csv
+          - --min-rows
+          - "{{inputs.parameters.min-rows}}"
+          - --null-threshold
+          - "{{inputs.parameters.null-threshold}}"
         resources:
           requests:
             cpu: 100m
@@ -214,10 +239,6 @@ spec:
           allowPrivilegeEscalation: false
           capabilities:
             drop: ["ALL"]
-      volumes:
-        - name: scripts
-          configMap:
-            name: ml-training-scripts
 
     # Step 3: Feature engineering
     - name: feature-engineering
@@ -241,13 +262,15 @@ spec:
             path: /tmp/features_encoder.joblib
             optional: true
       container:
-        image: python:3.11.14-slim
-        command: [sh, -c]
+        image: "{{workflow.parameters.pipeline-image}}"
+        command: [python, /app/src/feature_engineering.py]
         args:
-          - pip install -r /src/requirements.txt && python /src/feature_engineering.py --input /tmp/input.csv --output /tmp/features.csv --target "{{inputs.parameters.target-column}}"
-        volumeMounts:
-          - name: scripts
-            mountPath: /src
+          - --input
+          - /tmp/input.csv
+          - --output
+          - /tmp/features.csv
+          - --target
+          - "{{inputs.parameters.target-column}}"
         resources:
           requests:
             cpu: 200m
@@ -259,10 +282,6 @@ spec:
           allowPrivilegeEscalation: false
           capabilities:
             drop: ["ALL"]
-      volumes:
-        - name: scripts
-          configMap:
-            name: ml-training-scripts
 
     # Step 4: Train model with MLflow tracking
     - name: train-model
@@ -304,14 +323,13 @@ spec:
             path: /tmp/scaler.joblib
             optional: true
       container:
-        image: python:3.11.14-slim
+        image: "{{workflow.parameters.pipeline-image}}"
         command: [sh, -c]
         args:
           - |
-            pip install -r /src/requirements.txt && \
             CV_FLAG="" && \
             if [ "{{inputs.parameters.use-cross-validation}}" = "false" ]; then CV_FLAG="--no-cv"; fi && \
-            python /src/train_model.py \
+            python /app/src/train_model.py \
               --input /tmp/input.csv \
               --model-output /tmp/model.joblib \
               --run-id-output /tmp/run_id.txt \
@@ -325,9 +343,6 @@ spec:
               --random-state "{{inputs.parameters.random-state}}" \
               --cv-folds "{{inputs.parameters.cv-folds}}" \
               $CV_FLAG
-        volumeMounts:
-          - name: scripts
-            mountPath: /src
         resources:
           requests:
             cpu: 500m
@@ -339,12 +354,50 @@ spec:
           allowPrivilegeEscalation: false
           capabilities:
             drop: ["ALL"]
-      volumes:
-        - name: scripts
-          configMap:
-            name: ml-training-scripts
 
-    # Step 5: Register model with MLflow alias
+    # Step 5: Validate model quality gate
+    - name: validate-model
+      inputs:
+        parameters:
+          - name: target-column
+          - name: accuracy-threshold
+        artifacts:
+          - name: model
+            path: /tmp/model.joblib
+          - name: input-data
+            path: /tmp/input.csv
+      outputs:
+        parameters:
+          - name: validation-result
+            valueFrom:
+              path: /tmp/validation_result.txt
+      container:
+        image: "{{workflow.parameters.pipeline-image}}"
+        command: [python, /app/src/validate_model.py]
+        args:
+          - --model
+          - /tmp/model.joblib
+          - --data
+          - /tmp/input.csv
+          - --target
+          - "{{inputs.parameters.target-column}}"
+          - --accuracy-threshold
+          - "{{inputs.parameters.accuracy-threshold}}"
+          - --result-output
+          - /tmp/validation_result.txt
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+
+    # Step 6: Register model with MLflow alias
     - name: register-model
       retryStrategy:
         limit: 2
@@ -357,20 +410,19 @@ spec:
           - name: model-alias
           - name: run-id
       container:
-        image: python:3.11.14-slim
-        command: [sh, -c]
+        image: "{{workflow.parameters.pipeline-image}}"
+        command: [python, /app/src/register_model.py]
         args:
-          - |
-            pip install -r /src/requirements.txt && \
-            python /src/register_model.py \
-              --model-name "{{inputs.parameters.model-name}}" \
-              --mlflow-uri "{{inputs.parameters.mlflow-tracking-uri}}" \
-              --threshold "{{inputs.parameters.accuracy-threshold}}" \
-              --alias "{{inputs.parameters.model-alias}}" \
-              --run-id "{{inputs.parameters.run-id}}"
-        volumeMounts:
-          - name: scripts
-            mountPath: /src
+          - --model-name
+          - "{{inputs.parameters.model-name}}"
+          - --mlflow-uri
+          - "{{inputs.parameters.mlflow-tracking-uri}}"
+          - --threshold
+          - "{{inputs.parameters.accuracy-threshold}}"
+          - --alias
+          - "{{inputs.parameters.model-alias}}"
+          - --run-id
+          - "{{inputs.parameters.run-id}}"
         resources:
           requests:
             cpu: 100m
@@ -382,10 +434,6 @@ spec:
           allowPrivilegeEscalation: false
           capabilities:
             drop: ["ALL"]
-      volumes:
-        - name: scripts
-          configMap:
-            name: ml-training-scripts
 
 ---
 # Workflow to run the training pipeline

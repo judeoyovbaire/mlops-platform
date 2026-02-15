@@ -20,7 +20,7 @@ try:
         ModelRegistrationError,
     )
     from pipelines.training.src.logging_utils import get_logger
-    from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, mlflow_timeout
+    from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
 except ImportError:
     from exceptions import (
         InvalidThresholdError,
@@ -28,7 +28,7 @@ except ImportError:
         ModelRegistrationError,
     )
     from logging_utils import get_logger
-    from mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, mlflow_timeout
+    from mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
 
 logger = get_logger(__name__)
 
@@ -99,12 +99,16 @@ def register_model(
 
     try:
         logger.info(f"Connecting to MLflow at {mlflow_uri} (timeout: {mlflow_timeout_seconds}s)")
-        with mlflow_timeout(
-            mlflow_timeout_seconds,
-            f"MLflow connection timed out after {mlflow_timeout_seconds}s",
-        ):
+
+        def _connect_mlflow() -> MlflowClient:
             mlflow.set_tracking_uri(mlflow_uri)
-            client = MlflowClient()
+            return MlflowClient()
+
+        client = run_with_timeout(
+            _connect_mlflow,
+            seconds=mlflow_timeout_seconds,
+            error_message=f"MLflow connection timed out after {mlflow_timeout_seconds}s",
+        )
         logger.info(f"Connected to MLflow at {mlflow_uri}")
     except MLflowTimeoutError as e:
         raise ModelRegistrationError(str(e)) from e

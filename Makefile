@@ -3,7 +3,7 @@
 
 .PHONY: help deploy deploy-aws deploy-azure deploy-gcp status status-aws status-azure status-gcp \
         destroy destroy-aws destroy-azure destroy-gcp secrets secrets-aws secrets-azure secrets-gcp \
-        validate lint format test test-unit test-cov clean deps \
+        validate lint format test test-unit test-cov clean deps build-pipeline-image \
         terraform-init terraform-plan terraform-apply terraform-destroy \
         terraform-init-aws terraform-plan-aws terraform-apply-aws terraform-destroy-aws \
         terraform-init-azure terraform-plan-azure terraform-apply-azure terraform-destroy-azure \
@@ -81,6 +81,7 @@ TERRAFORM_DIR_AWS = infrastructure/terraform/environments/aws/dev
 TERRAFORM_DIR_AZURE = infrastructure/terraform/environments/azure/dev
 TERRAFORM_DIR_GCP = infrastructure/terraform/environments/gcp/dev
 PIPELINE_DIR = pipelines/training
+PIPELINE_IMAGE ?= mlops-platform/ml-training:latest
 
 # Default Deployment (AWS)
 
@@ -317,6 +318,11 @@ deploy-pipeline:
 	@echo "Deploying ML training pipeline..."
 	$(KUBECTL) apply -k pipelines/training
 	@echo "Pipeline templates updated."
+
+build-pipeline-image:
+	@echo "Building ML training pipeline image..."
+	docker build -t $(PIPELINE_IMAGE) $(PIPELINE_DIR)
+	@echo "Built $(PIPELINE_IMAGE)"
 
 # Utilities
 

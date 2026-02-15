@@ -3,13 +3,3 @@ kind: Kustomization
 
 resources:
   - ml-training-workflow.yaml
-
-configMapGenerator:
-  - name: ml-training-scripts
-    files:
-      - src/load_data.py
-      - src/validate_data.py
-      - src/feature_engineering.py
-      - src/train_model.py
-      - src/register_model.py
-      - requirements.txt

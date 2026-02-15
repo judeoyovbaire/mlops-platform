@@ -31,7 +31,7 @@ try:
         log_step_start,
         set_correlation_id,
     )
-    from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, mlflow_timeout
+    from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
     from pipelines.training.src.register_model import register_model
     from pipelines.training.src.train_model import train_model
     from pipelines.training.src.validate_data import validate_data
@@ -62,7 +62,7 @@ except ImportError:
         log_step_start,
         set_correlation_id,
     )
-    from mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, mlflow_timeout  # type: ignore[no-redef]
+    from mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout  # type: ignore[no-redef]
     from register_model import register_model  # type: ignore[no-redef]
     from train_model import train_model  # type: ignore[no-redef]
     from validate_data import validate_data  # type: ignore[no-redef]
@@ -75,7 +75,7 @@ __all__ = [
     "train_model",
     "register_model",
     # MLflow utilities
-    "mlflow_timeout",
+    "run_with_timeout",
     "MLFLOW_CONNECTION_TIMEOUT",
     # Logging utilities
     "get_logger",

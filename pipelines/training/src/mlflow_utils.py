@@ -5,7 +5,9 @@ This module provides timeout handling for MLflow operations to prevent
 indefinite hangs when the tracking server is unreachable.
 """
 
-import threading
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
+from typing import TypeVar
 
 try:
     from pipelines.training.src.exceptions import MLflowTimeoutError
@@ -15,26 +17,37 @@ except ImportError:
 # Default timeout for MLflow connection (seconds)
 MLFLOW_CONNECTION_TIMEOUT = 30
 
+T = TypeVar("T")
 
-class mlflow_timeout:
-    """Cross-platform context manager for timing out operations using threading."""
 
-    def __init__(self, seconds: int, error_message: str = "Operation timed out"):
-        self.seconds = seconds
-        self.error_message = error_message
-        self._timer: threading.Timer | None = None
-        self._timed_out = False
+def run_with_timeout(
+    fn,
+    *,
+    seconds: int = MLFLOW_CONNECTION_TIMEOUT,
+    error_message: str = "Operation timed out",
+) -> T:
+    """Execute *fn* in a thread and enforce a hard timeout.
 
-    def _handle_timeout(self) -> None:
-        self._timed_out = True
+    Unlike the previous ``mlflow_timeout`` context-manager (which only set a
+    flag after the deadline but could not interrupt a blocking call), this
+    function submits *fn* to a :class:`~concurrent.futures.ThreadPoolExecutor`
+    and calls :meth:`Future.result` with *seconds* as the timeout.
 
-    def __enter__(self) -> "mlflow_timeout":
-        self._timer = threading.Timer(self.seconds, self._handle_timeout)
-        self._timer.start()
-        return self
+    Args:
+        fn: Zero-argument callable to execute.
+        seconds: Maximum wall-clock seconds to wait (default: 30).
+        error_message: Message for the :class:`MLflowTimeoutError` raised on timeout.
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        if self._timer is not None:
-            self._timer.cancel()
-        if self._timed_out:
-            raise MLflowTimeoutError(self.error_message)
+    Returns:
+        The return value of *fn*.
+
+    Raises:
+        MLflowTimeoutError: If *fn* does not complete within *seconds*.
+    """
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(fn)
+        try:
+            return future.result(timeout=seconds)
+        except FuturesTimeoutError as exc:
+            future.cancel()
+            raise MLflowTimeoutError(error_message) from exc

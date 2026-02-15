@@ -1030,72 +1030,12 @@ jobs:
       - name: Configure kubectl
         run: aws eks update-kubeconfig --name mlops-platform-${{ github.event.inputs.environment }} --region ${{ env.AWS_REGION }}
 
-      - name: Deploy to KServe
-        run: |
-          kubectl apply -f examples/kserve/inferenceservice-examples.yaml
-
-          echo "## Model Deployment (AWS - ${{ github.event.inputs.environment }})" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Deployed KServe InferenceService examples" >> $GITHUB_STEP_SUMMARY
-
-      - name: Wait for deployment
-        run: |
-          echo "Waiting for InferenceService to be ready..."
-          kubectl wait --for=condition=Ready inferenceservice/sklearn-iris -n mlops --timeout=300s || true
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## InferenceService Status" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          kubectl get inferenceservice -n mlops >> $GITHUB_STEP_SUMMARY 2>&1
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-
-      - name: Get service URL
-        run: |
-          SERVICE_URL=$(kubectl get inferenceservice sklearn-iris -n mlops -o jsonpath='{.status.url}' 2>/dev/null || echo "pending")
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Service URL" >> $GITHUB_STEP_SUMMARY
-          echo "- **URL**: ${SERVICE_URL}" >> $GITHUB_STEP_SUMMARY
-
-      - name: Smoke test inference endpoint
-        run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Smoke Test" >> $GITHUB_STEP_SUMMARY
-
-          # Check if InferenceService is actually ready
-          IS_READY=$(kubectl get inferenceservice sklearn-iris -n mlops -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
-
-          if [ "$IS_READY" != "True" ]; then
-            echo "::warning::InferenceService not ready (status: ${IS_READY}), skipping smoke test"
-            echo "- **Status**: Skipped (InferenceService not ready)" >> $GITHUB_STEP_SUMMARY
-            exit 0
-          fi
-
-          # Get the predictor service name for cluster-internal access
-          PREDICTOR_SVC=$(kubectl get svc -n mlops -l serving.kserve.io/inferenceservice=sklearn-iris -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-
-          if [ -z "$PREDICTOR_SVC" ]; then
-            echo "::warning::Predictor service not found, skipping smoke test"
-            echo "- **Status**: Skipped (predictor service not found)" >> $GITHUB_STEP_SUMMARY
-            exit 0
-          fi
-
-          # Run inference via a temporary pod (cluster-internal access)
-          RESPONSE=$(kubectl run smoke-test-${{ github.run_id }} \
-            --image=curlimages/curl:8.7.1 \
-            --rm -i --restart=Never -n mlops \
-            --timeout=60s \
-            -- curl -sf --max-time 30 \
-              -H "Content-Type: application/json" \
-              -d '{"instances": [[5.1, 3.5, 1.4, 0.2]]}' \
-              "http://${PREDICTOR_SVC}/v1/models/sklearn-iris:predict" 2>/dev/null) || RESPONSE=""
-
-          if [ -n "$RESPONSE" ]; then
-            echo "- **Status**: PASSED" >> $GITHUB_STEP_SUMMARY
-            echo "- **Response**: \`${RESPONSE}\`" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "::warning::Smoke test failed - no response from inference endpoint"
-            echo "- **Status**: FAILED (no response)" >> $GITHUB_STEP_SUMMARY
-          fi
+  deploy-model-aws-kserve:
+    needs: [deploy-model-aws]
+    uses: ./.github/workflows/reusable-deploy-model.yaml
+    with:
+      cloud: AWS
+      environment: ${{ github.event.inputs.environment }}
 
   # Deploy Model - Azure (manual trigger only)
   deploy-model-azure:
@@ -1131,72 +1071,12 @@ jobs:
             --overwrite-existing
           kubelogin convert-kubeconfig -l azurecli
 
-      - name: Deploy to KServe
-        run: |
-          kubectl apply -f examples/kserve/inferenceservice-examples.yaml
-
-          echo "## Model Deployment (Azure - ${{ github.event.inputs.environment }})" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Deployed KServe InferenceService examples" >> $GITHUB_STEP_SUMMARY
-
-      - name: Wait for deployment
-        run: |
-          echo "Waiting for InferenceService to be ready..."
-          kubectl wait --for=condition=Ready inferenceservice/sklearn-iris -n mlops --timeout=300s || true
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## InferenceService Status" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          kubectl get inferenceservice -n mlops >> $GITHUB_STEP_SUMMARY 2>&1
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-
-      - name: Get service URL
-        run: |
-          SERVICE_URL=$(kubectl get inferenceservice sklearn-iris -n mlops -o jsonpath='{.status.url}' 2>/dev/null || echo "pending")
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Service URL" >> $GITHUB_STEP_SUMMARY
-          echo "- **URL**: ${SERVICE_URL}" >> $GITHUB_STEP_SUMMARY
-
-      - name: Smoke test inference endpoint
-        run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Smoke Test" >> $GITHUB_STEP_SUMMARY
-
-          # Check if InferenceService is actually ready
-          IS_READY=$(kubectl get inferenceservice sklearn-iris -n mlops -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
-
-          if [ "$IS_READY" != "True" ]; then
-            echo "::warning::InferenceService not ready (status: ${IS_READY}), skipping smoke test"
-            echo "- **Status**: Skipped (InferenceService not ready)" >> $GITHUB_STEP_SUMMARY
-            exit 0
-          fi
-
-          # Get the predictor service name for cluster-internal access
-          PREDICTOR_SVC=$(kubectl get svc -n mlops -l serving.kserve.io/inferenceservice=sklearn-iris -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-
-          if [ -z "$PREDICTOR_SVC" ]; then
-            echo "::warning::Predictor service not found, skipping smoke test"
-            echo "- **Status**: Skipped (predictor service not found)" >> $GITHUB_STEP_SUMMARY
-            exit 0
-          fi
-
-          # Run inference via a temporary pod (cluster-internal access)
-          RESPONSE=$(kubectl run smoke-test-${{ github.run_id }} \
-            --image=curlimages/curl:8.7.1 \
-            --rm -i --restart=Never -n mlops \
-            --timeout=60s \
-            -- curl -sf --max-time 30 \
-              -H "Content-Type: application/json" \
-              -d '{"instances": [[5.1, 3.5, 1.4, 0.2]]}' \
-              "http://${PREDICTOR_SVC}/v1/models/sklearn-iris:predict" 2>/dev/null) || RESPONSE=""
-
-          if [ -n "$RESPONSE" ]; then
-            echo "- **Status**: PASSED" >> $GITHUB_STEP_SUMMARY
-            echo "- **Response**: \`${RESPONSE}\`" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "::warning::Smoke test failed - no response from inference endpoint"
-            echo "- **Status**: FAILED (no response)" >> $GITHUB_STEP_SUMMARY
-          fi
+  deploy-model-azure-kserve:
+    needs: [deploy-model-azure]
+    uses: ./.github/workflows/reusable-deploy-model.yaml
+    with:
+      cloud: Azure
+      environment: ${{ github.event.inputs.environment }}
 
   # Deploy Model - GCP (manual trigger only)
   deploy-model-gcp:
@@ -1228,72 +1108,12 @@ jobs:
             --zone ${{ env.GCP_ZONE }} \
             --project ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Deploy to KServe
-        run: |
-          kubectl apply -f examples/kserve/inferenceservice-examples.yaml
-
-          echo "## Model Deployment (GCP - ${{ github.event.inputs.environment }})" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Deployed KServe InferenceService examples" >> $GITHUB_STEP_SUMMARY
-
-      - name: Wait for deployment
-        run: |
-          echo "Waiting for InferenceService to be ready..."
-          kubectl wait --for=condition=Ready inferenceservice/sklearn-iris -n mlops --timeout=300s || true
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## InferenceService Status" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          kubectl get inferenceservice -n mlops >> $GITHUB_STEP_SUMMARY 2>&1
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-
-      - name: Get service URL
-        run: |
-          SERVICE_URL=$(kubectl get inferenceservice sklearn-iris -n mlops -o jsonpath='{.status.url}' 2>/dev/null || echo "pending")
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Service URL" >> $GITHUB_STEP_SUMMARY
-          echo "- **URL**: ${SERVICE_URL}" >> $GITHUB_STEP_SUMMARY
-
-      - name: Smoke test inference endpoint
-        run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Smoke Test" >> $GITHUB_STEP_SUMMARY
-
-          # Check if InferenceService is actually ready
-          IS_READY=$(kubectl get inferenceservice sklearn-iris -n mlops -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
-
-          if [ "$IS_READY" != "True" ]; then
-            echo "::warning::InferenceService not ready (status: ${IS_READY}), skipping smoke test"
-            echo "- **Status**: Skipped (InferenceService not ready)" >> $GITHUB_STEP_SUMMARY
-            exit 0
-          fi
-
-          # Get the predictor service name for cluster-internal access
-          PREDICTOR_SVC=$(kubectl get svc -n mlops -l serving.kserve.io/inferenceservice=sklearn-iris -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-
-          if [ -z "$PREDICTOR_SVC" ]; then
-            echo "::warning::Predictor service not found, skipping smoke test"
-            echo "- **Status**: Skipped (predictor service not found)" >> $GITHUB_STEP_SUMMARY
-            exit 0
-          fi
-
-          # Run inference via a temporary pod (cluster-internal access)
-          RESPONSE=$(kubectl run smoke-test-${{ github.run_id }} \
-            --image=curlimages/curl:8.7.1 \
-            --rm -i --restart=Never -n mlops \
-            --timeout=60s \
-            -- curl -sf --max-time 30 \
-              -H "Content-Type: application/json" \
-              -d '{"instances": [[5.1, 3.5, 1.4, 0.2]]}' \
-              "http://${PREDICTOR_SVC}/v1/models/sklearn-iris:predict" 2>/dev/null) || RESPONSE=""
-
-          if [ -n "$RESPONSE" ]; then
-            echo "- **Status**: PASSED" >> $GITHUB_STEP_SUMMARY
-            echo "- **Response**: \`${RESPONSE}\`" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "::warning::Smoke test failed - no response from inference endpoint"
-            echo "- **Status**: FAILED (no response)" >> $GITHUB_STEP_SUMMARY
-          fi
+  deploy-model-gcp-kserve:
+    needs: [deploy-model-gcp]
+    uses: ./.github/workflows/reusable-deploy-model.yaml
+    with:
+      cloud: GCP
+      environment: ${{ github.event.inputs.environment }}
 
   # E2E Tests (nightly schedule, manual trigger, or PR label)
   e2e-test:

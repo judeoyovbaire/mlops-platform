@@ -857,6 +857,18 @@ The platform includes automated data drift detection:
 - Real-time Prometheus metrics exposure
 - Configurable alerting thresholds
 
+**Automated Retraining (Closed-Loop):**
+
+When drift is detected, the platform automatically triggers a retraining pipeline:
+
+1. `DataDriftDetected` PrometheusRule fires when `model_data_drift_score > 0.15` for 10 minutes
+2. Alertmanager sends a webhook to an Argo Events `EventSource`
+3. The `drift-retrain-sensor` Sensor filters for firing `DataDriftDetected` alerts
+4. A new `ml-training-pipeline` Workflow is submitted, using the model name from the alert payload
+5. Retries with exponential backoff (max 3 attempts) protect against transient failures
+
+See `infrastructure/kubernetes/drift-retrain-trigger.yaml` for the EventSource and Sensor manifests.
+
 **Grafana Dashboards:**
 - Model performance metrics (latency, throughput, error rates)
 - Drift score visualization over time

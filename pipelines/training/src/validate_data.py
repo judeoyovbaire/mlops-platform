@@ -11,6 +11,7 @@ import sys
 from dataclasses import dataclass
 
 import pandas as pd
+import pandera
 
 try:
     from pipelines.training.src.exceptions import (
@@ -19,6 +20,7 @@ try:
         InsufficientDataError,
     )
     from pipelines.training.src.logging_utils import get_logger
+    from pipelines.training.src.schema import IrisSchema
 except ImportError:
     from exceptions import (
         DataValidationError,
@@ -26,6 +28,7 @@ except ImportError:
         InsufficientDataError,
     )
     from logging_utils import get_logger
+    from schema import IrisSchema
 
 logger = get_logger(__name__)
 
@@ -112,6 +115,25 @@ def validate_data(
 
     if original_rows == 0:
         raise EmptyDataError("Input data contains no rows")
+
+    # Schema validation — catches structural issues (wrong dtypes, out-of-range
+    # values, unexpected categories) before the cleaning pipeline runs.
+    try:
+        IrisSchema.validate(df, lazy=True)
+        logger.info("Schema validation passed")
+    except pandera.errors.SchemaErrors as exc:
+        failure_cases = exc.failure_cases
+        logger.warning(
+            f"Schema validation found {len(failure_cases)} issue(s) — "
+            "proceeding with cleaning pipeline"
+        )
+        # Log details but don't halt; the cleaning step may fix some issues.
+        for _, row in failure_cases.iterrows():
+            logger.warning(
+                f"  column={row.get('column')}, "
+                f"check={row.get('check')}, "
+                f"failure_case={row.get('failure_case')}"
+            )
 
     # Check for nulls
     null_count = int(df.isnull().sum().sum())

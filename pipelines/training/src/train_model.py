@@ -22,13 +22,16 @@ from sklearn.model_selection import cross_val_score, train_test_split
 try:
     from pipelines.training.src.exceptions import MLflowTimeoutError, ModelTrainingError
     from pipelines.training.src.logging_utils import get_logger
-    from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, mlflow_timeout
+    from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
+    from pipelines.training.src.tracing import get_tracer
 except ImportError:
     from exceptions import MLflowTimeoutError, ModelTrainingError
     from logging_utils import get_logger
-    from mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, mlflow_timeout
+    from mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
+    from tracing import get_tracer
 
 logger = get_logger(__name__)
+tracer = get_tracer("train-model")
 
 
 @dataclass
@@ -100,6 +103,12 @@ def train_model(
     """
     logger.info(f"Starting model training with data from {input_path}")
 
+    with tracer.start_as_current_span("train_model") as span:
+        span.set_attribute("input_path", input_path)
+        span.set_attribute("model_name", model_name)
+        span.set_attribute("n_estimators", n_estimators)
+        span.set_attribute("max_depth", max_depth)
+
     # Input validation
     if n_estimators < 1:
         raise ModelTrainingError(f"n_estimators must be >= 1, got: {n_estimators}")
@@ -115,12 +124,16 @@ def train_model(
     try:
         # Setup MLflow with timeout to prevent indefinite hangs
         logger.info(f"Connecting to MLflow at {mlflow_uri} (timeout: {mlflow_timeout_seconds}s)")
-        with mlflow_timeout(
-            mlflow_timeout_seconds,
-            f"MLflow connection timed out after {mlflow_timeout_seconds}s",
-        ):
+
+        def _setup_mlflow() -> None:
             mlflow.set_tracking_uri(mlflow_uri)
             mlflow.set_experiment(model_name)
+
+        run_with_timeout(
+            _setup_mlflow,
+            seconds=mlflow_timeout_seconds,
+            error_message=f"MLflow connection timed out after {mlflow_timeout_seconds}s",
+        )
         logger.info(f"MLflow tracking URI: {mlflow_uri}, Experiment: {model_name}")
     except MLflowTimeoutError as e:
         raise ModelTrainingError(str(e)) from e
