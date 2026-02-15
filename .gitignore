@@ -61,6 +61,8 @@ Thumbs.db
 *.tfstate
 *.tfstate.*
 *.tfvars
+!*.tfvars.example
+!helm-versions.auto.tfvars
 
 # Local databases
 mlflow.db

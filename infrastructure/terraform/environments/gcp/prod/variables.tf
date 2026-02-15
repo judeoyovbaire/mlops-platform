@@ -200,7 +200,8 @@ variable "cloudsql_high_availability" {
   default     = true # Regional HA for production
 }
 
-# Helm Chart Versions (Pinned for production stability)
+# Helm Chart Versions (common defaults in helm-versions.auto.tfvars)
+# Cloud-specific versions below; shared versions via symlinked auto.tfvars
 
 variable "helm_nginx_ingress_version" {
   description = "NGINX Ingress Controller Helm chart version"
@@ -211,83 +212,69 @@ variable "helm_nginx_ingress_version" {
 variable "helm_cert_manager_version" {
   description = "cert-manager Helm chart version"
   type        = string
-  default     = "v1.19.3"
 }
 
 variable "helm_argocd_version" {
   description = "ArgoCD Helm chart version"
   type        = string
-  default     = "9.4.2"
 }
 
 variable "helm_kserve_version" {
   description = "KServe Helm chart version"
   type        = string
-  default     = "v0.16.0"
 }
 
 variable "helm_mlflow_version" {
   description = "MLflow Helm chart version"
   type        = string
-  default     = "1.8.1"
 }
 
 variable "helm_argo_workflows_version" {
   description = "Argo Workflows Helm chart version"
   type        = string
-  default     = "0.47.3"
 }
 
 variable "helm_minio_version" {
   description = "MinIO Helm chart version"
   type        = string
-  default     = "5.4.0"
 }
 
 variable "helm_prometheus_stack_version" {
   description = "kube-prometheus-stack Helm chart version"
   type        = string
-  default     = "81.6.9"
 }
 
 variable "helm_kyverno_version" {
   description = "Kyverno Helm chart version"
   type        = string
-  default     = "3.6.2"
 }
 
 variable "helm_tetragon_version" {
   description = "Tetragon Helm chart version"
   type        = string
-  default     = "1.6.0"
 }
 
 variable "helm_external_secrets_version" {
   description = "External Secrets Operator Helm chart version"
   type        = string
-  default     = "1.2.1"
 }
 
 variable "helm_loki_version" {
   description = "Loki Helm chart version"
   type        = string
-  default     = "6.24.0"
 }
 
 variable "helm_tempo_version" {
   description = "Tempo Helm chart version"
   type        = string
-  default     = "1.15.0"
 }
 
 variable "helm_otel_collector_version" {
   description = "OpenTelemetry Collector Helm chart version"
   type        = string
-  default     = "0.108.0"
 }
 
 variable "helm_alloy_version" {
   description = "Grafana Alloy Helm chart version"
   type        = string
-  default     = "0.12.0"
 }

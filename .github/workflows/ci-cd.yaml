@@ -1095,7 +1095,7 @@ jobs:
 
       - name: Configure kubectl
         run: |
-          az aks get-credentials
+          az aks get-credentials \
             --resource-group mlops-platform-${{ github.event.inputs.environment }}-rg \
             --name mlops-platform-${{ github.event.inputs.environment }} \
             --overwrite-existing
