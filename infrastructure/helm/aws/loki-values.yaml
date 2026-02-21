@@ -1,0 +1,72 @@
+# Loki Helm Values for AWS EKS - Production with S3 Storage
+# Chart: grafana/loki
+# Uses S3 for object storage with IRSA for authentication
+
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: s3
+    bucketNames: "${loki_s3_bucket}"
+    s3:
+      endpoint: s3.${aws_region}.amazonaws.com
+      region: ${aws_region}
+      s3ForcePathStyle: false
+      insecure: false
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+
+singleBinary:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  # Disable persistence when using S3
+  persistence:
+    enabled: false
+
+# Service account for IRSA
+serviceAccount:
+  create: true
+  name: loki
+  annotations:
+    eks.amazonaws.com/role-arn: ${loki_irsa_role_arn}
+
+# Disable components not needed in single binary mode
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+# Gateway
+gateway:
+  enabled: false
+
+# Monitoring
+monitoring:
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+  lokiCanary:
+    enabled: false
+
+# Disable test
+test:
+  enabled: false

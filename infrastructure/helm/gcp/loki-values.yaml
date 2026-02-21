@@ -1,0 +1,65 @@
+# Loki Helm Values for GCP GKE - Production with GCS Storage
+# Chart: grafana/loki
+# Uses GCS with Workload Identity Federation for authentication
+
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: gcs
+    bucketNames: "${loki_gcs_bucket}"
+    gcs:
+      bucket_name: "${loki_gcs_bucket}"
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: gcs
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+
+singleBinary:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  persistence:
+    enabled: false
+
+# Service account for Workload Identity
+serviceAccount:
+  create: true
+  name: loki
+  annotations:
+    iam.gke.io/gcp-service-account: ${loki_service_account_email}
+
+# Disable components not needed in single binary mode
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+gateway:
+  enabled: false
+
+monitoring:
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+  lokiCanary:
+    enabled: false
+
+test:
+  enabled: false

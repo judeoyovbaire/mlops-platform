@@ -1,0 +1,46 @@
+# Tempo Helm Values for AWS EKS - Production with S3 Storage
+# Chart: grafana/tempo
+# Uses S3 for trace storage with IRSA for authentication
+
+tempo:
+  reportingEnabled: false
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://prometheus-kube-prometheus-prometheus.monitoring:9090/api/v1/write"
+  storage:
+    trace:
+      backend: s3
+      s3:
+        bucket: ${tempo_s3_bucket}
+        endpoint: s3.${aws_region}.amazonaws.com
+        region: ${aws_region}
+        forcePathStyle: false
+        insecure: false
+      wal:
+        path: /var/tempo/wal
+
+  # OTLP receiver for traces from the OpenTelemetry Collector
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+
+# Service account for IRSA
+serviceAccount:
+  create: true
+  name: tempo
+  annotations:
+    eks.amazonaws.com/role-arn: ${tempo_irsa_role_arn}
+
+# Disable persistence when using S3
+persistence:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 2Gi

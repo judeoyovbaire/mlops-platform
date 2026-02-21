@@ -52,6 +52,26 @@ output "mlflow_s3_bucket" {
   value       = aws_s3_bucket.mlflow_artifacts.id
 }
 
+output "loki_s3_bucket" {
+  description = "S3 bucket for Loki logs"
+  value       = aws_s3_bucket.loki_logs.id
+}
+
+output "tempo_s3_bucket" {
+  description = "S3 bucket for Tempo traces"
+  value       = aws_s3_bucket.tempo_traces.id
+}
+
+output "loki_irsa_role_arn" {
+  description = "IAM role ARN for Loki IRSA"
+  value       = module.loki_irsa.arn
+}
+
+output "tempo_irsa_role_arn" {
+  description = "IAM role ARN for Tempo IRSA"
+  value       = module.tempo_irsa.arn
+}
+
 output "mlflow_irsa_role_arn" {
   description = "IAM role ARN for MLflow IRSA"
   value       = module.mlflow_irsa.arn

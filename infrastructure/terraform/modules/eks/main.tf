@@ -398,6 +398,206 @@ resource "aws_s3_bucket_public_access_block" "mlflow_artifacts" {
   restrict_public_buckets = true
 }
 
+# S3 bucket for Loki logs storage
+resource "aws_s3_bucket" "loki_logs" {
+  bucket = "${var.cluster_name}-loki-logs-${data.aws_caller_identity.current.account_id}"
+
+  tags = var.tags
+}
+
+resource "aws_s3_bucket_versioning" "loki_logs" {
+  bucket = aws_s3_bucket.loki_logs.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "loki_logs" {
+  bucket = aws_s3_bucket.loki_logs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = var.enable_kms_encryption ? "aws:kms" : "AES256"
+      kms_master_key_id = var.enable_kms_encryption ? aws_kms_key.mlops[0].arn : null
+    }
+    bucket_key_enabled = var.enable_kms_encryption
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "loki_logs" {
+  bucket = aws_s3_bucket.loki_logs.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Lifecycle policy for Loki logs (retain for 30 days)
+resource "aws_s3_bucket_lifecycle_configuration" "loki_logs" {
+  bucket = aws_s3_bucket.loki_logs.id
+
+  rule {
+    id     = "delete-old-logs"
+    status = "Enabled"
+
+    expiration {
+      days = 30
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 7
+    }
+  }
+}
+
+# S3 bucket for Tempo traces storage
+resource "aws_s3_bucket" "tempo_traces" {
+  bucket = "${var.cluster_name}-tempo-traces-${data.aws_caller_identity.current.account_id}"
+
+  tags = var.tags
+}
+
+resource "aws_s3_bucket_versioning" "tempo_traces" {
+  bucket = aws_s3_bucket.tempo_traces.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "tempo_traces" {
+  bucket = aws_s3_bucket.tempo_traces.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = var.enable_kms_encryption ? "aws:kms" : "AES256"
+      kms_master_key_id = var.enable_kms_encryption ? aws_kms_key.mlops[0].arn : null
+    }
+    bucket_key_enabled = var.enable_kms_encryption
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "tempo_traces" {
+  bucket = aws_s3_bucket.tempo_traces.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Lifecycle policy for Tempo traces (retain for 7 days)
+resource "aws_s3_bucket_lifecycle_configuration" "tempo_traces" {
+  bucket = aws_s3_bucket.tempo_traces.id
+
+  rule {
+    id     = "delete-old-traces"
+    status = "Enabled"
+
+    expiration {
+      days = 7
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 3
+    }
+  }
+}
+
+# IRSA for Loki S3 access
+module "loki_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.0"
+
+  name = "${var.cluster_name}-loki"
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["monitoring:loki"]
+    }
+  }
+
+  policies = {
+    loki_s3 = aws_iam_policy.loki_s3.arn
+  }
+
+  tags = var.tags
+}
+
+# S3 policy for Loki
+resource "aws_iam_policy" "loki_s3" {
+  name        = "${var.cluster_name}-loki-s3"
+  description = "Policy for Loki to access S3 logs bucket"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.loki_logs.arn,
+          "${aws_s3_bucket.loki_logs.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# IRSA for Tempo S3 access
+module "tempo_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.0"
+
+  name = "${var.cluster_name}-tempo"
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["monitoring:tempo"]
+    }
+  }
+
+  policies = {
+    tempo_s3 = aws_iam_policy.tempo_s3.arn
+  }
+
+  tags = var.tags
+}
+
+# S3 policy for Tempo
+resource "aws_iam_policy" "tempo_s3" {
+  name        = "${var.cluster_name}-tempo-s3"
+  description = "Policy for Tempo to access S3 traces bucket"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.tempo_traces.arn,
+          "${aws_s3_bucket.tempo_traces.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
 # RDS PostgreSQL for MLflow metadata
 resource "aws_db_subnet_group" "mlflow" {
   name       = "${var.cluster_name}-mlflow"

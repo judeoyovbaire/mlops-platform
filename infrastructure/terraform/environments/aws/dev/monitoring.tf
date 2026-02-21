@@ -45,7 +45,7 @@ resource "helm_release" "prometheus_stack" {
   ]
 }
 
-# Loki - Log Aggregation
+# Loki - Log Aggregation with S3 Storage
 resource "helm_release" "loki" {
   name       = "loki"
   repository = "https://grafana.github.io/helm-charts"
@@ -53,17 +53,25 @@ resource "helm_release" "loki" {
   version    = var.helm_loki_version
   namespace  = kubernetes_namespace.monitoring.metadata[0].name
 
-  values = [file("${path.module}/../../../../helm/common/loki-values.yaml")]
+  # Use AWS-specific values with S3 storage
+  values = [
+    templatefile("${path.module}/../../../../helm/aws/loki-values.yaml", {
+      loki_s3_bucket     = module.eks.loki_s3_bucket
+      loki_irsa_role_arn = module.eks.loki_irsa_role_arn
+      aws_region        = var.aws_region
+    })
+  ]
 
   timeout = 600
 
   depends_on = [
     kubernetes_namespace.monitoring,
-    helm_release.prometheus_stack
+    helm_release.prometheus_stack,
+    module.eks
   ]
 }
 
-# Tempo - Trace Storage Backend
+# Tempo - Trace Storage Backend with S3 Storage
 resource "helm_release" "tempo" {
   name       = "tempo"
   repository = "https://grafana.github.io/helm-charts"
@@ -71,13 +79,21 @@ resource "helm_release" "tempo" {
   version    = var.helm_tempo_version
   namespace  = kubernetes_namespace.monitoring.metadata[0].name
 
-  values = [file("${path.module}/../../../../helm/common/tempo-values.yaml")]
+  # Use AWS-specific values with S3 storage
+  values = [
+    templatefile("${path.module}/../../../../helm/aws/tempo-values.yaml", {
+      tempo_s3_bucket     = module.eks.tempo_s3_bucket
+      tempo_irsa_role_arn = module.eks.tempo_irsa_role_arn
+      aws_region         = var.aws_region
+    })
+  ]
 
   timeout = 600
 
   depends_on = [
     kubernetes_namespace.monitoring,
-    helm_release.prometheus_stack
+    helm_release.prometheus_stack,
+    module.eks
   ]
 }
 

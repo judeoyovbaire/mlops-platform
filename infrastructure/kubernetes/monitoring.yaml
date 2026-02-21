@@ -221,6 +221,73 @@ spec:
             summary: "Data drift detected for {{ $labels.model_name }}"
             description: "Drift score {{ $value | printf \"%.3f\" }} exceeds threshold 0.15 for model {{ $labels.model_name }}. Automated retraining will be triggered."
 
+        # Model performance degradation (accuracy drop)
+        - alert: ModelPerformanceDegradation
+          expr: |
+            (model_accuracy_baseline{namespace="mlops"} - model_accuracy_current{namespace="mlops"}) > 0.05
+          for: 15m
+          labels:
+            severity: critical
+            automation: retrain
+          annotations:
+            summary: "Model performance degradation for {{ $labels.model_name }}"
+            description: "Model {{ $labels.model_name }} accuracy dropped by {{ $value | printf \"%.3f\" }} from baseline. Current: {{ $labels.current_accuracy }}, Baseline: {{ $labels.baseline_accuracy }}"
+
+        # Prediction distribution shift
+        - alert: PredictionDistributionShift
+          expr: |
+            model_prediction_distribution_shift{namespace="mlops"} > 0.2
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Prediction distribution shift for {{ $labels.model_name }}"
+            description: "Prediction distribution has shifted significantly ({{ $value | printf \"%.3f\" }}) for model {{ $labels.model_name }}. This may indicate concept drift."
+
+        # Model version comparison (A/B testing)
+        - alert: ModelVersionPerformanceGap
+          expr: |
+            abs(model_accuracy{version="champion",namespace="mlops"} - model_accuracy{version="challenger",namespace="mlops"}) > 0.1
+          for: 30m
+          labels:
+            severity: info
+          annotations:
+            summary: "Significant performance gap between model versions"
+            description: "Performance gap of {{ $value | printf \"%.3f\" }} between champion and challenger versions for {{ $labels.model_name }}"
+
+        # Model serving throughput drop
+        - alert: ModelThroughputDrop
+          expr: |
+            (model_throughput_baseline{namespace="mlops"} - sum(rate(revision_request_count{namespace="mlops"}[5m])) by (revision_name)) / model_throughput_baseline{namespace="mlops"} > 0.3
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Model throughput drop for {{ $labels.revision_name }}"
+            description: "Throughput dropped by {{ $value | printf \"%.1f\" }}% for {{ $labels.revision_name }}. May indicate performance issues."
+
+        # Model prediction latency spike
+        - alert: ModelLatencySpike
+          expr: |
+            (histogram_quantile(0.95, sum(rate(revision_request_latencies_bucket{namespace="mlops"}[5m])) by (le, revision_name)) - model_latency_baseline{namespace="mlops"}) / model_latency_baseline{namespace="mlops"} > 0.5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Model latency spike for {{ $labels.revision_name }}"
+            description: "P95 latency increased by {{ $value | printf \"%.1f\" }}% for {{ $labels.revision_name }}. Current: {{ $labels.current_latency }}ms, Baseline: {{ $labels.baseline_latency }}ms"
+
+        # Model prediction confidence drop
+        - alert: LowModelConfidence
+          expr: |
+            avg(model_prediction_confidence{namespace="mlops"}) by (revision_name) < 0.7
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Low prediction confidence for {{ $labels.revision_name }}"
+            description: "Average prediction confidence is {{ $value | printf \"%.3f\" }} for {{ $labels.revision_name }}. Model may need retraining."
+
         # Model prediction queue depth (for batch inference)
         - alert: HighPredictionQueueDepth
           expr: |
@@ -231,6 +298,28 @@ spec:
           annotations:
             summary: "High queue depth for {{ $labels.revision_name }}"
             description: "Prediction queue depth is {{ $value }} for {{ $labels.revision_name }}. Consider scaling up."
+
+        # Model feature importance shift
+        - alert: FeatureImportanceShift
+          expr: |
+            model_feature_importance_shift{namespace="mlops"} > 0.25
+          for: 20m
+          labels:
+            severity: info
+          annotations:
+            summary: "Feature importance shift detected for {{ $labels.model_name }}"
+            description: "Feature importance has shifted by {{ $value | printf \"%.3f\" }} for model {{ $labels.model_name }}. May indicate data drift."
+
+        # Model serving cost anomaly
+        - alert: ModelServingCostAnomaly
+          expr: |
+            (model_serving_cost_current{namespace="mlops"} - model_serving_cost_baseline{namespace="mlops"}) / model_serving_cost_baseline{namespace="mlops"} > 0.5
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Model serving cost anomaly for {{ $labels.model_name }}"
+            description: "Serving cost increased by {{ $value | printf \"%.1f\" }}% for {{ $labels.model_name }}. Check resource utilization."
 
 ---
 # Grafana Dashboard ConfigMap (for auto-provisioning)

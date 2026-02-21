@@ -105,6 +105,7 @@ jobs:
     name: Validate Terraform
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: [scan-container-images]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -211,6 +212,7 @@ jobs:
     name: Validate Kubernetes
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: [scan-container-images]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -236,6 +238,7 @@ jobs:
     name: Validate Helm
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: [scan-container-images]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -279,6 +282,7 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: [scan-container-images]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -309,11 +313,97 @@ jobs:
           severity: 'HIGH,CRITICAL'
           skip-dirs: '**/.terraform'
 
+  scan-container-images:
+    name: Scan Container Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [lint-python]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build pipeline training image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./pipelines/training
+          push: false
+          tags: mlops-platform/ml-training:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build pretrained pipeline image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./pipelines/pretrained
+          push: false
+          tags: mlops-platform/hf-pretrained:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan training pipeline image
+        uses: aquasecurity/trivy-action@0.34.0
+        with:
+          image-ref: 'mlops-platform/ml-training:test'
+          format: 'sarif'
+          output: 'trivy-training-image.sarif'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+
+      - name: Scan pretrained pipeline image
+        uses: aquasecurity/trivy-action@0.34.0
+        with:
+          image-ref: 'mlops-platform/hf-pretrained:test'
+          format: 'sarif'
+          output: 'trivy-pretrained-image.sarif'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+
+      - name: Upload training image scan results
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: 'trivy-training-image.sarif'
+
+      - name: Upload pretrained image scan results
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: 'trivy-pretrained-image.sarif'
+
+      - name: Generate SBOM for training image
+        uses: aquasecurity/trivy-action@0.34.0
+        with:
+          image-ref: 'mlops-platform/ml-training:test'
+          format: 'spdx-json'
+          output: 'sbom-training-image.spdx.json'
+          exit-code: '0'
+
+      - name: Generate SBOM for pretrained image
+        uses: aquasecurity/trivy-action@0.34.0
+        with:
+          image-ref: 'mlops-platform/hf-pretrained:test'
+          format: 'spdx-json'
+          output: 'sbom-pretrained-image.spdx.json'
+          exit-code: '0'
+
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: container-sboms
+          path: |
+            sbom-training-image.spdx.json
+            sbom-pretrained-image.spdx.json
+          retention-days: 30
 
   test-python:
     name: Test Python
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: [scan-container-images]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -371,7 +461,7 @@ jobs:
     name: Terraform Plan (AWS)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [lint-python, validate-terraform, validate-kubernetes, validate-helm, security-scan, test-python]
+    needs: [lint-python, scan-container-images, validate-terraform, validate-kubernetes, validate-helm, security-scan, test-python]
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
     steps:
@@ -514,7 +604,7 @@ jobs:
     name: Terraform Plan (Azure)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [lint-python, validate-terraform, validate-kubernetes, validate-helm, security-scan, test-python]
+    needs: [lint-python, scan-container-images, validate-terraform, validate-kubernetes, validate-helm, security-scan, test-python]
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
     steps:
@@ -624,7 +714,7 @@ jobs:
     name: Terraform Plan (GCP)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [lint-python, validate-terraform, validate-kubernetes, validate-helm, security-scan, test-python]
+    needs: [lint-python, scan-container-images, validate-terraform, validate-kubernetes, validate-helm, security-scan, test-python]
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
     steps:

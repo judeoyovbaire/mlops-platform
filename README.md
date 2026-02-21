@@ -509,6 +509,35 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 | [Drift Detection](examples/drift-detection/) | Model monitoring with Evidently | Advanced |
 | [HuggingFace Sentiment](examples/kserve/huggingface-sentiment.yaml) | Pretrained HF model via KServe | Intermediate |
 | [Chaos Testing](examples/chaos-testing/) | Resilience testing with Chaos Mesh | Advanced |
+| [Load Testing](examples/load-testing/) | k6 and Locust load testing examples | Intermediate |
+
+## Comparison with Alternatives
+
+| Feature | This Platform | Kubeflow | SageMaker | Vertex AI | Azure ML |
+|---------|--------------|----------|-----------|-----------|----------|
+| **Multi-cloud** | ✅ AWS/Azure/GCP | ❌ | ❌ AWS only | ❌ GCP only | ❌ Azure only |
+| **Open Source** | ✅ MIT License | ✅ Apache 2.0 | ❌ Proprietary | ❌ Proprietary | ❌ Proprietary |
+| **Self-hosted** | ✅ Full control | ✅ Full control | ❌ Managed only | ❌ Managed only | ❌ Managed only |
+| **Cost (dev)** | $350-450/mo | Variable | $$$ | $$$ | $$$ |
+| **GPU Autoscaling** | ✅ Karpenter/KEDA/NAP | ⚠️ Manual | ✅ Managed | ✅ Managed | ✅ Managed |
+| **Model Serving** | ✅ KServe (CNCF) | ✅ KServe | ✅ Built-in | ✅ Built-in | ✅ Built-in |
+| **Experiment Tracking** | ✅ MLflow 3.x | ✅ MLflow | ✅ Built-in | ✅ Built-in | ✅ Built-in |
+| **CI/CD Integration** | ✅ GitHub Actions | ⚠️ Manual | ✅ CodePipeline | ✅ Cloud Build | ✅ DevOps |
+| **GitOps** | ✅ ArgoCD | ⚠️ Manual | ❌ | ❌ | ⚠️ Partial |
+| **Observability** | ✅ Prometheus/Grafana | ⚠️ Basic | ✅ CloudWatch | ✅ Cloud Monitoring | ✅ Monitor |
+| **Security** | ✅ IRSA/WIF/PSA | ⚠️ Basic | ✅ IAM | ✅ IAM | ✅ Managed Identity |
+| **Vendor Lock-in** | ✅ None | ✅ None | ❌ AWS | ❌ GCP | ❌ Azure |
+| **Customization** | ✅ Full | ✅ Full | ⚠️ Limited | ⚠️ Limited | ⚠️ Limited |
+| **Learning Curve** | Medium | High | Low | Low | Low |
+| **Best For** | Multi-cloud, OSS-first | Research, complex pipelines | AWS-native teams | GCP-native teams | Azure-native teams |
+
+### Key Differentiators
+
+1. **Multi-Cloud**: Deploy the same platform on AWS, Azure, or GCP without vendor lock-in
+2. **Open Source**: All components are CNCF/OSS projects with active communities
+3. **Self-Service**: Data scientists deploy models without DevOps tickets
+4. **Cost-Effective**: 60-70% cost savings with spot instances and scale-to-zero
+5. **Production-Ready**: Security, observability, and reliability built-in from day one
 
 ## Why These Tools?
 
