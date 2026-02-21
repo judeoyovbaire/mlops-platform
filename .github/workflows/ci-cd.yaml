@@ -337,7 +337,8 @@ jobs:
       - name: Build pretrained pipeline image
         uses: docker/build-push-action@v6
         with:
-          context: ./pipelines/pretrained
+          context: ./pipelines
+          file: ./pipelines/pretrained/Dockerfile
           push: false
           tags: mlops-platform/hf-pretrained:test
           cache-from: type=gha
