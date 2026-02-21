@@ -246,37 +246,16 @@ jobs:
       - name: Install yamllint
         run: pip install yamllint
 
-      - name: Validate AWS Helm values
+      - name: Validate Helm values (YAML syntax)
         run: |
-          for f in infrastructure/helm/aws/*.yaml; do
+          for f in infrastructure/helm/{aws,azure,gcp,common}/*.yaml; do
             echo "Checking $f..."
-            python3 -c "import yaml; yaml.safe_load(open('$f'))"
-            yamllint -d relaxed "$f"
+            # Strip Terraform %{ } template directives before YAML parsing
+            sed '/%{.*}/d' "$f" | python3 -c "import sys, yaml; yaml.safe_load(sys.stdin)"
           done
 
-      - name: Validate Azure Helm values
-        run: |
-          for f in infrastructure/helm/azure/*.yaml; do
-            echo "Checking $f..."
-            python3 -c "import yaml; yaml.safe_load(open('$f'))"
-            yamllint -d relaxed "$f"
-          done
-
-      - name: Validate GCP Helm values
-        run: |
-          for f in infrastructure/helm/gcp/*.yaml; do
-            echo "Checking $f..."
-            python3 -c "import yaml; yaml.safe_load(open('$f'))"
-            yamllint -d relaxed "$f"
-          done
-
-      - name: Validate Common Helm values
-        run: |
-          for f in infrastructure/helm/common/*.yaml; do
-            echo "Checking $f..."
-            python3 -c "import yaml; yaml.safe_load(open('$f'))"
-            yamllint -d relaxed "$f"
-          done
+      - name: Validate Helm values (yamllint)
+        run: yamllint -c .yamllint.yaml infrastructure/helm/
 
   security-scan:
     name: Security Scan
