@@ -329,6 +329,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./pipelines/training
+          load: true
           push: false
           tags: mlops-platform/ml-training:test
           cache-from: type=gha
@@ -339,6 +340,7 @@ jobs:
         with:
           context: ./pipelines
           file: ./pipelines/pretrained/Dockerfile
+          load: true
           push: false
           tags: mlops-platform/hf-pretrained:test
           cache-from: type=gha
