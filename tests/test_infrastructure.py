@@ -8,10 +8,15 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import re
+
 import pytest
 import yaml
 
 PROJECT_ROOT = Path(__file__).parent.parent
+
+# Regex to strip Terraform template directives (%{ if ... }, %{ endif }, etc.)
+_TF_TEMPLATE_DIRECTIVE_RE = re.compile(r"^\s*%\{.*\}\s*$", re.MULTILINE)
 
 # Check if terraform is available
 TERRAFORM_AVAILABLE = shutil.which("terraform") is not None
@@ -102,8 +107,10 @@ class TestHelmValues:
             if cloud_dir.is_dir():
                 for values_file in cloud_dir.glob("*-values.yaml"):
                     try:
-                        with open(values_file) as f:
-                            yaml.safe_load(f)
+                        content = values_file.read_text()
+                        # Strip Terraform template directives before parsing
+                        content = _TF_TEMPLATE_DIRECTIVE_RE.sub("", content)
+                        yaml.safe_load(content)
                     except yaml.YAMLError as e:
                         pytest.fail(f"Invalid YAML in {values_file}: {e}")
 
@@ -126,8 +133,9 @@ class TestHelmValues:
             if cloud_dir.is_dir():
                 prom_file = cloud_dir / "prometheus-stack-values.yaml"
                 if prom_file.exists():
-                    with open(prom_file) as f:
-                        values = yaml.safe_load(f)
+                    content = prom_file.read_text()
+                    content = _TF_TEMPLATE_DIRECTIVE_RE.sub("", content)
+                    values = yaml.safe_load(content)
 
                     # Check Grafana doesn't have hardcoded admin password
                     grafana = values.get("grafana", {})

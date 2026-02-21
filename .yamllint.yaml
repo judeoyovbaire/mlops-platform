@@ -45,3 +45,5 @@ ignore: |
   node_modules/
   .git/
   infrastructure/terraform/**/.terraform.lock.hcl
+  # Helm values with Terraform %{ if } template directives are not valid YAML
+  infrastructure/helm/*/prometheus-stack-values.yaml
