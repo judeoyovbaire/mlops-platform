@@ -29,15 +29,13 @@ class InferenceUser(HttpUser):
     def predict_single(self):
         """Most common: single prediction"""
         input_data = random.choice(self.sample_inputs)
-        payload = {
-            "instances": [input_data]
-        }
+        payload = {"instances": [input_data]}
 
         with self.client.post(
             "/v1/models/sklearn-iris:predict",
             json=payload,
             catch_response=True,
-            name="predict_single"
+            name="predict_single",
         ) as response:
             if response.status_code == 200:
                 try:
@@ -56,15 +54,13 @@ class InferenceUser(HttpUser):
         """Less common: batch prediction"""
         batch_size = random.randint(2, 5)
         batch_inputs = random.sample(self.sample_inputs, min(batch_size, len(self.sample_inputs)))
-        payload = {
-            "instances": batch_inputs
-        }
+        payload = {"instances": batch_inputs}
 
         with self.client.post(
             "/v1/models/sklearn-iris:predict",
             json=payload,
             catch_response=True,
-            name="predict_batch"
+            name="predict_batch",
         ) as response:
             if response.status_code == 200:
                 try:
@@ -87,4 +83,5 @@ class InferenceUser(HttpUser):
 # Locust configuration
 class WebsiteUser(InferenceUser):
     """Main user class"""
+
     pass
