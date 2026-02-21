@@ -371,12 +371,14 @@ jobs:
         if: always()
         with:
           sarif_file: 'trivy-training-image.sarif'
+          category: 'trivy-training-image'
 
       - name: Upload pretrained image scan results
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: 'trivy-pretrained-image.sarif'
+          category: 'trivy-pretrained-image'
 
       - name: Generate SBOM for training image
         if: ${{ !cancelled() }}
