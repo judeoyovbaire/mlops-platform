@@ -10,7 +10,12 @@ LABEL maintainer="mlops-platform" \
 WORKDIR /app
 ENV PYTHONPATH=/app
 
-# Install Python dependencies first (layer cached across rebuilds)
+# Patch OS-level vulnerabilities and upgrade pip
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir --upgrade pip
+
+# Install Python dependencies (layer cached across rebuilds)
 COPY pretrained/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
