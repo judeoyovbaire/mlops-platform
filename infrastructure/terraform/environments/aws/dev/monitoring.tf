@@ -58,7 +58,7 @@ resource "helm_release" "loki" {
     templatefile("${path.module}/../../../../helm/aws/loki-values.yaml", {
       loki_s3_bucket     = module.eks.loki_s3_bucket
       loki_irsa_role_arn = module.eks.loki_irsa_role_arn
-      aws_region        = var.aws_region
+      aws_region         = var.aws_region
     })
   ]
 
@@ -84,7 +84,7 @@ resource "helm_release" "tempo" {
     templatefile("${path.module}/../../../../helm/aws/tempo-values.yaml", {
       tempo_s3_bucket     = module.eks.tempo_s3_bucket
       tempo_irsa_role_arn = module.eks.tempo_irsa_role_arn
-      aws_region         = var.aws_region
+      aws_region          = var.aws_region
     })
   ]
 

@@ -47,10 +47,10 @@ resource "helm_release" "loki" {
   # Use Azure-specific values with Blob Storage
   values = [
     templatefile("${path.module}/../../../../helm/azure/loki-values.yaml", {
-      loki_blob_container                      = module.aks.loki_blob_container
-      loki_workload_identity_client_id          = module.aks.loki_identity_client_id
-      storage_account_name                     = module.aks.storage_account_name
-      azure_location                           = var.azure_location
+      loki_blob_container              = module.aks.loki_blob_container
+      loki_workload_identity_client_id = module.aks.loki_identity_client_id
+      storage_account_name             = module.aks.storage_account_name
+      azure_location                   = var.azure_location
     })
   ]
 
@@ -74,10 +74,10 @@ resource "helm_release" "tempo" {
   # Use Azure-specific values with Blob Storage
   values = [
     templatefile("${path.module}/../../../../helm/azure/tempo-values.yaml", {
-      tempo_blob_container                     = module.aks.tempo_blob_container
-      tempo_workload_identity_client_id         = module.aks.tempo_identity_client_id
-      storage_account_name                     = module.aks.storage_account_name
-      azure_location                           = var.azure_location
+      tempo_blob_container              = module.aks.tempo_blob_container
+      tempo_workload_identity_client_id = module.aks.tempo_identity_client_id
+      storage_account_name              = module.aks.storage_account_name
+      azure_location                    = var.azure_location
     })
   ]
 
