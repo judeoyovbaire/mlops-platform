@@ -144,6 +144,11 @@ alertmanager:
       limits:
         cpu: 200m
         memory: 256Mi
+%{ if slack_notifications_enabled }
+    # Mount Slack webhook URL from ESO-synced K8s Secret
+    secrets:
+      - alertmanager-slack-webhook
+%{ endif }
 
   ingress:
     enabled: true
@@ -173,23 +178,39 @@ alertmanager:
     receivers:
       - name: 'null'
       - name: 'critical-alerts'
-        # -- Production: uncomment and configure Slack or PagerDuty --
-        # slack_configs:
-        #   - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
-        #     channel: '#mlops-critical'
-        #     title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
-        #     text: '{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}'
-        #     send_resolved: true
-        # pagerduty_configs:
-        #   - service_key: 'YOUR_PAGERDUTY_SERVICE_KEY'
+%{ if slack_notifications_enabled }
+        slack_configs:
+          - api_url_file: '/etc/alertmanager/secrets/alertmanager-slack-webhook/webhook-url'
+            channel: '${slack_channel}'
+            color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+            title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }} :rotating_light:{{ end }}] {{ .CommonLabels.alertname }}'
+            text: >-
+              {{ range .Alerts }}
+              *Severity:* `{{ .Labels.severity }}`
+              *Namespace:* `{{ .Labels.namespace }}`
+              *Summary:* {{ .Annotations.summary }}
+              *Description:* {{ .Annotations.description }}
+              {{ end }}
+            send_resolved: true
+%{ endif }
         webhook_configs:
           - url: 'http://alertmanager-webhook-logger.monitoring:9095/webhook'
             send_resolved: true
       - name: 'warning-alerts'
-        # slack_configs:
-        #   - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
-        #     channel: '#mlops-warnings'
-        #     send_resolved: true
+%{ if slack_notifications_enabled }
+        slack_configs:
+          - api_url_file: '/etc/alertmanager/secrets/alertmanager-slack-webhook/webhook-url'
+            channel: '${slack_channel}'
+            color: '{{ if eq .Status "firing" }}warning{{ else }}good{{ end }}'
+            title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+            text: >-
+              {{ range .Alerts }}
+              *Severity:* `{{ .Labels.severity }}`
+              *Namespace:* `{{ .Labels.namespace }}`
+              *Summary:* {{ .Annotations.summary }}
+              {{ end }}
+            send_resolved: true
+%{ endif }
         webhook_configs:
           - url: 'http://alertmanager-webhook-logger.monitoring:9095/webhook'
             send_resolved: true

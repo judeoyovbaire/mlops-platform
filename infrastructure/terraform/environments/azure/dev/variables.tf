@@ -269,3 +269,24 @@ variable "api_server_authorized_ip_ranges" {
   type        = list(string)
   default     = [] # Open for portfolio/demo - set specific CIDRs for real deployments
 }
+
+# Slack Notifications
+
+variable "slack_notifications_enabled" {
+  description = "Enable Slack notifications for AlertManager"
+  type        = bool
+  default     = false
+}
+
+variable "slack_channel" {
+  description = "Slack channel for AlertManager notifications"
+  type        = string
+  default     = "#mlops-alerts"
+}
+
+variable "slack_webhook_url" {
+  description = "Slack webhook URL (stored in cloud secret manager, not in Terraform state)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

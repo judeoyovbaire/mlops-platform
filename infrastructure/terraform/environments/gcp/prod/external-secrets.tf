@@ -199,3 +199,33 @@ resource "kubectl_manifest" "minio_credentials" {
     kubernetes_namespace.argo
   ]
 }
+
+# AlertManager Slack Webhook
+resource "kubectl_manifest" "alertmanager_slack_external_secret" {
+  count = var.slack_notifications_enabled ? 1 : 0
+
+  yaml_body = <<-YAML
+    apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: alertmanager-slack-webhook
+      namespace: monitoring
+    spec:
+      refreshInterval: 1h
+      secretStoreRef:
+        name: gcp-secret-manager
+        kind: ClusterSecretStore
+      target:
+        name: alertmanager-slack-webhook
+        creationPolicy: Owner
+      data:
+        - secretKey: webhook-url
+          remoteRef:
+            key: ${module.gke.slack_webhook_url_secret}
+  YAML
+
+  depends_on = [
+    kubectl_manifest.cluster_secret_store,
+    kubernetes_namespace.monitoring
+  ]
+}

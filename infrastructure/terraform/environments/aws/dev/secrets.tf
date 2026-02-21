@@ -89,6 +89,28 @@ resource "random_password" "grafana_admin" {
   special = false
 }
 
+# Slack Webhook URL for AlertManager notifications
+resource "aws_secretsmanager_secret" "slack_webhook_url" {
+  count = var.slack_notifications_enabled ? 1 : 0
+
+  name        = "${var.cluster_name}/alertmanager/slack-webhook-url"
+  description = "Slack webhook URL for AlertManager notifications"
+  kms_key_id  = var.kms_key_arn
+
+  tags = var.tags
+}
+
+resource "aws_secretsmanager_secret_version" "slack_webhook_url" {
+  count = var.slack_notifications_enabled ? 1 : 0
+
+  secret_id     = aws_secretsmanager_secret.slack_webhook_url[0].id
+  secret_string = var.slack_webhook_url
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
 # Non-secret configuration in SSM for easy access
 
 resource "aws_ssm_parameter" "cluster_endpoint" {

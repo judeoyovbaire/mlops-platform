@@ -9,7 +9,10 @@ resource "helm_release" "prometheus_stack" {
   create_namespace = true
 
   values = [
-    file("${path.module}/../../../../helm/azure/prometheus-stack-values.yaml")
+    templatefile("${path.module}/../../../../helm/azure/prometheus-stack-values.yaml", {
+      slack_notifications_enabled = var.slack_notifications_enabled
+      slack_channel               = var.slack_channel
+    })
   ]
 
   # Use existing Grafana admin secret from Key Vault

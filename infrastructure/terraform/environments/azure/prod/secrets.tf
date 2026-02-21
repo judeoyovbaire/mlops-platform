@@ -40,6 +40,20 @@ resource "azurerm_key_vault_secret" "argocd_admin" {
   depends_on = [time_sleep.wait_for_keyvault_rbac]
 }
 
+resource "azurerm_key_vault_secret" "slack_webhook_url" {
+  count = var.slack_notifications_enabled ? 1 : 0
+
+  name         = "slack-webhook-url"
+  value        = var.slack_webhook_url
+  key_vault_id = module.aks.key_vault_id
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+
+  depends_on = [time_sleep.wait_for_keyvault_rbac]
+}
+
 resource "azurerm_key_vault_secret" "minio_root" {
   name         = "minio-root-password"
   value        = random_password.minio.result

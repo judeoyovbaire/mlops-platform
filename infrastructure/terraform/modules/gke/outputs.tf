@@ -139,6 +139,11 @@ output "grafana_admin_password_secret" {
   value       = google_secret_manager_secret.grafana_admin_password.secret_id
 }
 
+output "slack_webhook_url_secret" {
+  description = "Secret Manager secret ID for Slack webhook URL"
+  value       = var.slack_notifications_enabled ? google_secret_manager_secret.slack_webhook_url[0].secret_id : ""
+}
+
 # Service Account Information (Workload Identity)
 
 output "mlflow_service_account_email" {

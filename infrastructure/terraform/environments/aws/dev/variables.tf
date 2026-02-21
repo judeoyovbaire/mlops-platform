@@ -178,3 +178,24 @@ variable "cluster_endpoint_public_access_cidrs" {
   type        = list(string)
   default     = ["0.0.0.0/0"] # Open for portfolio/demo - restrict for real deployments
 }
+
+# Slack Notifications
+
+variable "slack_notifications_enabled" {
+  description = "Enable Slack notifications for AlertManager"
+  type        = bool
+  default     = false
+}
+
+variable "slack_channel" {
+  description = "Slack channel for AlertManager notifications"
+  type        = string
+  default     = "#mlops-alerts"
+}
+
+variable "slack_webhook_url" {
+  description = "Slack webhook URL (stored in cloud secret manager, not in Terraform state)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

@@ -46,4 +46,8 @@ module "gke" {
   cloudsql_disk_size         = var.cloudsql_disk_size
   cloudsql_backup_enabled    = var.cloudsql_backup_enabled
   cloudsql_high_availability = var.cloudsql_high_availability
+
+  # Slack Notifications
+  slack_notifications_enabled = var.slack_notifications_enabled
+  slack_webhook_url           = var.slack_webhook_url
 }

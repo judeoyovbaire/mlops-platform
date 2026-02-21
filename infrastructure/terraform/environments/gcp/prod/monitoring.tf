@@ -15,6 +15,8 @@ resource "helm_release" "prometheus_stack" {
   values = [
     templatefile("${path.module}/../../../../helm/gcp/prometheus-stack-values.yaml", {
       prometheus_service_account_email = module.gke.prometheus_service_account_email
+      slack_notifications_enabled      = var.slack_notifications_enabled
+      slack_channel                    = var.slack_channel
     })
   ]
 

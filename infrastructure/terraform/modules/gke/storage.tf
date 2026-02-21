@@ -324,3 +324,26 @@ resource "google_secret_manager_secret_version" "grafana_admin_password" {
     password = random_password.grafana_admin.result
   })
 }
+
+# Slack Webhook URL for AlertManager notifications
+resource "google_secret_manager_secret" "slack_webhook_url" {
+  count     = var.slack_notifications_enabled ? 1 : 0
+  secret_id = "${var.cluster_name}-slack-webhook-url"
+  project   = var.project_id
+
+  replication {
+    auto {}
+  }
+
+  labels = var.labels
+}
+
+resource "google_secret_manager_secret_version" "slack_webhook_url" {
+  count       = var.slack_notifications_enabled ? 1 : 0
+  secret      = google_secret_manager_secret.slack_webhook_url[0].id
+  secret_data = var.slack_webhook_url
+
+  lifecycle {
+    ignore_changes = [secret_data]
+  }
+}

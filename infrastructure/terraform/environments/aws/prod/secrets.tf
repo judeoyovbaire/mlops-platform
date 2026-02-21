@@ -54,6 +54,27 @@ resource "aws_ssm_parameter" "argocd_admin_password" {
   tags = var.tags
 }
 
+# Slack Webhook URL for AlertManager notifications
+resource "aws_secretsmanager_secret" "slack_webhook_url" {
+  count = var.slack_notifications_enabled ? 1 : 0
+
+  name        = "${var.cluster_name}/alertmanager/slack-webhook-url"
+  description = "Slack webhook URL for AlertManager notifications"
+
+  tags = var.tags
+}
+
+resource "aws_secretsmanager_secret_version" "slack_webhook_url" {
+  count = var.slack_notifications_enabled ? 1 : 0
+
+  secret_id     = aws_secretsmanager_secret.slack_webhook_url[0].id
+  secret_string = var.slack_webhook_url
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
 # Store non-secret configuration in SSM for easy access
 resource "aws_ssm_parameter" "cluster_endpoint" {
   name        = "/${var.cluster_name}/cluster/endpoint"

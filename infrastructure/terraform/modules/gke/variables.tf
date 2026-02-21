@@ -342,3 +342,18 @@ variable "flow_logs_sampling_rate" {
     error_message = "Sampling rate must be between 0.0 and 1.0."
   }
 }
+
+# Slack Notifications
+
+variable "slack_notifications_enabled" {
+  description = "Enable Slack notifications for AlertManager"
+  type        = bool
+  default     = false
+}
+
+variable "slack_webhook_url" {
+  description = "Slack webhook URL for AlertManager notifications"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

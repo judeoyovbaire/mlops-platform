@@ -28,7 +28,12 @@ resource "helm_release" "prometheus_stack" {
   version    = var.helm_prometheus_stack_version
   namespace  = kubernetes_namespace.monitoring.metadata[0].name
 
-  values = [file("${path.module}/../../../../helm/aws/prometheus-stack-values.yaml")]
+  values = [
+    templatefile("${path.module}/../../../../helm/aws/prometheus-stack-values.yaml", {
+      slack_notifications_enabled = var.slack_notifications_enabled
+      slack_channel               = var.slack_channel
+    })
+  ]
 
   # Increase timeout for large chart with many CRDs
   timeout = 1200

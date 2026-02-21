@@ -176,3 +176,33 @@ resource "kubectl_manifest" "argocd_external_secret" {
     helm_release.argocd
   ]
 }
+
+# AlertManager Slack Webhook
+resource "kubectl_manifest" "alertmanager_slack_external_secret" {
+  count = var.slack_notifications_enabled ? 1 : 0
+
+  yaml_body = <<-YAML
+    apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: alertmanager-slack-webhook
+      namespace: monitoring
+    spec:
+      refreshInterval: 1h
+      secretStoreRef:
+        name: azure-keyvault
+        kind: ClusterSecretStore
+      target:
+        name: alertmanager-slack-webhook
+        creationPolicy: Owner
+      data:
+        - secretKey: webhook-url
+          remoteRef:
+            key: slack-webhook-url
+  YAML
+
+  depends_on = [
+    kubectl_manifest.cluster_secret_store_azure,
+    kubernetes_namespace.monitoring
+  ]
+}
