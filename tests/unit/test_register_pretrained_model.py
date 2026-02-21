@@ -8,7 +8,7 @@ import pytest
 from pipelines.pretrained.src.register_model import (
     register_pretrained_model,
 )
-from pipelines.training.src.exceptions import ModelRegistrationError
+from pipelines.shared.exceptions import ModelRegistrationError
 
 
 @pytest.fixture
@@ -105,7 +105,7 @@ class TestRegisterPretrainedModel:
     @patch("pipelines.pretrained.src.register_model.run_with_timeout")
     def test_register_mlflow_timeout(self, mock_timeout, metadata_file):
         """Test failure when MLflow connection times out."""
-        from pipelines.training.src.exceptions import MLflowTimeoutError
+        from pipelines.shared.exceptions import MLflowTimeoutError
 
         mock_timeout.side_effect = MLflowTimeoutError("Connection timed out")
 

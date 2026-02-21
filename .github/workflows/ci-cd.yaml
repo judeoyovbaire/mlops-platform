@@ -328,7 +328,8 @@ jobs:
       - name: Build pipeline training image
         uses: docker/build-push-action@v6
         with:
-          context: ./pipelines/training
+          context: ./pipelines
+          file: ./pipelines/training/Dockerfile
           load: true
           push: false
           tags: mlops-platform/ml-training:test

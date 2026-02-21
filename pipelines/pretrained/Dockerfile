@@ -8,15 +8,14 @@ LABEL maintainer="mlops-platform" \
       description="HuggingFace pretrained model pipeline runtime"
 
 WORKDIR /app
+ENV PYTHONPATH=/app
 
 # Install Python dependencies first (layer cached across rebuilds)
 COPY pretrained/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy shared utilities from training pipeline
-COPY training/src/logging_utils.py /app/shared/logging_utils.py
-COPY training/src/exceptions.py /app/shared/exceptions.py
-COPY training/src/mlflow_utils.py /app/shared/mlflow_utils.py
+# Copy shared utilities
+COPY shared/ /app/shared/
 
 # Copy pipeline source code
 COPY pretrained/src/ /app/src/

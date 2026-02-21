@@ -2,7 +2,7 @@
 
 import pytest
 
-from pipelines.training.src.exceptions import (
+from pipelines.shared.exceptions import (
     InvalidThresholdError,
     ModelRegistrationError,
 )

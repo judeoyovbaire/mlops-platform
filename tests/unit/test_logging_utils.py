@@ -5,7 +5,7 @@ import logging
 
 import pytest
 
-from pipelines.training.src.logging_utils import (
+from pipelines.shared.logging_utils import (
     CorrelatedLoggerAdapter,
     HumanReadableFormatter,
     StructuredFormatter,

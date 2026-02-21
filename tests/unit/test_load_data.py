@@ -6,7 +6,7 @@ from urllib.error import HTTPError, URLError
 
 import pytest
 
-from pipelines.training.src.exceptions import (
+from pipelines.shared.exceptions import (
     DataLoadError,
     InvalidURLError,
     NetworkError,

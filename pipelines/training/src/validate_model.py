@@ -16,11 +16,11 @@ import numpy as np
 import pandas as pd
 
 try:
-    from pipelines.training.src.exceptions import ModelTrainingError
-    from pipelines.training.src.logging_utils import get_logger
+    from pipelines.shared.exceptions import ModelTrainingError
+    from pipelines.shared.logging_utils import get_logger
 except ImportError:
-    from exceptions import ModelTrainingError
-    from logging_utils import get_logger
+    from shared.exceptions import ModelTrainingError
+    from shared.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from pipelines.training.src.exceptions import (
+from pipelines.shared.exceptions import (
     FeatureEngineeringError,
     MissingColumnError,
 )

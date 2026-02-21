@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from pipelines.training.src.exceptions import ModelTrainingError
+from pipelines.shared.exceptions import ModelTrainingError
 from pipelines.training.src.train_model import TrainingConfig, TrainingResult, train_model
 
 

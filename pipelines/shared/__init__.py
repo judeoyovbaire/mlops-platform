@@ -1,7 +1,9 @@
 """
-ML Training Pipeline Source Module.
+Shared utilities for ML pipeline components.
 
-This module exports all pipeline step functions for easy importing.
+This package contains modules that are used across both the training
+and pretrained pipelines: structured logging, custom exceptions,
+and MLflow helper functions.
 """
 
 from pipelines.shared.exceptions import (
@@ -20,6 +22,9 @@ from pipelines.shared.exceptions import (
     PipelineError,
 )
 from pipelines.shared.logging_utils import (
+    CorrelatedLoggerAdapter,
+    HumanReadableFormatter,
+    StructuredFormatter,
     generate_correlation_id,
     get_correlation_id,
     get_logger,
@@ -29,29 +34,8 @@ from pipelines.shared.logging_utils import (
     set_correlation_id,
 )
 from pipelines.shared.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
-from pipelines.training.src.build_serving_model import build_serving_model
-from pipelines.training.src.feature_engineering import feature_engineering
-from pipelines.training.src.load_data import load_data
-from pipelines.training.src.register_model import register_model
-from pipelines.training.src.schema import IrisSchema
-from pipelines.training.src.train_model import train_model
-from pipelines.training.src.validate_data import validate_data
-from pipelines.training.src.validate_model import validate_model
 
 __all__ = [
-    # Functions
-    "load_data",
-    "validate_data",
-    "feature_engineering",
-    "train_model",
-    "validate_model",
-    "register_model",
-    "build_serving_model",
-    # Schema
-    "IrisSchema",
-    # MLflow utilities
-    "run_with_timeout",
-    "MLFLOW_CONNECTION_TIMEOUT",
     # Logging utilities
     "get_logger",
     "get_correlation_id",
@@ -60,6 +44,12 @@ __all__ = [
     "log_step_start",
     "log_step_complete",
     "log_step_error",
+    "CorrelatedLoggerAdapter",
+    "StructuredFormatter",
+    "HumanReadableFormatter",
+    # MLflow utilities
+    "run_with_timeout",
+    "MLFLOW_CONNECTION_TIMEOUT",
     # Exceptions
     "PipelineError",
     "DataLoadError",

@@ -6,8 +6,8 @@ import pytest
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 
+from pipelines.shared.exceptions import ModelTrainingError
 from pipelines.training.src.build_serving_model import PreprocessingModel
-from pipelines.training.src.exceptions import ModelTrainingError
 
 
 @pytest.fixture

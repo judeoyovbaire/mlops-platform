@@ -54,9 +54,17 @@ spec:
                 - name: task
                   value: "{{workflow.parameters.task}}"
 
+          - name: validate-model
+            template: validate-model
+            dependencies: [fetch-model]
+            arguments:
+              artifacts:
+                - name: model-artifacts
+                  from: "{{tasks.fetch-model.outputs.artifacts.model-artifacts}}"
+
           - name: register-model
             template: register-model
-            dependencies: [fetch-model]
+            dependencies: [validate-model]
             arguments:
               parameters:
                 - name: model-name
@@ -67,7 +75,7 @@ spec:
                   value: "{{workflow.parameters.model-alias}}"
               artifacts:
                 - name: model-artifacts
-                  from: "{{tasks.fetch-model.outputs.artifacts.model-artifacts}}"
+                  from: "{{tasks.validate-model.outputs.artifacts.model-artifacts}}"
 
     # Step 1: Fetch and validate pretrained model from HuggingFace Hub
     - name: fetch-model
@@ -104,7 +112,40 @@ spec:
           capabilities:
             drop: ["ALL"]
 
-    # Step 2: Register model in MLflow
+    # Step 2: Validate model before registration
+    - name: validate-model
+      retryStrategy:
+        limit: 1
+        retryPolicy: "OnError"
+      inputs:
+        artifacts:
+          - name: model-artifacts
+            path: /tmp/hf-model
+      outputs:
+        artifacts:
+          - name: model-artifacts
+            path: /tmp/hf-model
+      container:
+        image: "{{workflow.parameters.pipeline-image}}"
+        command: [python, /app/src/validate_model.py]
+        args:
+          - --metadata
+          - /tmp/hf-model/metadata.json
+          - --output
+          - /tmp/hf-model/validation_result.json
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+
+    # Step 3: Register model in MLflow
     - name: register-model
       retryStrategy:
         limit: 2

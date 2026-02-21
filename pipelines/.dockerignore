@@ -1,0 +1,18 @@
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Test and dev artifacts
+.pytest_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# Workflow and Kubernetes manifests (not needed in images)
+training/ml-training-workflow.yaml
+training/kustomization.yaml
+pretrained/hf-pretrained-workflow.yaml
+
+# Package root init (not needed in Docker)
+__init__.py

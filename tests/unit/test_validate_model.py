@@ -4,7 +4,7 @@ import joblib
 import pytest
 from sklearn.ensemble import RandomForestClassifier
 
-from pipelines.training.src.exceptions import ModelTrainingError
+from pipelines.shared.exceptions import ModelTrainingError
 from pipelines.training.src.validate_model import ModelValidationResult, validate_model
 
 

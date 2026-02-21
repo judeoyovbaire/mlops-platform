@@ -18,16 +18,22 @@ from mlflow.tracking import MlflowClient
 from transformers import pipeline as hf_pipeline
 
 try:
-    from pipelines.training.src.exceptions import (
+    from pipelines.shared.exceptions import (
         MLflowTimeoutError,
         ModelRegistrationError,
     )
-    from pipelines.training.src.logging_utils import get_logger
-    from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
+    from pipelines.shared.logging_utils import get_logger
+    from pipelines.shared.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
 except ImportError:
-    from exceptions import MLflowTimeoutError, ModelRegistrationError  # type: ignore[no-redef]
-    from logging_utils import get_logger  # type: ignore[no-redef]
-    from mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout  # type: ignore[no-redef]
+    from shared.exceptions import (  # type: ignore[no-redef]
+        MLflowTimeoutError,
+        ModelRegistrationError,
+    )
+    from shared.logging_utils import get_logger  # type: ignore[no-redef]
+    from shared.mlflow_utils import (  # type: ignore[no-redef]
+        MLFLOW_CONNECTION_TIMEOUT,
+        run_with_timeout,
+    )
 
 logger = get_logger(__name__)
 

@@ -20,14 +20,14 @@ from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import cross_val_score, train_test_split
 
 try:
-    from pipelines.training.src.exceptions import MLflowTimeoutError, ModelTrainingError
-    from pipelines.training.src.logging_utils import get_logger
-    from pipelines.training.src.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
+    from pipelines.shared.exceptions import MLflowTimeoutError, ModelTrainingError
+    from pipelines.shared.logging_utils import get_logger
+    from pipelines.shared.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
     from pipelines.training.src.tracing import get_tracer
 except ImportError:
-    from exceptions import MLflowTimeoutError, ModelTrainingError
-    from logging_utils import get_logger
-    from mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
+    from shared.exceptions import MLflowTimeoutError, ModelTrainingError
+    from shared.logging_utils import get_logger
+    from shared.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
     from tracing import get_tracer
 
 logger = get_logger(__name__)

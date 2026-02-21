@@ -43,7 +43,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["pipelines*", "pipelines.pretrained*"]
+include = ["pipelines*", "pipelines.shared*", "pipelines.pretrained*"]
 exclude = ["tests*", "infrastructure*", "components*", "examples*"]
 
 [tool.pytest.ini_options]

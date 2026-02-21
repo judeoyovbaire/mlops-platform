@@ -14,21 +14,21 @@ import pandas as pd
 import pandera
 
 try:
-    from pipelines.training.src.exceptions import (
+    from pipelines.shared.exceptions import (
         DataValidationError,
         EmptyDataError,
         InsufficientDataError,
     )
-    from pipelines.training.src.logging_utils import get_logger
+    from pipelines.shared.logging_utils import get_logger
     from pipelines.training.src.schema import IrisSchema
 except ImportError:
-    from exceptions import (
+    from schema import IrisSchema
+    from shared.exceptions import (
         DataValidationError,
         EmptyDataError,
         InsufficientDataError,
     )
-    from logging_utils import get_logger
-    from schema import IrisSchema
+    from shared.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

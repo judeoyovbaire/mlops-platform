@@ -8,11 +8,14 @@ pretrained models from HuggingFace Hub.
 try:
     from pipelines.pretrained.src.fetch_model import fetch_model
     from pipelines.pretrained.src.register_model import register_pretrained_model
+    from pipelines.pretrained.src.validate_model import validate_pretrained_model
 except ImportError:
     from fetch_model import fetch_model  # type: ignore[no-redef]
     from register_model import register_pretrained_model  # type: ignore[no-redef]
+    from validate_model import validate_pretrained_model  # type: ignore[no-redef]
 
 __all__ = [
     "fetch_model",
+    "validate_pretrained_model",
     "register_pretrained_model",
 ]

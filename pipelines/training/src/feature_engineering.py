@@ -17,17 +17,17 @@ import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 try:
-    from pipelines.training.src.exceptions import (
+    from pipelines.shared.exceptions import (
         FeatureEngineeringError,
         MissingColumnError,
     )
-    from pipelines.training.src.logging_utils import get_logger
+    from pipelines.shared.logging_utils import get_logger
 except ImportError:
-    from exceptions import (
+    from shared.exceptions import (
         FeatureEngineeringError,
         MissingColumnError,
     )
-    from logging_utils import get_logger
+    from shared.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

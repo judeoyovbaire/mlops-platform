@@ -8,13 +8,17 @@ LABEL maintainer="mlops-platform" \
       description="ML training pipeline runtime"
 
 WORKDIR /app
+ENV PYTHONPATH=/app
 
 # Install Python dependencies first (layer cached across rebuilds)
-COPY requirements.txt .
+COPY training/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy shared utilities
+COPY shared/ /app/shared/
+
 # Copy pipeline source code
-COPY src/ /app/src/
+COPY training/src/ /app/src/
 
 # Non-root user for security
 USER 1000

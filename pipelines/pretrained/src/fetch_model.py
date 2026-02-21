@@ -16,9 +16,9 @@ from huggingface_hub import model_info
 from transformers import pipeline
 
 try:
-    from pipelines.training.src.logging_utils import get_logger
+    from pipelines.shared.logging_utils import get_logger
 except ImportError:
-    from logging_utils import get_logger  # type: ignore[no-redef]
+    from shared.logging_utils import get_logger  # type: ignore[no-redef]
 
 logger = get_logger(__name__)
 

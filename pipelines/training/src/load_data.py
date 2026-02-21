@@ -16,11 +16,11 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 
 try:
-    from pipelines.training.src.exceptions import DataLoadError, InvalidURLError, NetworkError
-    from pipelines.training.src.logging_utils import get_logger
+    from pipelines.shared.exceptions import DataLoadError, InvalidURLError, NetworkError
+    from pipelines.shared.logging_utils import get_logger
 except ImportError:
-    from exceptions import DataLoadError, InvalidURLError, NetworkError
-    from logging_utils import get_logger
+    from shared.exceptions import DataLoadError, InvalidURLError, NetworkError
+    from shared.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
