@@ -43,7 +43,7 @@ serviceAccount:
   create: true
   name: loki
   annotations:
-    azure.workload.identity/client-id: ${loki_workload_identity_client_id}
+    azure.workload.identity/client-id: "${loki_workload_identity_client_id}"
 
 # Disable components not needed in single binary mode
 read:

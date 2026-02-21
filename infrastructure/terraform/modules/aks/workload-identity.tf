@@ -101,3 +101,53 @@ resource "azurerm_role_assignment" "keda_monitoring" {
   role_definition_name = "Monitoring Reader"
   principal_id         = azurerm_user_assigned_identity.keda.principal_id
 }
+
+# Loki Identity
+resource "azurerm_user_assigned_identity" "loki" {
+  name                = "${var.cluster_name}-loki-identity"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+
+  tags = var.tags
+}
+
+resource "azurerm_federated_identity_credential" "loki" {
+  name                = "loki-federated-credential"
+  resource_group_name = azurerm_resource_group.main.name
+  parent_id           = azurerm_user_assigned_identity.loki.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = azurerm_kubernetes_cluster.main.oidc_issuer_url
+  subject             = "system:serviceaccount:monitoring:loki"
+}
+
+# Loki can access Blob Storage for logs
+resource "azurerm_role_assignment" "loki_blob" {
+  scope                = azurerm_storage_account.mlflow.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_user_assigned_identity.loki.principal_id
+}
+
+# Tempo Identity
+resource "azurerm_user_assigned_identity" "tempo" {
+  name                = "${var.cluster_name}-tempo-identity"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+
+  tags = var.tags
+}
+
+resource "azurerm_federated_identity_credential" "tempo" {
+  name                = "tempo-federated-credential"
+  resource_group_name = azurerm_resource_group.main.name
+  parent_id           = azurerm_user_assigned_identity.tempo.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = azurerm_kubernetes_cluster.main.oidc_issuer_url
+  subject             = "system:serviceaccount:monitoring:tempo"
+}
+
+# Tempo can access Blob Storage for traces
+resource "azurerm_role_assignment" "tempo_blob" {
+  scope                = azurerm_storage_account.mlflow.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_user_assigned_identity.tempo.principal_id
+}

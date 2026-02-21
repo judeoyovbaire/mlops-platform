@@ -5,16 +5,17 @@ Run: locust -f locust-load-test.py --host=http://sklearn-iris.mlops.svc.cluster.
 Web UI: http://localhost:8089
 """
 
-from locust import HttpUser, task, between
-import random
 import json
+import random
+
+from locust import HttpUser, between, task
 
 
 class InferenceUser(HttpUser):
     """Simulates a user making inference requests"""
-    
+
     wait_time = between(1, 3)  # Wait 1-3 seconds between requests
-    
+
     # Sample input data (Iris flower features)
     sample_inputs = [
         [5.1, 3.5, 1.4, 0.2],  # setosa
@@ -23,7 +24,7 @@ class InferenceUser(HttpUser):
         [5.5, 2.4, 3.8, 1.1],  # versicolor
         [6.5, 3.0, 5.2, 2.0],  # virginica
     ]
-    
+
     @task(3)
     def predict_single(self):
         """Most common: single prediction"""
@@ -31,7 +32,7 @@ class InferenceUser(HttpUser):
         payload = {
             "instances": [input_data]
         }
-        
+
         with self.client.post(
             "/v1/models/sklearn-iris:predict",
             json=payload,
@@ -49,7 +50,7 @@ class InferenceUser(HttpUser):
                     response.failure("Invalid JSON response")
             else:
                 response.failure(f"Status code: {response.status_code}")
-    
+
     @task(1)
     def predict_batch(self):
         """Less common: batch prediction"""
@@ -58,7 +59,7 @@ class InferenceUser(HttpUser):
         payload = {
             "instances": batch_inputs
         }
-        
+
         with self.client.post(
             "/v1/models/sklearn-iris:predict",
             json=payload,
@@ -76,7 +77,7 @@ class InferenceUser(HttpUser):
                     response.failure("Invalid JSON response")
             else:
                 response.failure(f"Status code: {response.status_code}")
-    
+
     @task(1)
     def health_check(self):
         """Health check endpoint"""

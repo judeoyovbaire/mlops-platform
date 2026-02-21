@@ -194,3 +194,51 @@ resource "google_project_iam_member" "prometheus_monitoring" {
   role    = "roles/monitoring.viewer"
   member  = "serviceAccount:${google_service_account.prometheus.email}"
 }
+
+# Loki Service Account
+resource "google_service_account" "loki" {
+  account_id   = "${var.cluster_name}-loki"
+  display_name = "Loki Service Account"
+  description  = "Service account for Loki to access GCS"
+  project      = var.project_id
+}
+
+# Allow Kubernetes SA to use this Google SA
+resource "google_service_account_iam_member" "loki_workload_identity" {
+  service_account_id = google_service_account.loki.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[monitoring/loki]"
+
+  depends_on = [google_container_cluster.main]
+}
+
+# GCS access for Loki logs
+resource "google_storage_bucket_iam_member" "loki_gcs" {
+  bucket = google_storage_bucket.loki_logs.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.loki.email}"
+}
+
+# Tempo Service Account
+resource "google_service_account" "tempo" {
+  account_id   = "${var.cluster_name}-tempo"
+  display_name = "Tempo Service Account"
+  description  = "Service account for Tempo to access GCS"
+  project      = var.project_id
+}
+
+# Allow Kubernetes SA to use this Google SA
+resource "google_service_account_iam_member" "tempo_workload_identity" {
+  service_account_id = google_service_account.tempo.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[monitoring/tempo]"
+
+  depends_on = [google_container_cluster.main]
+}
+
+# GCS access for Tempo traces
+resource "google_storage_bucket_iam_member" "tempo_gcs" {
+  bucket = google_storage_bucket.tempo_traces.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.tempo.email}"
+}

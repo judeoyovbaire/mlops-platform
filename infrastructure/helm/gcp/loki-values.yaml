@@ -40,7 +40,7 @@ serviceAccount:
   create: true
   name: loki
   annotations:
-    iam.gke.io/gcp-service-account: ${loki_service_account_email}
+    iam.gke.io/gcp-service-account: "${loki_service_account_email}"
 
 # Disable components not needed in single binary mode
 read:

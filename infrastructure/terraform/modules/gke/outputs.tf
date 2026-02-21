@@ -68,6 +68,16 @@ output "mlflow_artifacts_bucket_url" {
   value       = google_storage_bucket.mlflow_artifacts.url
 }
 
+output "loki_gcs_bucket" {
+  description = "GCS bucket name for Loki logs"
+  value       = google_storage_bucket.loki_logs.name
+}
+
+output "tempo_gcs_bucket" {
+  description = "GCS bucket name for Tempo traces"
+  value       = google_storage_bucket.tempo_traces.name
+}
+
 # Cloud SQL Information
 
 output "cloudsql_instance_name" {
@@ -159,6 +169,16 @@ output "kserve_service_account_email" {
 output "prometheus_service_account_email" {
   description = "Prometheus service account email"
   value       = google_service_account.prometheus.email
+}
+
+output "loki_service_account_email" {
+  description = "Loki service account email"
+  value       = google_service_account.loki.email
+}
+
+output "tempo_service_account_email" {
+  description = "Tempo service account email"
+  value       = google_service_account.tempo.email
 }
 
 output "node_pool_service_account_email" {

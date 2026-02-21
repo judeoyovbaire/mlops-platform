@@ -103,11 +103,23 @@ def validate_data(
     try:
         df = pd.read_csv(input_path)
     except FileNotFoundError as e:
-        raise DataValidationError(f"Input file not found: {input_path}") from e
+        raise DataValidationError(
+            f"Input file not found: {input_path}. "
+            f"Check: 1) Previous pipeline step completed successfully, "
+            f"2) Artifact path is correct, 3) Argo Workflow artifact storage is accessible"
+        ) from e
     except pd.errors.EmptyDataError as e:
-        raise EmptyDataError(f"Input file is empty: {input_path}") from e
+        raise EmptyDataError(
+            f"Input file is empty: {input_path}. "
+            f"Check: 1) Data source contains data, 2) File was not truncated, "
+            f"3) Download completed successfully"
+        ) from e
     except pd.errors.ParserError as e:
-        raise DataValidationError(f"Failed to parse CSV: {e}") from e
+        raise DataValidationError(
+            f"Failed to parse CSV: {e}. "
+            f"Check: 1) File format is valid CSV, 2) Encoding is correct (UTF-8), "
+            f"3) No malformed rows, 4) File is not corrupted"
+        ) from e
 
     original_rows = len(df)
     num_columns = len(df.columns)

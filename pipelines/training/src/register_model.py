@@ -111,9 +111,20 @@ def register_model(
         )
         logger.info(f"Connected to MLflow at {mlflow_uri}")
     except MLflowTimeoutError as e:
-        raise ModelRegistrationError(str(e)) from e
+        raise ModelRegistrationError(
+            f"MLflow connection timed out after {mlflow_timeout_seconds}s. "
+            f"Check: 1) MLflow pod is running (kubectl get pods -n mlflow), "
+            f"2) Service is accessible (kubectl get svc -n mlflow), "
+            f"3) Network policies allow access from argo namespace, "
+            f"4) MLflow URI is correct: {mlflow_uri}"
+        ) from e
     except MlflowException as e:
-        raise ModelRegistrationError(f"Failed to connect to MLflow: {e}") from e
+        raise ModelRegistrationError(
+            f"Failed to connect to MLflow: {e}. "
+            f"Check: 1) MLflow pod logs (kubectl logs -n mlflow -l app=mlflow --tail=50), "
+            f"2) Database connectivity, 3) Storage backend access, "
+            f"4) MLflow service endpoint: {mlflow_uri}"
+        ) from e
 
     try:
         # Get run metrics
@@ -134,7 +145,12 @@ def register_model(
         accuracy = run.data.metrics["accuracy"]
         logger.info(f"Model accuracy: {accuracy:.4f}, threshold: {threshold}")
     except MlflowException as e:
-        raise ModelRegistrationError(f"Failed to get run {run_id}: {e}") from e
+        raise ModelRegistrationError(
+            f"Failed to get run {run_id}: {e}. "
+            f"Check: 1) Run ID exists in MLflow (check MLflow UI), "
+            f"2) Run was logged successfully in training step, "
+            f"3) MLflow database connectivity, 4) Run ID format is correct"
+        ) from e
 
     if accuracy >= threshold:
         try:
@@ -159,7 +175,13 @@ def register_model(
             )
 
         except MlflowException as e:
-            raise ModelRegistrationError(f"Failed to register model: {e}") from e
+            raise ModelRegistrationError(
+                f"Failed to register model: {e}. "
+                f"Check: 1) Model artifacts exist in run {run_id}, "
+                f"2) Storage backend is accessible (S3/Blob/GCS), "
+                f"3) Model registry permissions, 4) MLflow logs for details: "
+                f"kubectl logs -n mlflow -l app=mlflow --tail=100"
+            ) from e
     else:
         logger.info(f"Accuracy {accuracy:.4f} below threshold {threshold}, not registering")
         return RegistrationResult(

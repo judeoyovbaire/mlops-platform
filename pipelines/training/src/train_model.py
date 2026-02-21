@@ -140,18 +140,36 @@ def train_model(
             )
             logger.info(f"MLflow tracking URI: {mlflow_uri}, Experiment: {model_name}")
         except MLflowTimeoutError as e:
-            raise ModelTrainingError(str(e)) from e
+            raise ModelTrainingError(
+                f"MLflow connection timed out after {mlflow_timeout_seconds}s. "
+                f"Check: 1) MLflow pod is running (kubectl get pods -n mlflow), "
+                f"2) Service is accessible (kubectl get svc -n mlflow), "
+                f"3) Network policies allow access, 4) MLflow URI is correct: {mlflow_uri}"
+            ) from e
         except MlflowException as e:
-            raise ModelTrainingError(f"Failed to setup MLflow: {e}") from e
+            raise ModelTrainingError(
+                f"Failed to setup MLflow: {e}. "
+                f"Check: 1) MLflow pod logs (kubectl logs -n mlflow -l app=mlflow), "
+                f"2) Database connectivity (kubectl exec -n mlflow deployment/mlflow -- psql $MLFLOW_BACKEND_STORE_URI -c 'SELECT 1'), "
+                f"3) Storage access (S3/Blob/GCS permissions), 4) MLflow URI format: {mlflow_uri}"
+            ) from e
 
         try:
             # Load data
             df = pd.read_csv(input_path)
             logger.info(f"Loaded {len(df)} rows from {input_path}")
         except FileNotFoundError as e:
-            raise ModelTrainingError(f"Input file not found: {input_path}") from e
+            raise ModelTrainingError(
+                f"Input file not found: {input_path}. "
+                f"Check: 1) Previous pipeline step completed successfully, "
+                f"2) Artifact path is correct, 3) Argo Workflow artifact storage is accessible"
+            ) from e
         except pd.errors.EmptyDataError as e:
-            raise ModelTrainingError(f"Input file is empty: {input_path}") from e
+            raise ModelTrainingError(
+                f"Input file is empty: {input_path}. "
+                f"Check: 1) Data source contains data, 2) Data validation step passed, "
+                f"3) File was not truncated during transfer"
+            ) from e
 
         if target not in df.columns:
             raise ModelTrainingError(
@@ -247,9 +265,18 @@ def train_model(
                 )
 
         except MlflowException as e:
-            raise ModelTrainingError(f"MLflow error during training: {e}") from e
+            raise ModelTrainingError(
+                f"MLflow error during training: {e}. "
+                f"Check: 1) MLflow pod status (kubectl get pods -n mlflow), "
+                f"2) MLflow logs (kubectl logs -n mlflow -l app=mlflow --tail=100), "
+                f"3) Storage backend connectivity (S3/Blob/GCS), 4) Database connection"
+            ) from e
         except Exception as e:
-            raise ModelTrainingError(f"Training failed: {e}") from e
+            raise ModelTrainingError(
+                f"Training failed: {e}. "
+                f"Check: 1) Input data format and quality, 2) Model hyperparameters, "
+                f"3) Resource limits (CPU/memory), 4) Pod logs for details: kubectl logs -n argo <pod-name>"
+            ) from e
 
 
 if __name__ == "__main__":

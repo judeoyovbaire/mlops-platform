@@ -31,7 +31,7 @@ resource "helm_release" "prometheus_stack" {
   ]
 }
 
-# Loki - Log Aggregation
+# Loki - Log Aggregation with GCS Storage
 resource "helm_release" "loki" {
   name       = "loki"
   repository = "https://grafana.github.io/helm-charts"
@@ -39,17 +39,24 @@ resource "helm_release" "loki" {
   version    = var.helm_loki_version
   namespace  = "monitoring"
 
-  values = [file("${path.module}/../../../../helm/common/loki-values.yaml")]
+  # Use GCP-specific values with GCS storage
+  values = [
+    templatefile("${path.module}/../../../../helm/gcp/loki-values.yaml", {
+      loki_gcs_bucket            = module.gke.loki_gcs_bucket
+      loki_service_account_email = module.gke.loki_service_account_email
+    })
+  ]
 
   timeout = 600
 
   depends_on = [
     kubernetes_namespace.monitoring,
-    helm_release.prometheus_stack
+    helm_release.prometheus_stack,
+    module.gke
   ]
 }
 
-# Tempo - Trace Storage Backend
+# Tempo - Trace Storage Backend with GCS Storage
 resource "helm_release" "tempo" {
   name       = "tempo"
   repository = "https://grafana.github.io/helm-charts"
@@ -57,13 +64,20 @@ resource "helm_release" "tempo" {
   version    = var.helm_tempo_version
   namespace  = "monitoring"
 
-  values = [file("${path.module}/../../../../helm/common/tempo-values.yaml")]
+  # Use GCP-specific values with GCS storage
+  values = [
+    templatefile("${path.module}/../../../../helm/gcp/tempo-values.yaml", {
+      tempo_gcs_bucket            = module.gke.tempo_gcs_bucket
+      tempo_service_account_email = module.gke.tempo_service_account_email
+    })
+  ]
 
   timeout = 600
 
   depends_on = [
     kubernetes_namespace.monitoring,
-    helm_release.prometheus_stack
+    helm_release.prometheus_stack,
+    module.gke
   ]
 }
 

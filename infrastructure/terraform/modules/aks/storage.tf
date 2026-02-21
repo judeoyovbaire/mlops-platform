@@ -43,6 +43,20 @@ resource "azurerm_storage_container" "mlflow_artifacts" {
   container_access_type = "private"
 }
 
+# Blob Storage containers for Loki logs
+resource "azurerm_storage_container" "loki_logs" {
+  name                  = "loki-logs"
+  storage_account_name  = azurerm_storage_account.mlflow.name
+  container_access_type = "private"
+}
+
+# Blob Storage containers for Tempo traces
+resource "azurerm_storage_container" "tempo_traces" {
+  name                  = "tempo-traces"
+  storage_account_name  = azurerm_storage_account.mlflow.name
+  container_access_type = "private"
+}
+
 # Azure Key Vault
 resource "azurerm_key_vault" "main" {
   # Azure Key Vault names: 3-24 chars, alphanumeric and dashes only

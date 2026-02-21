@@ -35,6 +35,74 @@ resource "google_storage_bucket" "mlflow_artifacts" {
   labels = var.labels
 }
 
+# GCS Bucket for Loki logs
+resource "google_storage_bucket" "loki_logs" {
+  name          = "${var.cluster_name}-loki-logs-${var.project_id}"
+  project       = var.project_id
+  location      = var.region
+  force_destroy = false
+
+  uniform_bucket_level_access = true
+
+  versioning {
+    enabled = true
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 30
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      num_newer_versions = 7
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  labels = var.labels
+}
+
+# GCS Bucket for Tempo traces
+resource "google_storage_bucket" "tempo_traces" {
+  name          = "${var.cluster_name}-tempo-traces-${var.project_id}"
+  project       = var.project_id
+  location      = var.region
+  force_destroy = false
+
+  uniform_bucket_level_access = true
+
+  versioning {
+    enabled = true
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 7
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      num_newer_versions = 3
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  labels = var.labels
+}
+
 # Private Service Access for Cloud SQL
 
 resource "google_compute_global_address" "private_ip_range" {

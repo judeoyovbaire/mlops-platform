@@ -1,0 +1,42 @@
+# Tempo Helm Values for GCP GKE - Production with GCS Storage
+# Chart: grafana/tempo
+# Uses GCS with Workload Identity Federation for authentication
+
+tempo:
+  reportingEnabled: false
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://prometheus-kube-prometheus-prometheus.monitoring:9090/api/v1/write"
+  storage:
+    trace:
+      backend: gcs
+      gcs:
+        bucket_name: ${tempo_gcs_bucket}
+      wal:
+        path: /var/tempo/wal
+
+  # OTLP receiver for traces from the OpenTelemetry Collector
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+
+# Service account for Workload Identity
+serviceAccount:
+  create: true
+  name: tempo
+  annotations:
+    iam.gke.io/gcp-service-account: ${tempo_service_account_email}
+
+# Disable persistence when using GCS
+persistence:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 2Gi

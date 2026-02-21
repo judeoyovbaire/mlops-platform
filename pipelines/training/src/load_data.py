@@ -149,17 +149,32 @@ def load_data(url: str, output_path: str, timeout: int = DEFAULT_TIMEOUT) -> Loa
         )
 
     except HTTPError as e:
-        error_msg = f"HTTP error downloading data: {e.code} {e.reason}"
+        error_msg = (
+            f"HTTP error downloading data: {e.code} {e.reason}. "
+            f"Check: 1) URL is accessible (curl -I {url}), "
+            f"2) Network policies allow egress, 3) URL requires authentication, "
+            f"4) Server is responding (status code: {e.code})"
+        )
         logger.error(error_msg)
         raise NetworkError(error_msg) from e
 
     except URLError as e:
-        error_msg = f"URL error downloading data: {e.reason}"
+        error_msg = (
+            f"URL error downloading data: {e.reason}. "
+            f"Check: 1) URL format is correct: {url}, "
+            f"2) DNS resolution (nslookup <hostname>), "
+            f"3) Network connectivity from pod, 4) Firewall rules allow access"
+        )
         logger.error(error_msg)
         raise NetworkError(error_msg) from e
 
     except OSError as e:
-        error_msg = f"File system error: {e}"
+        error_msg = (
+            f"File system error: {e}. "
+            f"Check: 1) Output directory exists and is writable, "
+            f"2) Disk space available (df -h), 3) File permissions, "
+            f"4) Volume mount is correct"
+        )
         logger.error(error_msg)
         raise DataLoadError(error_msg) from e
 

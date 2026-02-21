@@ -1,0 +1,45 @@
+# Tempo Helm Values for Azure AKS - Production with Blob Storage
+# Chart: grafana/tempo
+# Uses Azure Blob Storage with Workload Identity for authentication
+
+tempo:
+  reportingEnabled: false
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://prometheus-kube-prometheus-prometheus.monitoring:9090/api/v1/write"
+  storage:
+    trace:
+      backend: azure
+      azure:
+        account_name: ${storage_account_name}
+        account_key: ""  # Use Workload Identity instead
+        container_name: ${tempo_blob_container}
+        endpoint_suffix: core.windows.net
+      wal:
+        path: /var/tempo/wal
+
+  # OTLP receiver for traces from the OpenTelemetry Collector
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+
+# Service account for Workload Identity
+serviceAccount:
+  create: true
+  name: tempo
+  annotations:
+    azure.workload.identity/client-id: ${tempo_workload_identity_client_id}
+
+# Disable persistence when using Blob Storage
+persistence:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 2Gi

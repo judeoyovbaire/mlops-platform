@@ -79,16 +79,28 @@ def validate_model(
         model = joblib.load(model_path)
         logger.info(f"Loaded model from {model_path}")
     except FileNotFoundError as e:
-        raise ModelTrainingError(f"Model file not found: {model_path}") from e
+        raise ModelTrainingError(
+            f"Model file not found: {model_path}. "
+            f"Check: 1) Training step completed successfully, "
+            f"2) Model artifact path is correct, 3) Argo Workflow artifact storage"
+        ) from e
     except Exception as e:
-        raise ModelTrainingError(f"Failed to load model: {e}") from e
+        raise ModelTrainingError(
+            f"Failed to load model: {e}. "
+            f"Check: 1) Model file format (joblib/pickle), 2) Model version compatibility, "
+            f"3) File is not corrupted, 4) Required libraries are installed"
+        ) from e
 
     # Load data
     try:
         df = pd.read_csv(data_path)
         logger.info(f"Loaded {len(df)} rows from {data_path}")
     except FileNotFoundError as e:
-        raise ModelTrainingError(f"Data file not found: {data_path}") from e
+        raise ModelTrainingError(
+            f"Data file not found: {data_path}. "
+            f"Check: 1) Feature engineering step completed, "
+            f"2) Data artifact path is correct, 3) Argo Workflow artifacts"
+        ) from e
 
     if target not in df.columns:
         raise ModelTrainingError(

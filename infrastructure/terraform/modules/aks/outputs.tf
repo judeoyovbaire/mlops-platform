@@ -99,6 +99,16 @@ output "mlflow_artifacts_container" {
   value       = azurerm_storage_container.mlflow_artifacts.name
 }
 
+output "loki_blob_container" {
+  description = "Name of the Loki logs container"
+  value       = azurerm_storage_container.loki_logs.name
+}
+
+output "tempo_blob_container" {
+  description = "Name of the Tempo traces container"
+  value       = azurerm_storage_container.tempo_traces.name
+}
+
 # -----------------------------------------------------------------------------
 # Key Vault
 # -----------------------------------------------------------------------------
@@ -173,6 +183,16 @@ output "argo_workflows_identity_client_id" {
 output "keda_identity_client_id" {
   description = "Client ID of the KEDA managed identity"
   value       = azurerm_user_assigned_identity.keda.client_id
+}
+
+output "loki_identity_client_id" {
+  description = "Client ID of the Loki managed identity"
+  value       = azurerm_user_assigned_identity.loki.client_id
+}
+
+output "tempo_identity_client_id" {
+  description = "Client ID of the Tempo managed identity"
+  value       = azurerm_user_assigned_identity.tempo.client_id
 }
 
 # -----------------------------------------------------------------------------
