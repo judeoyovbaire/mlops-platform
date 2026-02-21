@@ -357,6 +357,7 @@ jobs:
           exit-code: '1'
 
       - name: Scan pretrained pipeline image
+        if: ${{ !cancelled() }}
         uses: aquasecurity/trivy-action@0.34.0
         with:
           image-ref: 'mlops-platform/hf-pretrained:test'
@@ -378,6 +379,7 @@ jobs:
           sarif_file: 'trivy-pretrained-image.sarif'
 
       - name: Generate SBOM for training image
+        if: ${{ !cancelled() }}
         uses: aquasecurity/trivy-action@0.34.0
         with:
           image-ref: 'mlops-platform/ml-training:test'
@@ -386,6 +388,7 @@ jobs:
           exit-code: '0'
 
       - name: Generate SBOM for pretrained image
+        if: ${{ !cancelled() }}
         uses: aquasecurity/trivy-action@0.34.0
         with:
           image-ref: 'mlops-platform/hf-pretrained:test'
