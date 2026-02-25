@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 
@@ -17,40 +18,39 @@ def iris_features(iris_dataframe):
 
 
 @pytest.fixture
-def fitted_scaler(iris_features):
-    """Fit a StandardScaler on iris numeric features."""
-    scaler = StandardScaler()
+def fitted_preprocessor(iris_features):
+    """Fit a ColumnTransformer on iris numeric features."""
     numeric_cols = iris_features.select_dtypes(include="number").columns.tolist()
-    scaler.fit(iris_features[numeric_cols])
-    return scaler, numeric_cols
+    preprocessor = ColumnTransformer(
+        transformers=[("scaler", StandardScaler(), numeric_cols)],
+        remainder="drop",
+    )
+    preprocessor.set_output(transform="pandas")
+    preprocessor.fit(iris_features)
+    return preprocessor
 
 
 @pytest.fixture
-def trained_rf(iris_dataframe):
-    """Train a RandomForest on *scaled* iris features."""
+def trained_rf(iris_dataframe, fitted_preprocessor):
+    """Train a RandomForest on preprocessed iris features."""
     X = iris_dataframe.drop(columns=["species"])
     y = iris_dataframe["species"]
 
-    scaler = StandardScaler()
-    numeric_cols = X.select_dtypes(include="number").columns.tolist()
-    X[numeric_cols] = scaler.fit_transform(X[numeric_cols])
+    X_transformed = fitted_preprocessor.transform(X)
 
     model = RandomForestClassifier(n_estimators=10, max_depth=3, random_state=42)
-    model.fit(X, y)
-    return model, scaler, numeric_cols
+    model.fit(X_transformed, y)
+    return model
 
 
 class TestPreprocessingModel:
     """Tests for the PreprocessingModel pyfunc wrapper."""
 
-    def test_predict_with_scaler(self, trained_rf, iris_features):
-        """Test that the wrapper scales inputs and produces predictions."""
-        model, scaler, numeric_cols = trained_rf
-
+    def test_predict_with_preprocessor(self, trained_rf, fitted_preprocessor, iris_features):
+        """Test that the wrapper preprocesses inputs and produces predictions."""
         wrapper = PreprocessingModel(
-            model=model,
-            scaler=scaler,
-            numeric_cols=numeric_cols,
+            model=trained_rf,
+            preprocessor=fitted_preprocessor,
         )
 
         preds = wrapper.predict(context=None, model_input=iris_features)
@@ -58,8 +58,8 @@ class TestPreprocessingModel:
         assert len(preds) == len(iris_features)
         assert set(preds).issubset({"setosa", "versicolor", "virginica"})
 
-    def test_predict_without_scaler(self, iris_dataframe):
-        """Test prediction works when no scaler is provided."""
+    def test_predict_without_preprocessor(self, iris_dataframe):
+        """Test prediction works when no preprocessor is provided."""
         X = iris_dataframe.drop(columns=["species"])
         y = iris_dataframe["species"]
 
@@ -70,17 +70,13 @@ class TestPreprocessingModel:
         preds = wrapper.predict(context=None, model_input=X)
         assert len(preds) == len(X)
 
-    def test_predict_ignores_missing_columns(self, trained_rf):
-        """Test that missing columns in input are gracefully skipped."""
-        model, scaler, numeric_cols = trained_rf
-
+    def test_predict_single_row(self, trained_rf, fitted_preprocessor):
+        """Test prediction on a single input row."""
         wrapper = PreprocessingModel(
-            model=model,
-            scaler=scaler,
-            numeric_cols=numeric_cols + ["nonexistent_col"],
+            model=trained_rf,
+            preprocessor=fitted_preprocessor,
         )
 
-        # Only pass real columns — the wrapper should skip the extra one
         df = pd.DataFrame(
             {
                 "sepal_length": [5.1],
@@ -103,8 +99,7 @@ class TestBuildServingModelErrors:
         with pytest.raises(ModelTrainingError, match="not found"):
             build_serving_model(
                 model_path="/nonexistent/model.joblib",
-                scaler_path=None,
-                encoder_path=None,
+                preprocessor_path=None,
                 run_id="fake-run",
                 mlflow_uri="http://localhost:5000",
             )

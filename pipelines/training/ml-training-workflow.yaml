@@ -64,6 +64,8 @@ spec:
         value: "5"
       - name: use-cross-validation
         value: "true"
+      - name: use-grid-search
+        value: "false"
 
   # Artifact storage using MinIO
   artifactRepositoryRef:
@@ -129,13 +131,13 @@ spec:
                   value: "{{workflow.parameters.cv-folds}}"
                 - name: use-cross-validation
                   value: "{{workflow.parameters.use-cross-validation}}"
+                - name: use-grid-search
+                  value: "{{workflow.parameters.use-grid-search}}"
               artifacts:
                 - name: input-data
                   from: "{{tasks.feature-engineering.outputs.artifacts.output-data}}"
-                - name: scaler
-                  from: "{{tasks.feature-engineering.outputs.artifacts.scaler}}"
-                - name: encoder
-                  from: "{{tasks.feature-engineering.outputs.artifacts.encoder}}"
+                - name: preprocessor
+                  from: "{{tasks.feature-engineering.outputs.artifacts.preprocessor}}"
 
           - name: validate-model
             template: validate-model
@@ -180,8 +182,8 @@ spec:
               artifacts:
                 - name: model
                   from: "{{tasks.train-model.outputs.artifacts.model}}"
-                - name: scaler
-                  from: "{{tasks.train-model.outputs.artifacts.scaler}}"
+                - name: preprocessor
+                  from: "{{tasks.feature-engineering.outputs.artifacts.preprocessor}}"
                 - name: input-data
                   from: "{{tasks.feature-engineering.outputs.artifacts.output-data}}"
 
@@ -272,11 +274,8 @@ spec:
         artifacts:
           - name: output-data
             path: /tmp/features.csv
-          - name: scaler
-            path: /tmp/features_scaler.joblib
-            optional: true
-          - name: encoder
-            path: /tmp/features_encoder.joblib
+          - name: preprocessor
+            path: /tmp/features_preprocessor.joblib
             optional: true
       container:
         image: "{{workflow.parameters.pipeline-image}}"
@@ -316,14 +315,12 @@ spec:
           - name: random-state
           - name: cv-folds
           - name: use-cross-validation
+          - name: use-grid-search
         artifacts:
           - name: input-data
             path: /tmp/input.csv
-          - name: scaler
-            path: /tmp/scaler.joblib
-            optional: true
-          - name: encoder
-            path: /tmp/encoder.joblib
+          - name: preprocessor
+            path: /tmp/preprocessor.joblib
             optional: true
       outputs:
         parameters:
@@ -336,9 +333,6 @@ spec:
         artifacts:
           - name: model
             path: /tmp/model.joblib
-          - name: scaler
-            path: /tmp/scaler.joblib
-            optional: true
       container:
         image: "{{workflow.parameters.pipeline-image}}"
         command: [sh, -c]
@@ -346,6 +340,8 @@ spec:
           - |
             CV_FLAG="" && \
             if [ "{{inputs.parameters.use-cross-validation}}" = "false" ]; then CV_FLAG="--no-cv"; fi && \
+            GS_FLAG="" && \
+            if [ "{{inputs.parameters.use-grid-search}}" = "true" ]; then GS_FLAG="--grid-search"; fi && \
             python /app/src/train_model.py \
               --input /tmp/input.csv \
               --model-output /tmp/model.joblib \
@@ -359,7 +355,7 @@ spec:
               --test-size "{{inputs.parameters.test-size}}" \
               --random-state "{{inputs.parameters.random-state}}" \
               --cv-folds "{{inputs.parameters.cv-folds}}" \
-              $CV_FLAG
+              $CV_FLAG $GS_FLAG
         resources:
           requests:
             cpu: 500m
@@ -461,8 +457,8 @@ spec:
         artifacts:
           - name: model
             path: /tmp/model.joblib
-          - name: scaler
-            path: /tmp/scaler.joblib
+          - name: preprocessor
+            path: /tmp/preprocessor.joblib
             optional: true
           - name: input-data
             path: /tmp/input.csv
@@ -472,8 +468,8 @@ spec:
         args:
           - --model
           - /tmp/model.joblib
-          - --scaler
-          - /tmp/scaler.joblib
+          - --preprocessor
+          - /tmp/preprocessor.joblib
           - --run-id
           - "{{inputs.parameters.run-id}}"
           - --mlflow-uri
