@@ -17,7 +17,7 @@ import pandas as pd
 from mlflow.exceptions import MlflowException
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
-from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.model_selection import GridSearchCV, cross_val_score, train_test_split
 
 try:
     from pipelines.shared.exceptions import MLflowTimeoutError, ModelTrainingError
@@ -34,6 +34,12 @@ logger = get_logger(__name__)
 tracer = get_tracer("train-model")
 
 
+DEFAULT_PARAM_GRID = {
+    "n_estimators": [50, 100, 200],
+    "max_depth": [5, 10, 20],
+}
+
+
 @dataclass
 class TrainingConfig:
     """Configuration for model training."""
@@ -44,6 +50,7 @@ class TrainingConfig:
     random_state: int = 42
     cv_folds: int = 5
     use_cross_validation: bool = True
+    use_grid_search: bool = False
 
 
 @dataclass
@@ -56,6 +63,7 @@ class TrainingResult:
     f1: float
     cv_mean: float | None = None
     cv_std: float | None = None
+    best_params: dict | None = None
     success: bool = True
     error_message: str | None = None
 
@@ -74,6 +82,7 @@ def train_model(
     random_state: int = 42,
     cv_folds: int = 5,
     use_cross_validation: bool = True,
+    use_grid_search: bool = False,
     mlflow_timeout_seconds: int = MLFLOW_CONNECTION_TIMEOUT,
 ) -> TrainingResult:
     """
@@ -93,6 +102,7 @@ def train_model(
         random_state: Random seed for reproducibility (default: 42).
         cv_folds: Number of cross-validation folds (default: 5).
         use_cross_validation: Whether to perform cross-validation (default: True).
+        use_grid_search: Whether to perform GridSearchCV hyperparameter tuning (default: False).
         mlflow_timeout_seconds: Timeout in seconds for MLflow connection (default: 30).
 
     Returns:
@@ -225,8 +235,29 @@ def train_model(
                     logger.info(f"CV Mean: {cv_mean:.4f} (+/- {cv_std:.4f})")
                     mlflow.log_metrics({"cv_mean_accuracy": cv_mean, "cv_std_accuracy": cv_std})
 
-                # Train final model on training set
-                model.fit(X_train, y_train)
+                # Optional GridSearchCV hyperparameter tuning
+                best_params = None
+                if use_grid_search:
+                    logger.info("Performing GridSearchCV hyperparameter tuning")
+                    grid_search = GridSearchCV(
+                        estimator=model,
+                        param_grid=DEFAULT_PARAM_GRID,
+                        cv=cv_folds,
+                        scoring="accuracy",
+                        n_jobs=n_jobs,
+                        refit=True,
+                    )
+                    grid_search.fit(X_train, y_train)
+                    model = grid_search.best_estimator_
+                    best_params = grid_search.best_params_
+                    logger.info(f"Best params: {best_params}")
+                    logger.info(f"Best CV score: {grid_search.best_score_:.4f}")
+                    mlflow.log_params({f"best_{k}": v for k, v in best_params.items()})
+                    mlflow.log_metric("grid_search_best_score", grid_search.best_score_)
+                else:
+                    # Train final model on training set
+                    model.fit(X_train, y_train)
+
                 logger.info("Model training completed")
 
                 # Evaluate on test set
@@ -261,6 +292,7 @@ def train_model(
                     f1=f1,
                     cv_mean=cv_mean,
                     cv_std=cv_std,
+                    best_params=best_params,
                     success=True,
                 )
 
@@ -296,6 +328,7 @@ if __name__ == "__main__":
     parser.add_argument("--random-state", type=int, default=42, help="Random seed")
     parser.add_argument("--cv-folds", type=int, default=5, help="Cross-validation folds")
     parser.add_argument("--no-cv", action="store_true", help="Disable cross-validation")
+    parser.add_argument("--grid-search", action="store_true", help="Enable GridSearchCV tuning")
     parser.add_argument(
         "--mlflow-timeout",
         type=int,
@@ -320,6 +353,7 @@ if __name__ == "__main__":
             args.random_state,
             args.cv_folds,
             not args.no_cv,
+            use_grid_search=args.grid_search,
             mlflow_timeout_seconds=args.mlflow_timeout,
         )
         cv_info = ""

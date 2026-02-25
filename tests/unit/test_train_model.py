@@ -21,6 +21,7 @@ class TestTrainingConfig:
         assert config.random_state == 42
         assert config.cv_folds == 5
         assert config.use_cross_validation is True
+        assert config.use_grid_search is False
 
     def test_custom_values(self):
         """Test custom configuration values."""
@@ -217,3 +218,99 @@ class TestTrainModel:
         assert hasattr(result, "cv_std")
         assert hasattr(result, "success")
         assert hasattr(result, "error_message")
+        assert hasattr(result, "best_params")
+
+
+class TestGridSearch:
+    """Tests for GridSearchCV hyperparameter tuning."""
+
+    def _mock_mlflow(self, mocker):
+        """Helper to set up MLflow mocks."""
+        mocker.patch("mlflow.set_tracking_uri")
+        mocker.patch("mlflow.set_experiment")
+
+        mock_run = MagicMock()
+        mock_run.info.run_id = "grid-search-run"
+        mock_run.__enter__ = MagicMock(return_value=mock_run)
+        mock_run.__exit__ = MagicMock(return_value=False)
+
+        mocker.patch("mlflow.start_run", return_value=mock_run)
+        mocker.patch("mlflow.log_params")
+        mock_log_metrics = mocker.patch("mlflow.log_metrics")
+        mocker.patch("mlflow.sklearn.log_model")
+        return mock_log_metrics
+
+    def test_grid_search_enabled(self, trained_model_artifacts, mocker):
+        """Test that GridSearchCV populates best_params when enabled."""
+        artifacts = trained_model_artifacts
+        self._mock_mlflow(mocker)
+
+        result = train_model(
+            input_path=artifacts["data_path"],
+            model_output_path=artifacts["model_path"],
+            target="species",
+            model_name="test-grid",
+            mlflow_uri="http://localhost:5000",
+            n_estimators=10,
+            max_depth=3,
+            test_size=0.2,
+            run_id_output_path=artifacts["run_id_path"],
+            accuracy_output_path=artifacts["accuracy_path"],
+            use_grid_search=True,
+        )
+
+        assert result.success is True
+        assert result.best_params is not None
+        assert "n_estimators" in result.best_params
+        assert "max_depth" in result.best_params
+
+    def test_grid_search_disabled_by_default(self, trained_model_artifacts, mocker):
+        """Test that best_params is None when grid search is not used."""
+        artifacts = trained_model_artifacts
+        self._mock_mlflow(mocker)
+
+        result = train_model(
+            input_path=artifacts["data_path"],
+            model_output_path=artifacts["model_path"],
+            target="species",
+            model_name="test-no-grid",
+            mlflow_uri="http://localhost:5000",
+            n_estimators=10,
+            max_depth=3,
+            test_size=0.2,
+            run_id_output_path=artifacts["run_id_path"],
+            accuracy_output_path=artifacts["accuracy_path"],
+        )
+
+        assert result.best_params is None
+
+    def test_grid_search_logs_to_mlflow(self, trained_model_artifacts, mocker):
+        """Test that GridSearchCV results are logged to MLflow."""
+        artifacts = trained_model_artifacts
+        self._mock_mlflow(mocker)
+        mock_log_params = mocker.patch("mlflow.log_params")
+        mock_log_metric = mocker.patch("mlflow.log_metric")
+
+        train_model(
+            input_path=artifacts["data_path"],
+            model_output_path=artifacts["model_path"],
+            target="species",
+            model_name="test-grid-mlflow",
+            mlflow_uri="http://localhost:5000",
+            n_estimators=10,
+            max_depth=3,
+            test_size=0.2,
+            run_id_output_path=artifacts["run_id_path"],
+            accuracy_output_path=artifacts["accuracy_path"],
+            use_grid_search=True,
+        )
+
+        # Check that best params were logged
+        all_params = {}
+        for call in mock_log_params.call_args_list:
+            all_params.update(call[0][0])
+        assert any(k.startswith("best_") for k in all_params)
+
+        # Check that grid_search_best_score metric was logged
+        metric_names = [call[0][0] for call in mock_log_metric.call_args_list]
+        assert "grid_search_best_score" in metric_names
