@@ -21,7 +21,7 @@ grafana:
     enabled: true
     ingressClassName: nginx
     hosts:
-      - grafana.local
+      - grafana.mlops.local
 
   # Persistence
   persistence:

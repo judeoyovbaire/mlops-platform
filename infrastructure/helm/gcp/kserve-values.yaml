@@ -11,7 +11,7 @@ kserve:
     ingress:
       ingressClassName: nginx
       domainTemplate: "{{ .Name }}-{{ .Namespace }}.{{ .IngressDomain }}"
-      ingressDomain: "local"
+      ingressDomain: "mlops.local"
       ingressGateway: "knative-serving/knative-ingress-gateway"
       localGateway: "knative-serving/knative-local-gateway"
       urlScheme: http
@@ -93,7 +93,7 @@ ingress:
   ingressClassName: nginx
 
   # Domain suffix for inference services
-  ingressDomain: local
+  ingressDomain: mlops.local
 
   # Path template
   pathTemplate: /v1/models/{{ .Name }}

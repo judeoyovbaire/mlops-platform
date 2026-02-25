@@ -2,7 +2,7 @@
 # GitOps continuous delivery for Kubernetes
 
 global:
-  domain: argocd.local
+  domain: argocd.mlops.local
 
 # Server configuration
 server:
@@ -21,11 +21,11 @@ server:
       nginx.ingress.kubernetes.io/ssl-passthrough: "true"
       nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
     hosts:
-      - argocd.local
+      - argocd.mlops.local
     tls:
       - secretName: argocd-server-tls
         hosts:
-          - argocd.local
+          - argocd.mlops.local
 
   # Resource limits
   resources:
@@ -104,6 +104,6 @@ configs:
     server.insecure: false
 
   cm:
-    url: https://argocd.local
+    url: https://argocd.mlops.local
     application.instanceLabelKey: argocd.argoproj.io/instance
     admin.enabled: true
