@@ -1,0 +1,280 @@
+# Automated Drift-Triggered Retraining CronWorkflow
+#
+# This CronWorkflow runs daily and:
+# 1. Checks for data drift against the production model
+# 2. If drift is detected, triggers the ML training pipeline
+# 3. Validates the new model meets accuracy thresholds
+# 4. Promotes the new model to "champion" alias in MLflow
+#
+# Manual trigger:
+#   argo submit --from cronworkflow/automated-retraining -n argo
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: automated-retraining
+  namespace: argo
+  labels:
+    app: mlops
+    component: retraining
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM UTC
+  timezone: "UTC"
+  concurrencyPolicy: "Forbid"  # Don't overlap retraining runs
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+
+  workflowSpec:
+    entrypoint: automated-retrain
+    serviceAccountName: argo-workflow
+
+    activeDeadlineSeconds: 7200  # 2 hour timeout
+
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+
+    podSpecPatch: |
+      containers:
+        - name: main
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "otel-collector.monitoring:4317"
+
+    arguments:
+      parameters:
+        - name: pipeline-image
+          value: "mlops-platform/ml-training:v1.0.0"
+        - name: model-name
+          value: "iris-classifier"
+        - name: mlflow-tracking-uri
+          value: "http://mlflow.mlflow.svc.cluster.local:5000"
+        - name: reference-data-path
+          value: "s3://mlflow-artifacts/drift-detection/reference/iris_reference.csv"
+        - name: current-data-path
+          value: "s3://mlflow-artifacts/drift-detection/current/iris_current.csv"
+        - name: drift-threshold
+          value: "0.1"
+        - name: accuracy-threshold
+          value: "0.9"
+        - name: dataset-url
+          value: "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv"
+        - name: target-column
+          value: "species"
+        - name: model-alias
+          value: "champion"
+        - name: n-estimators
+          value: "100"
+        - name: max-depth
+          value: "10"
+
+    templates:
+      - name: automated-retrain
+        dag:
+          tasks:
+            - name: check-drift
+              template: check-drift
+
+            - name: retrain
+              template: retrain
+              dependencies: [check-drift]
+              when: "{{tasks.check-drift.outputs.parameters.drift-detected}} == true"
+
+            - name: validate-new-model
+              template: validate-new-model
+              dependencies: [retrain]
+              arguments:
+                parameters:
+                  - name: run-id
+                    value: "{{tasks.retrain.outputs.parameters.run-id}}"
+                  - name: accuracy
+                    value: "{{tasks.retrain.outputs.parameters.accuracy}}"
+
+            - name: promote-model
+              template: promote-model
+              dependencies: [validate-new-model]
+              when: "{{tasks.validate-new-model.outputs.parameters.promote}} == true"
+              arguments:
+                parameters:
+                  - name: run-id
+                    value: "{{tasks.retrain.outputs.parameters.run-id}}"
+
+      # Step 1: Check for data drift
+      - name: check-drift
+        outputs:
+          parameters:
+            - name: drift-detected
+              valueFrom:
+                path: /tmp/drift_detected.txt
+        container:
+          image: "{{workflow.parameters.pipeline-image}}"
+          command: [python, -c]
+          args:
+            - |
+              import json
+              import pandas as pd
+
+              try:
+                  from evidently.report import Report
+                  from evidently.metrics import DatasetDriftMetric
+                  from evidently import ColumnMapping
+
+                  reference = pd.read_csv("{{workflow.parameters.reference-data-path}}")
+                  current = pd.read_csv("{{workflow.parameters.current-data-path}}")
+
+                  column_mapping = ColumnMapping(
+                      target="{{workflow.parameters.target-column}}",
+                      numerical_features=[
+                          c for c in reference.columns
+                          if c != "{{workflow.parameters.target-column}}"
+                          and reference[c].dtype in ["float64", "int64"]
+                      ],
+                  )
+
+                  report = Report(metrics=[DatasetDriftMetric()])
+                  report.run(
+                      reference_data=reference,
+                      current_data=current,
+                      column_mapping=column_mapping,
+                  )
+
+                  results = report.as_dict()
+                  drift_score = results["metrics"][0]["result"]["drift_share"]
+                  threshold = float("{{workflow.parameters.drift-threshold}}")
+                  drift_detected = drift_score > threshold
+
+                  print(f"Drift score: {drift_score:.4f}, threshold: {threshold}")
+                  print(f"Drift detected: {drift_detected}")
+
+                  with open("/tmp/drift_detected.txt", "w") as f:
+                      f.write(str(drift_detected).lower())
+
+              except Exception as e:
+                  print(f"Drift detection failed: {e}")
+                  print("Defaulting to no drift detected")
+                  with open("/tmp/drift_detected.txt", "w") as f:
+                      f.write("false")
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+
+      # Step 2: Run the training pipeline
+      - name: retrain
+        outputs:
+          parameters:
+            - name: run-id
+              valueFrom:
+                path: /tmp/run_id.txt
+            - name: accuracy
+              valueFrom:
+                path: /tmp/accuracy.txt
+        resource:
+          action: create
+          successCondition: status.phase == Succeeded
+          failureCondition: status.phase in (Failed, Error)
+          manifest: |
+            apiVersion: argoproj.io/v1alpha1
+            kind: Workflow
+            metadata:
+              generateName: retrain-
+              namespace: argo
+            spec:
+              workflowTemplateRef:
+                name: ml-training-pipeline
+              arguments:
+                parameters:
+                  - name: dataset-url
+                    value: "{{workflow.parameters.dataset-url}}"
+                  - name: target-column
+                    value: "{{workflow.parameters.target-column}}"
+                  - name: model-name
+                    value: "{{workflow.parameters.model-name}}"
+                  - name: mlflow-tracking-uri
+                    value: "{{workflow.parameters.mlflow-tracking-uri}}"
+                  - name: accuracy-threshold
+                    value: "{{workflow.parameters.accuracy-threshold}}"
+                  - name: n-estimators
+                    value: "{{workflow.parameters.n-estimators}}"
+                  - name: max-depth
+                    value: "{{workflow.parameters.max-depth}}"
+                  - name: model-alias
+                    value: "retrain-candidate"
+
+      # Step 3: Validate new model quality
+      - name: validate-new-model
+        inputs:
+          parameters:
+            - name: run-id
+            - name: accuracy
+        outputs:
+          parameters:
+            - name: promote
+              valueFrom:
+                path: /tmp/promote.txt
+        container:
+          image: "{{workflow.parameters.pipeline-image}}"
+          command: [python, -c]
+          args:
+            - |
+              accuracy = float("{{inputs.parameters.accuracy}}")
+              threshold = float("{{workflow.parameters.accuracy-threshold}}")
+              promote = accuracy >= threshold
+
+              print(f"New model accuracy: {accuracy:.4f}")
+              print(f"Threshold: {threshold}")
+              print(f"Promote: {promote}")
+
+              with open("/tmp/promote.txt", "w") as f:
+                  f.write(str(promote).lower())
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+
+      # Step 4: Promote model to champion alias
+      - name: promote-model
+        inputs:
+          parameters:
+            - name: run-id
+        container:
+          image: "{{workflow.parameters.pipeline-image}}"
+          command: [python, /app/src/register_model.py]
+          args:
+            - --model-name
+            - "{{workflow.parameters.model-name}}"
+            - --mlflow-uri
+            - "{{workflow.parameters.mlflow-tracking-uri}}"
+            - --threshold
+            - "{{workflow.parameters.accuracy-threshold}}"
+            - --alias
+            - "{{workflow.parameters.model-alias}}"
+            - --run-id
+            - "{{inputs.parameters.run-id}}"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
