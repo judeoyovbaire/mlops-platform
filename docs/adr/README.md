@@ -16,6 +16,7 @@ An Architecture Decision Record captures an important architectural decision mad
 | [004](004-multi-cloud-infrastructure-strategy.md) | Multi-Cloud Infrastructure Strategy | Accepted | 2025-01 |
 | [005](005-oidc-authentication-over-static-credentials.md) | OIDC Authentication Over Static Credentials | Accepted | 2025-01 |
 | [006](006-argo-workflows-over-kubeflow-pipelines.md) | Argo Workflows Over Kubeflow Pipelines | Accepted | 2025-01 |
+| [007](007-skip-service-mesh.md) | Skip Service Mesh | Accepted | 2026-02 |
 
 ## Creating a New ADR
 
