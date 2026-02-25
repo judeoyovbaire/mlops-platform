@@ -131,7 +131,7 @@ resource "google_sql_database_instance" "mlflow" {
   project             = var.project_id
   region              = var.region
   database_version    = var.cloudsql_database_version
-  deletion_protection = false
+  deletion_protection = var.environment == "prod"
 
   settings {
     tier              = var.cloudsql_tier

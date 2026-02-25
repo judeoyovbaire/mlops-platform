@@ -62,7 +62,7 @@ server:
 artifactRepository:
   # Use MinIO for S3-compatible artifact storage
   s3:
-    endpoint: minio:9000
+    endpoint: minio.argo.svc:9000
     bucket: mlpipeline
     insecure: true
     accessKeySecret:
