@@ -21,6 +21,7 @@ try:
     )
     from pipelines.shared.logging_utils import get_logger
     from pipelines.training.src.schema import IrisSchema
+    from pipelines.training.src.tracing import get_tracer
 except ImportError:
     from schema import IrisSchema
     from shared.exceptions import (
@@ -29,8 +30,10 @@ except ImportError:
         InsufficientDataError,
     )
     from shared.logging_utils import get_logger
+    from tracing import get_tracer
 
 logger = get_logger(__name__)
+tracer = get_tracer("validate-data")
 
 MIN_ROWS_DEFAULT = 10
 # Default threshold: drop column if more than 50% of values are null
@@ -92,130 +95,137 @@ def validate_data(
     """
     logger.info(f"Starting validation of {input_path}")
 
-    # Input validation
-    if not 0.0 <= null_threshold <= 1.0:
-        raise DataValidationError(
-            f"null_threshold must be between 0.0 and 1.0, got: {null_threshold}"
-        )
-    if min_rows < 1:
-        raise DataValidationError(f"min_rows must be >= 1, got: {min_rows}")
+    with tracer.start_as_current_span("validate_data") as span:
+        span.set_attribute("input_path", input_path)
+        span.set_attribute("null_threshold", null_threshold)
 
-    try:
-        df = pd.read_csv(input_path)
-    except FileNotFoundError as e:
-        raise DataValidationError(
-            f"Input file not found: {input_path}. "
-            f"Check: 1) Previous pipeline step completed successfully, "
-            f"2) Artifact path is correct, 3) Argo Workflow artifact storage is accessible"
-        ) from e
-    except pd.errors.EmptyDataError as e:
-        raise EmptyDataError(
-            f"Input file is empty: {input_path}. "
-            f"Check: 1) Data source contains data, 2) File was not truncated, "
-            f"3) Download completed successfully"
-        ) from e
-    except pd.errors.ParserError as e:
-        raise DataValidationError(
-            f"Failed to parse CSV: {e}. "
-            f"Check: 1) File format is valid CSV, 2) Encoding is correct (UTF-8), "
-            f"3) No malformed rows, 4) File is not corrupted"
-        ) from e
+        # Input validation
+        if not 0.0 <= null_threshold <= 1.0:
+            raise DataValidationError(
+                f"null_threshold must be between 0.0 and 1.0, got: {null_threshold}"
+            )
+        if min_rows < 1:
+            raise DataValidationError(f"min_rows must be >= 1, got: {min_rows}")
 
-    original_rows = len(df)
-    num_columns = len(df.columns)
-    logger.info(f"Loaded {original_rows} rows, {num_columns} columns")
+        try:
+            df = pd.read_csv(input_path)
+        except FileNotFoundError as e:
+            raise DataValidationError(
+                f"Input file not found: {input_path}. "
+                f"Check: 1) Previous pipeline step completed successfully, "
+                f"2) Artifact path is correct, 3) Argo Workflow artifact storage is accessible"
+            ) from e
+        except pd.errors.EmptyDataError as e:
+            raise EmptyDataError(
+                f"Input file is empty: {input_path}. "
+                f"Check: 1) Data source contains data, 2) File was not truncated, "
+                f"3) Download completed successfully"
+            ) from e
+        except pd.errors.ParserError as e:
+            raise DataValidationError(
+                f"Failed to parse CSV: {e}. "
+                f"Check: 1) File format is valid CSV, 2) Encoding is correct (UTF-8), "
+                f"3) No malformed rows, 4) File is not corrupted"
+            ) from e
 
-    if original_rows == 0:
-        raise EmptyDataError("Input data contains no rows")
+        original_rows = len(df)
+        num_columns = len(df.columns)
+        span.set_attribute("original_rows", original_rows)
+        logger.info(f"Loaded {original_rows} rows, {num_columns} columns")
 
-    # Schema validation — catches structural issues (wrong dtypes, out-of-range
-    # values, unexpected categories) before the cleaning pipeline runs.
-    try:
-        IrisSchema.validate(df, lazy=True)
-        logger.info("Schema validation passed")
-    except pandera.errors.SchemaErrors as exc:
-        failure_cases = exc.failure_cases
-        logger.warning(
-            f"Schema validation found {len(failure_cases)} issue(s) — "
-            "proceeding with cleaning pipeline"
-        )
-        # Log details but don't halt; the cleaning step may fix some issues.
-        for _, row in failure_cases.iterrows():
+        if original_rows == 0:
+            raise EmptyDataError("Input data contains no rows")
+
+        # Schema validation — catches structural issues (wrong dtypes, out-of-range
+        # values, unexpected categories) before the cleaning pipeline runs.
+        try:
+            IrisSchema.validate(df, lazy=True)
+            logger.info("Schema validation passed")
+        except pandera.errors.SchemaErrors as exc:
+            failure_cases = exc.failure_cases
             logger.warning(
-                f"  column={row.get('column')}, "
-                f"check={row.get('check')}, "
-                f"failure_case={row.get('failure_case')}"
+                f"Schema validation found {len(failure_cases)} issue(s) — "
+                "proceeding with cleaning pipeline"
+            )
+            # Log details but don't halt; the cleaning step may fix some issues.
+            for _, row in failure_cases.iterrows():
+                logger.warning(
+                    f"  column={row.get('column')}, "
+                    f"check={row.get('check')}, "
+                    f"failure_case={row.get('failure_case')}"
+                )
+
+        # Check for nulls
+        null_count = int(df.isnull().sum().sum())
+        logger.info(f"Total null values found: {null_count}")
+
+        # Calculate null percentage per column
+        null_percentages = df.isnull().sum() / len(df)
+        columns_to_drop = null_percentages[null_percentages > null_threshold].index.tolist()
+
+        if columns_to_drop:
+            logger.info(
+                f"Dropping {len(columns_to_drop)} columns with >{null_threshold * 100:.0f}% nulls: "
+                f"{columns_to_drop}"
+            )
+            df = df.drop(columns=columns_to_drop)
+
+        # Impute remaining nulls column by column
+        imputed_columns = []
+        for col in df.columns:
+            if df[col].isnull().any():
+                null_pct = df[col].isnull().sum() / len(df) * 100
+                if pd.api.types.is_numeric_dtype(df[col]):
+                    # Numeric: impute with median
+                    median_val = df[col].median()
+                    df[col] = df[col].fillna(median_val)
+                    logger.info(f"Imputed {col} ({null_pct:.1f}% nulls) with median: {median_val}")
+                    imputed_columns.append(col)
+                else:
+                    # Categorical: impute with mode
+                    mode_val = df[col].mode()
+                    if len(mode_val) > 0:
+                        df[col] = df[col].fillna(mode_val.iloc[0])
+                        logger.info(
+                            f"Imputed {col} ({null_pct:.1f}% nulls) with mode: {mode_val.iloc[0]}"
+                        )
+                        imputed_columns.append(col)
+
+        # Optionally drop any remaining rows with nulls
+        rows_removed = 0
+        if drop_all_null_rows and df.isnull().any().any():
+            rows_before = len(df)
+            df = df.dropna()
+            rows_removed = rows_before - len(df)
+            logger.info(f"Dropped {rows_removed} rows with remaining null values")
+
+        clean_rows = len(df)
+        span.set_attribute("clean_rows", clean_rows)
+        span.set_attribute("columns_dropped", len(columns_to_drop))
+        if clean_rows < min_rows:
+            raise InsufficientDataError(
+                f"Only {clean_rows} rows after cleaning, minimum required: {min_rows}"
             )
 
-    # Check for nulls
-    null_count = int(df.isnull().sum().sum())
-    logger.info(f"Total null values found: {null_count}")
+        # Ensure output directory exists
+        output_dir = os.path.dirname(output_path)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
 
-    # Calculate null percentage per column
-    null_percentages = df.isnull().sum() / len(df)
-    columns_to_drop = null_percentages[null_percentages > null_threshold].index.tolist()
+        # Save cleaned data
+        df.to_csv(output_path, index=False)
+        logger.info(f"Validation complete: {clean_rows} clean rows saved to {output_path}")
 
-    if columns_to_drop:
-        logger.info(
-            f"Dropping {len(columns_to_drop)} columns with >{null_threshold * 100:.0f}% nulls: "
-            f"{columns_to_drop}"
+        return ValidationResult(
+            output_path=output_path,
+            original_rows=original_rows,
+            clean_rows=clean_rows,
+            null_count=null_count,
+            rows_removed=rows_removed,
+            columns_dropped=columns_to_drop,
+            imputed_columns=imputed_columns,
+            success=True,
         )
-        df = df.drop(columns=columns_to_drop)
-
-    # Impute remaining nulls column by column
-    imputed_columns = []
-    for col in df.columns:
-        if df[col].isnull().any():
-            null_pct = df[col].isnull().sum() / len(df) * 100
-            if pd.api.types.is_numeric_dtype(df[col]):
-                # Numeric: impute with median
-                median_val = df[col].median()
-                df[col] = df[col].fillna(median_val)
-                logger.info(f"Imputed {col} ({null_pct:.1f}% nulls) with median: {median_val}")
-                imputed_columns.append(col)
-            else:
-                # Categorical: impute with mode
-                mode_val = df[col].mode()
-                if len(mode_val) > 0:
-                    df[col] = df[col].fillna(mode_val.iloc[0])
-                    logger.info(
-                        f"Imputed {col} ({null_pct:.1f}% nulls) with mode: {mode_val.iloc[0]}"
-                    )
-                    imputed_columns.append(col)
-
-    # Optionally drop any remaining rows with nulls
-    rows_removed = 0
-    if drop_all_null_rows and df.isnull().any().any():
-        rows_before = len(df)
-        df = df.dropna()
-        rows_removed = rows_before - len(df)
-        logger.info(f"Dropped {rows_removed} rows with remaining null values")
-
-    clean_rows = len(df)
-    if clean_rows < min_rows:
-        raise InsufficientDataError(
-            f"Only {clean_rows} rows after cleaning, minimum required: {min_rows}"
-        )
-
-    # Ensure output directory exists
-    output_dir = os.path.dirname(output_path)
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-
-    # Save cleaned data
-    df.to_csv(output_path, index=False)
-    logger.info(f"Validation complete: {clean_rows} clean rows saved to {output_path}")
-
-    return ValidationResult(
-        output_path=output_path,
-        original_rows=original_rows,
-        clean_rows=clean_rows,
-        null_count=null_count,
-        rows_removed=rows_removed,
-        columns_dropped=columns_to_drop,
-        imputed_columns=imputed_columns,
-        success=True,
-    )
 
 
 if __name__ == "__main__":

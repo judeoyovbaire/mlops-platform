@@ -1,9 +1,9 @@
 """
 Feature engineering for ML pipeline.
 
-This module performs feature transformations including scaling
-numeric features using StandardScaler and encoding categorical
-features using one-hot encoding.
+This module performs feature transformations using a sklearn ColumnTransformer
+that bundles scaling of numeric features (StandardScaler) and encoding of
+categorical features (OneHotEncoder) into a single preprocessor artifact.
 """
 
 import argparse
@@ -14,6 +14,7 @@ from pathlib import Path
 
 import joblib
 import pandas as pd
+from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 try:
@@ -22,14 +23,17 @@ try:
         MissingColumnError,
     )
     from pipelines.shared.logging_utils import get_logger
+    from pipelines.training.src.tracing import get_tracer
 except ImportError:
     from shared.exceptions import (
         FeatureEngineeringError,
         MissingColumnError,
     )
     from shared.logging_utils import get_logger
+    from tracing import get_tracer
 
 logger = get_logger(__name__)
+tracer = get_tracer("feature-engineering")
 
 
 @dataclass
@@ -37,8 +41,7 @@ class FeatureEngineeringResult:
     """Result of feature engineering operation."""
 
     output_path: str
-    scaler_path: str | None
-    encoder_path: str | None
+    preprocessor_path: str | None
     input_shape: tuple[int, int]
     output_shape: tuple[int, int]
     scaled_columns: list[str] = field(default_factory=list)
@@ -58,8 +61,8 @@ def feature_engineering(
     Perform feature engineering on input data.
 
     This function loads CSV data, separates features from target,
-    scales numeric features using StandardScaler, encodes categorical
-    features using one-hot encoding, and saves the result.
+    builds a sklearn ColumnTransformer that scales numeric features
+    and one-hot encodes categorical features, and saves the result.
 
     Args:
         input_path: Path to the input CSV file.
@@ -78,117 +81,121 @@ def feature_engineering(
     """
     logger.info(f"Starting feature engineering on {input_path}")
 
-    try:
-        df = pd.read_csv(input_path)
-    except FileNotFoundError as e:
-        raise FeatureEngineeringError(f"Input file not found: {input_path}") from e
-    except pd.errors.EmptyDataError as e:
-        raise FeatureEngineeringError(f"Input file is empty: {input_path}") from e
-    except pd.errors.ParserError as e:
-        raise FeatureEngineeringError(f"Failed to parse CSV: {e}") from e
+    with tracer.start_as_current_span("feature_engineering") as span:
+        span.set_attribute("input_path", input_path)
 
-    input_shape = df.shape
-    logger.info(f"Loaded data with shape {input_shape}")
+        try:
+            df = pd.read_csv(input_path)
+        except FileNotFoundError as e:
+            raise FeatureEngineeringError(f"Input file not found: {input_path}") from e
+        except pd.errors.EmptyDataError as e:
+            raise FeatureEngineeringError(f"Input file is empty: {input_path}") from e
+        except pd.errors.ParserError as e:
+            raise FeatureEngineeringError(f"Failed to parse CSV: {e}") from e
 
-    if target_column not in df.columns:
-        raise MissingColumnError(
-            f"Target column '{target_column}' not found. Available columns: {list(df.columns)}"
-        )
+        input_shape = df.shape
+        span.set_attribute("input_shape", str(input_shape))
+        logger.info(f"Loaded data with shape {input_shape}")
 
-    # Separate features and target
-    X = df.drop(columns=[target_column])
-    y = df[target_column]
+        if target_column not in df.columns:
+            raise MissingColumnError(
+                f"Target column '{target_column}' not found. Available columns: {list(df.columns)}"
+            )
 
-    output_file = Path(output_path)
-    scaled_columns = []
-    encoded_columns = []
-    scaler_path = None
-    encoder_path = None
+        # Separate features and target
+        X = df.drop(columns=[target_column])
+        y = df[target_column]
 
-    # Identify column types
-    numeric_cols = X.select_dtypes(
-        include=["float64", "int64", "float32", "int32"]
-    ).columns.tolist()
-    categorical_cols = X.select_dtypes(include=["object", "category"]).columns.tolist()
+        output_file = Path(output_path)
+        scaled_columns: list[str] = []
+        encoded_columns: list[str] = []
+        preprocessor_path: str | None = None
 
-    # Scale numeric columns
-    if numeric_cols:
-        logger.info(f"Scaling numeric columns: {numeric_cols}")
-        scaler = StandardScaler()
-        X[numeric_cols] = scaler.fit_transform(X[numeric_cols])
-        scaled_columns = numeric_cols
+        # Identify column types
+        numeric_cols = X.select_dtypes(
+            include=["float64", "int64", "float32", "int32"]
+        ).columns.tolist()
+        categorical_cols = X.select_dtypes(include=["object", "category"]).columns.tolist()
 
-        # Save scaler for inference
-        scaler_path = str(output_file.parent / f"{output_file.stem}_scaler.joblib")
-        os.makedirs(os.path.dirname(scaler_path) or ".", exist_ok=True)
-        joblib.dump(scaler, scaler_path)
-        logger.info(f"Scaler saved to {scaler_path}")
+        # Filter high-cardinality categorical columns before building transformer
+        cols_to_encode: list[str] = []
+        cols_to_drop: list[str] = []
+        if encode_categorical and categorical_cols:
+            for col in categorical_cols:
+                n_unique = X[col].nunique()
+                if n_unique <= max_categories:
+                    cols_to_encode.append(col)
+                else:
+                    cols_to_drop.append(col)
+                    logger.warning(
+                        f"Dropping column '{col}' with {n_unique} categories "
+                        f"(max: {max_categories})"
+                    )
 
-    # Encode categorical columns
-    if encode_categorical and categorical_cols:
-        # Filter columns with too many categories
-        cols_to_encode = []
-        cols_to_drop = []
-        for col in categorical_cols:
-            n_unique = X[col].nunique()
-            if n_unique <= max_categories:
-                cols_to_encode.append(col)
-            else:
-                cols_to_drop.append(col)
-                logger.warning(
-                    f"Dropping column '{col}' with {n_unique} categories (max: {max_categories})"
-                )
+            if cols_to_drop:
+                X = X.drop(columns=cols_to_drop)
 
-        if cols_to_drop:
-            X = X.drop(columns=cols_to_drop)
+        elif categorical_cols and not encode_categorical:
+            logger.info(f"Skipping encoding for categorical columns: {categorical_cols}")
+
+        # Build ColumnTransformer with identified transformers
+        transformers = []
+        if numeric_cols:
+            transformers.append(("scaler", StandardScaler(), numeric_cols))
+            scaled_columns = numeric_cols
+            logger.info(f"Scaling numeric columns: {numeric_cols}")
 
         if cols_to_encode:
-            logger.info(f"One-hot encoding categorical columns: {cols_to_encode}")
-            encoder = OneHotEncoder(sparse_output=False, handle_unknown="ignore", drop="if_binary")
-            encoded_data = encoder.fit_transform(X[cols_to_encode])
-            encoded_feature_names = encoder.get_feature_names_out(cols_to_encode).tolist()
-
-            # Create DataFrame with encoded columns
-            encoded_df = pd.DataFrame(encoded_data, columns=encoded_feature_names, index=X.index)
-
-            # Drop original categorical columns and add encoded ones
-            X = X.drop(columns=cols_to_encode)
-            X = pd.concat([X, encoded_df], axis=1)
+            transformers.append(
+                (
+                    "encoder",
+                    OneHotEncoder(sparse_output=False, handle_unknown="ignore", drop="if_binary"),
+                    cols_to_encode,
+                )
+            )
             encoded_columns = cols_to_encode
+            logger.info(f"One-hot encoding categorical columns: {cols_to_encode}")
 
-            # Save encoder for inference
-            encoder_path = str(output_file.parent / f"{output_file.stem}_encoder.joblib")
-            joblib.dump(encoder, encoder_path)
-            logger.info(f"Encoder saved to {encoder_path}")
+        if transformers:
+            preprocessor = ColumnTransformer(transformers=transformers, remainder="drop")
+            preprocessor.set_output(transform="pandas")
+            X_transformed = preprocessor.fit_transform(X)
 
-    elif categorical_cols and not encode_categorical:
-        logger.info(f"Skipping encoding for categorical columns: {categorical_cols}")
+            # Save preprocessor for inference
+            preprocessor_path = str(output_file.parent / f"{output_file.stem}_preprocessor.joblib")
+            os.makedirs(os.path.dirname(preprocessor_path) or ".", exist_ok=True)
+            joblib.dump(preprocessor, preprocessor_path)
+            logger.info(f"Preprocessor saved to {preprocessor_path}")
+        else:
+            X_transformed = X
 
-    # Combine features and target
-    df_out = X.copy()
-    df_out[target_column] = y.values
+        # Combine features and target
+        df_out = X_transformed.copy()
+        df_out[target_column] = y.values
 
-    output_shape = df_out.shape
+        output_shape = df_out.shape
+        span.set_attribute("output_shape", str(output_shape))
+        span.set_attribute("num_scaled_columns", len(scaled_columns))
+        span.set_attribute("num_encoded_columns", len(encoded_columns))
 
-    # Ensure output directory exists
-    output_dir = os.path.dirname(output_path)
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
+        # Ensure output directory exists
+        output_dir = os.path.dirname(output_path)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
 
-    # Save processed data
-    df_out.to_csv(output_path, index=False)
-    logger.info(f"Feature engineering complete. Output shape: {output_shape}")
+        # Save processed data
+        df_out.to_csv(output_path, index=False)
+        logger.info(f"Feature engineering complete. Output shape: {output_shape}")
 
-    return FeatureEngineeringResult(
-        output_path=output_path,
-        scaler_path=scaler_path,
-        encoder_path=encoder_path,
-        input_shape=input_shape,
-        output_shape=output_shape,
-        scaled_columns=scaled_columns,
-        encoded_columns=encoded_columns,
-        success=True,
-    )
+        return FeatureEngineeringResult(
+            output_path=output_path,
+            preprocessor_path=preprocessor_path,
+            input_shape=input_shape,
+            output_shape=output_shape,
+            scaled_columns=scaled_columns,
+            encoded_columns=encoded_columns,
+            success=True,
+        )
 
 
 if __name__ == "__main__":

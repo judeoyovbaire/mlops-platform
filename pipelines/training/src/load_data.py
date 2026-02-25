@@ -18,11 +18,14 @@ from urllib.parse import urlparse
 try:
     from pipelines.shared.exceptions import DataLoadError, InvalidURLError, NetworkError
     from pipelines.shared.logging_utils import get_logger
+    from pipelines.training.src.tracing import get_tracer
 except ImportError:
     from shared.exceptions import DataLoadError, InvalidURLError, NetworkError
     from shared.logging_utils import get_logger
+    from tracing import get_tracer
 
 logger = get_logger(__name__)
+tracer = get_tracer("load-data")
 
 # Default timeout for network requests (seconds)
 DEFAULT_TIMEOUT = 30
@@ -112,71 +115,77 @@ def load_data(url: str, output_path: str, timeout: int = DEFAULT_TIMEOUT) -> Loa
     """
     logger.info(f"Starting data load from {url}")
 
-    # Validate timeout range
-    if timeout < 1 or timeout > 300:
-        raise DataLoadError(f"Timeout must be between 1 and 300 seconds, got: {timeout}")
+    with tracer.start_as_current_span("load_data") as span:
+        span.set_attribute("url", url)
+        span.set_attribute("output_path", output_path)
 
-    # Validate URL format
-    validate_url(url)
+        # Validate timeout range
+        if timeout < 1 or timeout > 300:
+            raise DataLoadError(f"Timeout must be between 1 and 300 seconds, got: {timeout}")
 
-    try:
-        logger.info(f"Downloading data from {url} (timeout: {timeout}s)")
-        with urllib.request.urlopen(url, timeout=timeout) as response:
-            with open(output_path, "wb") as out_file:
-                shutil.copyfileobj(response, out_file)
+        # Validate URL format
+        validate_url(url)
 
-        # Verify download
-        if not os.path.exists(output_path):
-            raise DataLoadError(f"Output file {output_path} not found after download")
+        try:
+            logger.info(f"Downloading data from {url} (timeout: {timeout}s)")
+            with urllib.request.urlopen(url, timeout=timeout) as response:
+                with open(output_path, "wb") as out_file:
+                    shutil.copyfileobj(response, out_file)
 
-        # Detect encoding with fallback
-        detected_encoding = detect_encoding(output_path)
+            # Verify download
+            if not os.path.exists(output_path):
+                raise DataLoadError(f"Output file {output_path} not found after download")
 
-        with open(output_path, encoding=detected_encoding) as f:
-            lines = f.readlines()
-            num_lines = len(lines)
-            logger.info(f"Downloaded {num_lines} lines (encoding: {detected_encoding})")
+            # Detect encoding with fallback
+            detected_encoding = detect_encoding(output_path)
+            span.set_attribute("encoding", detected_encoding)
 
-            if num_lines < 2:
-                raise DataLoadError("Downloaded file appears empty (less than 2 lines)")
+            with open(output_path, encoding=detected_encoding) as f:
+                lines = f.readlines()
+                num_lines = len(lines)
+                span.set_attribute("num_rows", num_lines)
+                logger.info(f"Downloaded {num_lines} lines (encoding: {detected_encoding})")
 
-        logger.info(f"Data successfully saved to {output_path}")
-        return LoadResult(
-            output_path=output_path,
-            num_lines=num_lines,
-            detected_encoding=detected_encoding,
-            success=True,
-        )
+                if num_lines < 2:
+                    raise DataLoadError("Downloaded file appears empty (less than 2 lines)")
 
-    except HTTPError as e:
-        error_msg = (
-            f"HTTP error downloading data: {e.code} {e.reason}. "
-            f"Check: 1) URL is accessible (curl -I {url}), "
-            f"2) Network policies allow egress, 3) URL requires authentication, "
-            f"4) Server is responding (status code: {e.code})"
-        )
-        logger.error(error_msg)
-        raise NetworkError(error_msg) from e
+            logger.info(f"Data successfully saved to {output_path}")
+            return LoadResult(
+                output_path=output_path,
+                num_lines=num_lines,
+                detected_encoding=detected_encoding,
+                success=True,
+            )
 
-    except URLError as e:
-        error_msg = (
-            f"URL error downloading data: {e.reason}. "
-            f"Check: 1) URL format is correct: {url}, "
-            f"2) DNS resolution (nslookup <hostname>), "
-            f"3) Network connectivity from pod, 4) Firewall rules allow access"
-        )
-        logger.error(error_msg)
-        raise NetworkError(error_msg) from e
+        except HTTPError as e:
+            error_msg = (
+                f"HTTP error downloading data: {e.code} {e.reason}. "
+                f"Check: 1) URL is accessible (curl -I {url}), "
+                f"2) Network policies allow egress, 3) URL requires authentication, "
+                f"4) Server is responding (status code: {e.code})"
+            )
+            logger.error(error_msg)
+            raise NetworkError(error_msg) from e
 
-    except OSError as e:
-        error_msg = (
-            f"File system error: {e}. "
-            f"Check: 1) Output directory exists and is writable, "
-            f"2) Disk space available (df -h), 3) File permissions, "
-            f"4) Volume mount is correct"
-        )
-        logger.error(error_msg)
-        raise DataLoadError(error_msg) from e
+        except URLError as e:
+            error_msg = (
+                f"URL error downloading data: {e.reason}. "
+                f"Check: 1) URL format is correct: {url}, "
+                f"2) DNS resolution (nslookup <hostname>), "
+                f"3) Network connectivity from pod, 4) Firewall rules allow access"
+            )
+            logger.error(error_msg)
+            raise NetworkError(error_msg) from e
+
+        except OSError as e:
+            error_msg = (
+                f"File system error: {e}. "
+                f"Check: 1) Output directory exists and is writable, "
+                f"2) Disk space available (df -h), 3) File permissions, "
+                f"4) Volume mount is correct"
+            )
+            logger.error(error_msg)
+            raise DataLoadError(error_msg) from e
 
 
 if __name__ == "__main__":
