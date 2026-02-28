@@ -128,7 +128,7 @@ def load_data(url: str, output_path: str, timeout: int = DEFAULT_TIMEOUT) -> Loa
 
         try:
             logger.info(f"Downloading data from {url} (timeout: {timeout}s)")
-            with urllib.request.urlopen(url, timeout=timeout) as response:
+            with urllib.request.urlopen(url, timeout=timeout) as response:  # nosec B310 — scheme validated by validate_url() above
                 with open(output_path, "wb") as out_file:
                     shutil.copyfileobj(response, out_file)
 
