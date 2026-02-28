@@ -176,7 +176,10 @@ variable "cluster_endpoint_public_access" {
 variable "cluster_endpoint_public_access_cidrs" {
   description = "CIDR blocks allowed to access the EKS API public endpoint. Restrict to your organization's IP ranges for production-grade security."
   type        = list(string)
-  default     = ["0.0.0.0/0"] # Open for portfolio/demo - restrict for real deployments
+  # WARNING: 0.0.0.0/0 is open to the internet. Acceptable for portfolio demo,
+  # but restrict to GitHub Actions runner CIDRs + your IP for real deployments.
+  # GitHub Actions IPs: curl -s https://api.github.com/meta | jq '.actions'
+  default = ["0.0.0.0/0"]
 }
 
 # Slack Notifications

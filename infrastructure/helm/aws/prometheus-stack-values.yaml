@@ -322,7 +322,7 @@ kubeProxy:
 kubeEtcd:
   enabled: false
 
-# Additional PrometheusRules for MLOps
+# Additional PrometheusRules for MLOps (consistent across all clouds)
 additionalPrometheusRulesMap:
   mlops-alerts:
     groups:

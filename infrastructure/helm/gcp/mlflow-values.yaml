@@ -45,7 +45,7 @@ extraEnvVars:
 extraArgs:
   host: "0.0.0.0"
   allowed-hosts: "*"
-  workers: "1"
+  workers: "2" # Aligned across all clouds for consistency
 
 # Disable chart's gunicorn logging
 log:

@@ -267,7 +267,10 @@ variable "helm_alloy_version" {
 variable "api_server_authorized_ip_ranges" {
   description = "CIDR blocks authorized to access the AKS API server. Empty list allows all IPs. Restrict to your organization's IP ranges for production-grade security."
   type        = list(string)
-  default     = [] # Open for portfolio/demo - set specific CIDRs for real deployments
+  # WARNING: Empty list allows all IPs. Acceptable for portfolio demo,
+  # but restrict to GitHub Actions runner CIDRs + your IP for real deployments.
+  # GitHub Actions IPs: curl -s https://api.github.com/meta | jq '.actions'
+  default = []
 }
 
 # Slack Notifications

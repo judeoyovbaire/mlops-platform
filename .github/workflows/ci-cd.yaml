@@ -442,7 +442,7 @@ jobs:
       - name: Audit Python dependencies
         run: |
           pip install pip-audit
-          pip-audit --requirement <(pip freeze) --ignore-vuln PYSEC-0 || true
+          pip-audit --requirement <(pip freeze) --ignore-vuln PYSEC-0
 
       - name: Validate Argo Workflow YAML
         run: |

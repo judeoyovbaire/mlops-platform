@@ -490,12 +490,14 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 - [x] **CI/CD** — GitHub Actions with OIDC auth, multi-cloud plan/deploy, Trivy scanning
 - [x] **Production readiness** — dev/prod configs, backup, VPC Flow Logs, drift detection
 - [x] **Examples** — distributed training, data versioning, canary deploys, chaos testing, LLM inference
-- [x] **Pipelines** — Iris training pipeline + HuggingFace pretrained model pipeline
+- [x] **Pipelines** — Iris quickstart pipeline + [HuggingFace pretrained model pipeline](pipelines/pretrained/) (GPU-optimized, production-grade)
 
 ### Future Enhancements
+- [ ] GitOps-driven promotion — ArgoCD ApplicationSets for auto-deploy to dev, PR-based promotion to prod
 - [ ] A/B testing framework for model comparison
 - [ ] Feature store integration (Feast)
 - [ ] Model explainability dashboards (SHAP/LIME)
+- [ ] Auto-generated Terraform module docs via `terraform-docs`
 
 ## Examples
 

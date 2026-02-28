@@ -10,14 +10,14 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
-        args: ['--unsafe']  # Allow custom tags in Kubernetes YAML
+        args: ["--unsafe"] # Allow custom tags in Kubernetes YAML
       - id: check-json
       - id: check-added-large-files
-        args: ['--maxkb=1000']
+        args: ["--maxkb=1000"]
       - id: check-merge-conflict
       - id: detect-private-key
       - id: no-commit-to-branch
-        args: ['--branch', 'main']
+        args: ["--branch", "main"]
         stages: [commit]
 
   # Python linting with Ruff
@@ -25,7 +25,7 @@ repos:
     rev: v0.9.6
     hooks:
       - id: ruff
-        args: ['--fix']
+        args: ["--fix"]
       - id: ruff-format
 
   # Terraform formatting
@@ -39,35 +39,40 @@ repos:
       - id: terraform_tflint
         args:
           - --args=--config=__GIT_WORKING_DIR__/.tflint.hcl
+      - id: terraform_docs
+        args:
+          - --hook-config=--path-to-file=README.md
+          - --hook-config=--add-to-existing-file=true
+          - --hook-config=--create-file-if-not-exist=true
 
   # Shell script linting
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.9.0.6
     hooks:
       - id: shellcheck
-        args: ['--severity=warning']
+        args: ["--severity=warning"]
 
   # Markdown linting
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.38.0
     hooks:
       - id: markdownlint
-        args: ['--fix', '--disable', 'MD013', 'MD033', 'MD041']
+        args: ["--fix", "--disable", "MD013", "MD033", "MD041"]
 
   # YAML linting
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.33.0
     hooks:
       - id: yamllint
-        args: ['-c', '.yamllint.yaml']
+        args: ["-c", ".yamllint.yaml"]
 
   # Secrets detection
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.4.0
     hooks:
       - id: detect-secrets
-        args: ['--baseline', '.secrets.baseline']
-        exclude: 'infrastructure/terraform/.*/terraform.tfstate.*'
+        args: ["--baseline", ".secrets.baseline"]
+        exclude: "infrastructure/terraform/.*/terraform.tfstate.*"
 
   # Kubernetes manifest validation
   - repo: https://github.com/yannh/kubeconform
@@ -75,10 +80,10 @@ repos:
     hooks:
       - id: kubeconform
         args:
-          - '-strict'
-          - '-ignore-missing-schemas'
-          - '-skip'
-          - 'TracingPolicy,ClusterPolicy,PolicyException,InferenceService,WorkflowTemplate,Workflow'
+          - "-strict"
+          - "-ignore-missing-schemas"
+          - "-skip"
+          - "TracingPolicy,ClusterPolicy,PolicyException,InferenceService,WorkflowTemplate,Workflow"
 
   # Run unit tests on commit
   - repo: local
@@ -96,7 +101,7 @@ ci:
   autofix_commit_msg: |
     [pre-commit.ci] auto fixes from pre-commit.com hooks
   autofix_prs: true
-  autoupdate_branch: ''
-  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
   autoupdate_schedule: weekly
-  skip: [terraform_validate, terraform_tflint, pytest-check]
+  skip: [terraform_validate, terraform_tflint, terraform_docs, pytest-check]
