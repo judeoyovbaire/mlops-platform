@@ -1,0 +1,23 @@
+# CODEOWNERS - GitHub Code Review Ownership
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# These owners will be automatically requested for review when a pull request
+# modifies files matching the patterns below.
+
+# Default owner for everything
+*                       @judeoyovbaire
+
+# Infrastructure (Terraform, Kubernetes, Helm)
+/infrastructure/        @judeoyovbaire
+
+# ML Pipelines and Training Code
+/pipelines/             @judeoyovbaire
+
+# CI/CD and GitHub Actions
+/.github/               @judeoyovbaire
+
+# Tests
+/tests/                 @judeoyovbaire
+
+# Documentation
+/docs/                  @judeoyovbaire

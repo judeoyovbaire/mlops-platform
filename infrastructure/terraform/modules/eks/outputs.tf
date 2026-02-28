@@ -92,6 +92,11 @@ output "mlflow_db_name" {
   value       = aws_db_instance.mlflow.db_name
 }
 
+output "mlflow_db_secret_arn" {
+  description = "ARN of the Secrets Manager secret for MLflow database password (auto-managed by RDS)"
+  value       = aws_db_instance.mlflow.master_user_secret[0].secret_arn
+}
+
 # Kubeconfig command
 output "configure_kubectl" {
   description = "Command to configure kubectl"

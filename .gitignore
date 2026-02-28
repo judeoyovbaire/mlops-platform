@@ -66,6 +66,7 @@ Thumbs.db
 
 # Local databases
 mlflow.db
+mlruns/
 
 # Logs
 *.log

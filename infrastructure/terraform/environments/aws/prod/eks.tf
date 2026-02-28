@@ -43,7 +43,6 @@ module "eks" {
   # Database Configuration - Production Grade
 
   mlflow_db_instance_class          = "db.r5.large" # Production-grade instance
-  mlflow_db_password                = random_password.mlflow_db.result
   mlflow_db_allocated_storage       = 100   # Larger initial storage
   mlflow_db_max_allocated_storage   = 500   # Allow autoscaling to 500GB
   mlflow_db_multi_az                = true  # Multi-AZ for HA

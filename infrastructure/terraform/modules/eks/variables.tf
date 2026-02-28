@@ -178,17 +178,6 @@ variable "mlflow_db_instance_class" {
   }
 }
 
-variable "mlflow_db_password" {
-  description = "Password for MLflow database"
-  type        = string
-  sensitive   = true
-
-  validation {
-    condition     = length(var.mlflow_db_password) >= 16
-    error_message = "Database password must be at least 16 characters long for security."
-  }
-}
-
 variable "mlflow_db_allocated_storage" {
   description = "Allocated storage for MLflow RDS in GB"
   type        = number

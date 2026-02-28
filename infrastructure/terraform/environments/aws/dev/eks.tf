@@ -35,7 +35,6 @@ module "eks" {
   gpu_desired_size   = 0
 
   mlflow_db_instance_class = "db.t3.small"
-  mlflow_db_password       = random_password.mlflow_db.result
 
   # Grant cluster admin access to GitHub Actions role and root account
   # GitHub Actions for CI/CD deployments, root for local access

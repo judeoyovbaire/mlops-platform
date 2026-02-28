@@ -33,6 +33,9 @@ spec:
   arguments:
     parameters:
       - name: pipeline-image
+        # Default tag for local/manual runs. In CI/CD, override with Git SHA:
+        #   argo submit --from workflowtemplate/ml-training-pipeline \
+        #     -p pipeline-image=<ECR_URL>/ml-training:$(git rev-parse --short HEAD)
         value: "mlops-platform/ml-training:v1.0.0"
       - name: dataset-url
         value: "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv"
