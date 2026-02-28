@@ -270,7 +270,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Run Trivy vulnerability scanner (IaC)
-        uses: aquasecurity/trivy-action@0.34.0
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           scan-type: "config"
           scan-ref: "."
@@ -287,7 +287,7 @@ jobs:
           sarif_file: "trivy-results.sarif"
 
       - name: Scan Dockerfiles with Trivy
-        uses: aquasecurity/trivy-action@0.34.0
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           scan-type: "config"
           scan-ref: "components/"
@@ -330,7 +330,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Scan training pipeline image
-        uses: aquasecurity/trivy-action@0.34.0
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           image-ref: "mlops-platform/ml-training:test"
           format: "sarif"
@@ -341,7 +341,7 @@ jobs:
 
       - name: Scan pretrained pipeline image
         if: ${{ !cancelled() }}
-        uses: aquasecurity/trivy-action@0.34.0
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           image-ref: "mlops-platform/hf-pretrained:test"
           format: "sarif"
@@ -366,7 +366,7 @@ jobs:
 
       - name: Generate SBOM for training image
         if: ${{ !cancelled() }}
-        uses: aquasecurity/trivy-action@0.34.0
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           image-ref: "mlops-platform/ml-training:test"
           format: "spdx-json"
@@ -375,7 +375,7 @@ jobs:
 
       - name: Generate SBOM for pretrained image
         if: ${{ !cancelled() }}
-        uses: aquasecurity/trivy-action@0.34.0
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           image-ref: "mlops-platform/hf-pretrained:test"
           format: "spdx-json"
