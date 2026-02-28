@@ -67,7 +67,7 @@ resource "azurerm_key_vault" "main" {
   sku_name            = "standard"
 
   # Use RBAC for access control (recommended)
-  enable_rbac_authorization = true
+  rbac_authorization_enabled = true
 
   # Soft delete protection
   soft_delete_retention_days = 7
