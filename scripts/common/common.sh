@@ -2,7 +2,7 @@
 # =============================================================================
 # Common functions and variables for MLOps Platform scripts
 # =============================================================================
-# Source this file in other scripts: source "$(dirname "$0")/lib/common.sh"
+# Source this file in other scripts: source "$(dirname "$0")/common/common.sh"
 
 # Prevent multiple sourcing
 if [[ -n "${_MLOPS_COMMON_LOADED:-}" ]]; then

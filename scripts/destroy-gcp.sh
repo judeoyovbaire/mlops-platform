@@ -4,17 +4,11 @@ set -euo pipefail
 # MLOps Platform - GCP GKE Destruction
 # Safely destroys all GCP resources with proper cleanup order
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
-
-# Script directory
+# Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+source "${SCRIPT_DIR}/common/common.sh"
+
 TF_DIR="${PROJECT_ROOT}/infrastructure/terraform/environments/gcp/dev"
 
 # Default configuration
@@ -22,55 +16,17 @@ DEFAULT_CLUSTER_NAME="mlops-platform-dev"
 DEFAULT_GCP_REGION="europe-west4"
 DEFAULT_GCP_ZONE="europe-west4-a"
 
-echo -e "${RED}========================================${NC}"
-echo -e "${RED}   MLOps Platform - GCP Destruction     ${NC}"
-echo -e "${RED}========================================${NC}"
-echo ""
-
-# Function to print status
-print_status() {
-    echo -e "${GREEN}[✓]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[!]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[✗]${NC} $1"
-}
-
-print_info() {
-    echo -e "${BLUE}[i]${NC} $1"
-}
-
 # Get configuration
 CLUSTER_NAME=${CLUSTER_NAME:-$DEFAULT_CLUSTER_NAME}
 GCP_REGION=${GCP_REGION:-$DEFAULT_GCP_REGION}
 GCP_ZONE=${GCP_ZONE:-$DEFAULT_GCP_ZONE}
 GCP_PROJECT=${GCP_PROJECT:-$(gcloud config get-value project 2>/dev/null)}
 
-echo -e "${YELLOW}WARNING: This will destroy ALL resources:${NC}"
-echo "  - GKE Cluster: ${CLUSTER_NAME}"
-echo "  - Cloud SQL instance"
-echo "  - GCS buckets"
-echo "  - Secret Manager secrets"
-echo "  - Artifact Registry"
-echo "  - VPC and all networking"
-echo ""
-
-# Confirmation
-read -p "Type 'destroy' to confirm: " CONFIRM
-if [[ "$CONFIRM" != "destroy" ]]; then
-    print_info "Destruction cancelled"
-    exit 0
-fi
-
-echo ""
-
 # Phase 1: Kubernetes cleanup
 phase1_kubernetes_cleanup() {
-    echo -e "${BLUE}Phase 1: Kubernetes Resource Cleanup${NC}"
+    echo ""
+    echo -e "${CYAN}Phase 1: Kubernetes Resource Cleanup${NC}"
+    echo "========================================"
 
     # Try to connect to cluster
     gcloud container clusters get-credentials "$CLUSTER_NAME" \
@@ -125,7 +81,8 @@ phase1_kubernetes_cleanup() {
 # Phase 2: Terraform destroy
 phase2_terraform_destroy() {
     echo ""
-    echo -e "${BLUE}Phase 2: Terraform Destroy${NC}"
+    echo -e "${CYAN}Phase 2: Terraform Destroy${NC}"
+    echo "========================================"
 
     cd "${TF_DIR}"
 
@@ -140,17 +97,20 @@ phase2_terraform_destroy() {
 
     # Destroy
     print_info "Running terraform destroy..."
-    terraform destroy -auto-approve || {
-        print_warning "Terraform destroy encountered errors - continuing with cleanup"
-    }
-
-    print_status "Terraform destroy complete"
+    if terraform destroy -auto-approve; then
+        print_status "Terraform destroy completed successfully"
+        return 0
+    else
+        print_warning "Terraform destroy encountered errors"
+        return 1
+    fi
 }
 
 # Phase 3: GCP orphaned resources cleanup
 phase3_gcp_cleanup() {
     echo ""
-    echo -e "${BLUE}Phase 3: GCP Orphaned Resources Cleanup${NC}"
+    echo -e "${CYAN}Phase 3: GCP Orphaned Resources Cleanup${NC}"
+    echo "========================================"
 
     # Delete orphaned persistent disks
     print_info "Checking for orphaned disks..."
@@ -236,7 +196,8 @@ phase3_gcp_cleanup() {
 # Phase 4: Verification
 phase4_verification() {
     echo ""
-    echo -e "${BLUE}Phase 4: Verification${NC}"
+    echo -e "${CYAN}Phase 4: Verification${NC}"
+    echo "========================================"
 
     # Check GKE cluster
     print_info "Verifying GKE cluster deletion..."
@@ -275,20 +236,80 @@ phase4_verification() {
     fi
 }
 
-# Main execution
+# Main destroy function
 main() {
+    echo ""
+    echo -e "${RED}========================================${NC}"
+    echo -e "${RED}   MLOps Platform - GCP Destruction     ${NC}"
+    echo -e "${RED}========================================${NC}"
+    echo ""
+
+    # Check for --force flag
+    FORCE=false
+    if [[ "${1:-}" == "--force" || "${1:-}" == "-f" ]]; then
+        FORCE=true
+    fi
+
+    print_warning "This will delete ALL resources including:"
+    echo "  - GKE Cluster: ${CLUSTER_NAME}"
+    echo "  - Cloud SQL instance"
+    echo "  - GCS buckets"
+    echo "  - Secret Manager secrets"
+    echo "  - Artifact Registry"
+    echo "  - VPC and all networking"
+    echo ""
+
+    if [[ "$FORCE" != true ]]; then
+        read -p "Are you sure you want to destroy? (yes/no): " -r
+        echo
+        if [[ ! $REPLY == "yes" ]]; then
+            print_info "Destroy cancelled"
+            exit 0
+        fi
+    fi
+
+    print_info "Cluster: ${CLUSTER_NAME}"
+    print_info "Zone: ${GCP_ZONE}"
+    print_info "Project: ${GCP_PROJECT}"
+    echo ""
+
+    # Run all cleanup phases
     phase1_kubernetes_cleanup
-    phase2_terraform_destroy
+
+    # Run terraform destroy (retry once if it fails)
+    if ! phase2_terraform_destroy; then
+        print_warning "First terraform destroy failed, running additional cleanup..."
+        phase3_gcp_cleanup
+        print_info "Retrying terraform destroy..."
+        phase2_terraform_destroy || true
+    fi
+
     phase3_gcp_cleanup
     phase4_verification
 
     echo ""
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}   Destruction Complete                  ${NC}"
-    echo -e "${GREEN}========================================${NC}"
-    echo ""
+    print_status "Destroy process complete!"
     print_info "Some resources may take a few minutes to fully delete."
     print_info "Run 'gcloud container clusters list' to verify."
+    print_info "Run 'kubectl config delete-context ${CLUSTER_NAME}' to clean up local kubeconfig"
 }
 
-main
+# Handle help
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    echo "Usage: $0 [--force]"
+    echo ""
+    echo "Destroys all MLOps platform GCP infrastructure with proper cleanup."
+    echo ""
+    echo "Options:"
+    echo "  --force, -f   Skip confirmation prompt"
+    echo "  --help, -h    Show this help message"
+    echo ""
+    echo "This script handles common destroy issues:"
+    echo "  - Kyverno webhooks blocking deletion"
+    echo "  - KServe InferenceService finalizers"
+    echo "  - Orphaned disks, forwarding rules, and backend services"
+    echo "  - LoadBalancer services blocking IP release"
+    exit 0
+fi
+
+main "$@"

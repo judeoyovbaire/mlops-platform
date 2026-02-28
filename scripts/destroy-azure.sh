@@ -5,40 +5,17 @@ set -euo pipefail
 # Handles cleanup of resources that can cause terraform destroy issues:
 # Kyverno webhooks, KEDA ScaledObjects, Managed Identities, resource locks
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
-
-# Script directory
+# Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+source "${SCRIPT_DIR}/common/common.sh"
+
 TF_DIR="${PROJECT_ROOT}/infrastructure/terraform/environments/azure/dev"
 
 # Default configuration
 DEFAULT_CLUSTER_NAME="mlops-platform-dev"
 DEFAULT_AZURE_LOCATION="northeurope"
 DEFAULT_RESOURCE_GROUP="mlops-platform-dev-rg"
-
-# Function to print status
-print_status() {
-    echo -e "${GREEN}[✓]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[!]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[✗]${NC} $1"
-}
-
-print_info() {
-    echo -e "${BLUE}[i]${NC} $1"
-}
 
 # Get cluster configuration
 get_cluster_config() {

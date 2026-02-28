@@ -45,7 +45,7 @@ rotate_mlflow_db() {
       
       # Update Key Vault
       az keyvault secret set \
-        --vault-name "mlops-kv-*" \
+        --vault-name "mlops-kv-${CLUSTER_NAME}" \
         --name "mlflow-db-password" \
         --value "${NEW_PASSWORD}" \
         --output none
@@ -110,7 +110,7 @@ rotate_grafana_admin() {
       ;;
     azure)
       az keyvault secret set \
-        --vault-name "mlops-kv-*" \
+        --vault-name "mlops-kv-${CLUSTER_NAME}" \
         --name "grafana-admin-password" \
         --value "${NEW_PASSWORD}" \
         --output none
@@ -155,7 +155,7 @@ rotate_argocd_admin() {
       ;;
     azure)
       az keyvault secret set \
-        --vault-name "mlops-kv-*" \
+        --vault-name "mlops-kv-${CLUSTER_NAME}" \
         --name "argocd-admin-password" \
         --value "${NEW_PASSWORD}" \
         --output none

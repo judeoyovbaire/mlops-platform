@@ -5,17 +5,11 @@ set -euo pipefail
 # Deploys platform with: Secret Manager secrets, External Secrets Operator,
 # Workload Identity Federation for pod authentication, Node Auto-provisioning for autoscaling
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
-
-# Script directory
+# Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+source "${SCRIPT_DIR}/common/common.sh"
+
 TF_DIR="${PROJECT_ROOT}/infrastructure/terraform/environments/gcp/dev"
 
 # Default configuration
@@ -23,33 +17,13 @@ DEFAULT_CLUSTER_NAME="mlops-platform-dev"
 DEFAULT_GCP_REGION="europe-west4"
 DEFAULT_GCP_ZONE="europe-west4-a"
 
-echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}   MLOps Platform - GCP GKE Deployment  ${NC}"
-echo -e "${BLUE}========================================${NC}"
-echo ""
+print_header "MLOps Platform - GCP GKE Deployment"
 echo -e "${CYAN}Features:${NC}"
 echo "  - Auto-generated secrets stored in Secret Manager"
 echo "  - External Secrets Operator for K8s sync"
 echo "  - Workload Identity Federation for secure pod authentication"
 echo "  - Node Auto-provisioning for dynamic GPU scaling"
 echo ""
-
-# Function to print status
-print_status() {
-    echo -e "${GREEN}[✓]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[!]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[✗]${NC} $1"
-}
-
-print_info() {
-    echo -e "${BLUE}[i]${NC} $1"
-}
 
 # Check prerequisites
 check_prerequisites() {

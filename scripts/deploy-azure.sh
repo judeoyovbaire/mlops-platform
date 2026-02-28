@@ -5,17 +5,11 @@ set -euo pipefail
 # Deploys platform with: Azure Key Vault secrets, External Secrets Operator,
 # Workload Identity for pod authentication, KEDA for autoscaling
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
-
-# Script directory
+# Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+source "${SCRIPT_DIR}/common/common.sh"
+
 TF_DIR="${PROJECT_ROOT}/infrastructure/terraform/environments/azure/dev"
 
 # Default configuration
@@ -23,33 +17,13 @@ DEFAULT_CLUSTER_NAME="mlops-platform-dev"
 DEFAULT_AZURE_LOCATION="westeurope"
 DEFAULT_RESOURCE_GROUP="rg-mlops-platform-dev"
 
-echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  MLOps Platform - Azure AKS Deployment ${NC}"
-echo -e "${BLUE}========================================${NC}"
-echo ""
+print_header "MLOps Platform - Azure AKS Deployment"
 echo -e "${CYAN}Features:${NC}"
 echo "  - Auto-generated secrets stored in Azure Key Vault"
 echo "  - External Secrets Operator for K8s sync"
 echo "  - Workload Identity for secure pod authentication"
 echo "  - KEDA for event-driven autoscaling"
 echo ""
-
-# Function to print status
-print_status() {
-    echo -e "${GREEN}[✓]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[!]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[✗]${NC} $1"
-}
-
-print_info() {
-    echo -e "${BLUE}[i]${NC} $1"
-}
 
 # Check prerequisites
 check_prerequisites() {

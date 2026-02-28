@@ -7,10 +7,19 @@
 
 set -euo pipefail
 
-CLOUD_PROVIDER="${1:-aws}"
-DAYS="${2:-30}"
+# Parse arguments
+CLOUD_PROVIDER="aws"
+DAYS=30
 OUTPUT_DIR="${OUTPUT_DIR:-/tmp/cost-reports}"
 REPORT_DATE=$(date +%Y-%m-%d)
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        aws|azure|gcp) CLOUD_PROVIDER="$1"; shift ;;
+        --days)        DAYS="${2:-30}"; shift 2 ;;
+        *)             shift ;;
+    esac
+done
 
 # Colors for output
 RED='\033[0;31m'
@@ -127,7 +136,7 @@ generate_azure_report() {
     if [ -z "$SUBSCRIPTION_ID" ]; then
         log_error "Not logged into Azure. Run 'az login' first."
         exit 1
-    }
+    fi
 
     # Query cost management API
     az consumption usage list \
@@ -165,7 +174,7 @@ generate_gcp_report() {
     if ! command -v gcloud &> /dev/null; then
         log_error "gcloud CLI not found. Please install it first."
         exit 1
-    }
+    fi
 
     START_DATE=$(date -v-${DAYS}d +%Y-%m-%d 2>/dev/null || date -d "-$DAYS days" +%Y-%m-%d)
     END_DATE=$(date +%Y-%m-%d)
@@ -176,7 +185,7 @@ generate_gcp_report() {
     if [ -z "$PROJECT_ID" ]; then
         log_error "No GCP project set. Run 'gcloud config set project PROJECT_ID' first."
         exit 1
-    }
+    fi
 
     log_info "Project: $PROJECT_ID"
     log_info "Fetching cost data from $START_DATE to $END_DATE..."
@@ -203,7 +212,7 @@ generate_gcp_report() {
         log_info "GCP resource reports generated in $OUTPUT_DIR"
     else
         log_warn "Could not determine billing account"
-    }
+    fi
 
     # Create summary file
     cat > "$REPORT_FILE" << EOF
@@ -233,7 +242,7 @@ estimate_k8s_costs() {
     if ! command -v kubectl &> /dev/null; then
         log_warn "kubectl not found. Skipping K8s resource estimation."
         return
-    }
+    fi
 
     # Get node resources
     kubectl get nodes -o json 2>/dev/null | jq '{
