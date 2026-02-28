@@ -43,12 +43,12 @@ module "eks" {
   # Database Configuration - Production Grade
 
   mlflow_db_instance_class          = "db.r5.large" # Production-grade instance
-  mlflow_db_allocated_storage       = 100   # Larger initial storage
-  mlflow_db_max_allocated_storage   = 500   # Allow autoscaling to 500GB
-  mlflow_db_multi_az                = true  # Multi-AZ for HA
-  mlflow_db_deletion_protection     = true  # Prevent accidental deletion
-  mlflow_db_backup_retention_period = 30    # 30 days retention
-  mlflow_db_skip_final_snapshot     = false # Create final snapshot on delete
+  mlflow_db_allocated_storage       = 100           # Larger initial storage
+  mlflow_db_max_allocated_storage   = 500           # Allow autoscaling to 500GB
+  mlflow_db_multi_az                = true          # Multi-AZ for HA
+  mlflow_db_deletion_protection     = true          # Prevent accidental deletion
+  mlflow_db_backup_retention_period = 30            # 30 days retention
+  mlflow_db_skip_final_snapshot     = false         # Create final snapshot on delete
 
   # Security Configuration
 
