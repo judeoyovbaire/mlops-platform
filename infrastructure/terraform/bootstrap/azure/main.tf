@@ -73,7 +73,7 @@ resource "azurerm_storage_account" "tfstate" {
 
   # Prevent accidental deletion
   lifecycle {
-    prevent_destroy = false # Set to true in production
+    prevent_destroy = true
   }
 
   tags = var.tags

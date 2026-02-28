@@ -50,4 +50,8 @@ def run_with_timeout(
             return future.result(timeout=seconds)
         except FuturesTimeoutError as exc:
             future.cancel()
+            # Note: future.cancel() cannot interrupt a thread blocked on I/O.
+            # The ThreadPoolExecutor uses daemon threads, so they are cleaned up
+            # when the process exits. In Kubernetes, the pod is terminated after
+            # the workflow step completes, ensuring no leaked threads persist.
             raise MLflowTimeoutError(error_message) from exc

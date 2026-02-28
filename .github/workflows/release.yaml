@@ -94,6 +94,8 @@ jobs:
             ```
 
             ### Components
+            <!-- Update versions below when Helm chart versions change in variables.tf -->
+            <!-- Source: infrastructure/terraform/environments/*/dev/variables.tf -->
             - MLflow v3.9.0
             - KServe v0.16.0
             - ArgoCD v7.9.0

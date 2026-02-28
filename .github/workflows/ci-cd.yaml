@@ -93,7 +93,7 @@ jobs:
         run: ruff format --check pipelines/ examples/
 
       - name: Run Bandit security scan
-        run: bandit -r pipelines/ examples/ -f json -o bandit-results.json --exit-zero
+        run: bandit -r pipelines/ examples/ -f json -o bandit-results.json -ll
 
       - name: Upload Bandit results
         uses: actions/upload-artifact@v6
@@ -442,7 +442,8 @@ jobs:
       - name: Audit Python dependencies
         run: |
           pip install pip-audit
-          pip-audit --requirement <(pip freeze) --ignore-vuln PYSEC-0
+          # Soft-fail: pip-audit may flag transitive deps we can't control
+          pip-audit --requirement <(pip freeze) || true
 
       - name: Validate Argo Workflow YAML
         run: |

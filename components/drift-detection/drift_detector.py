@@ -185,6 +185,10 @@ class DriftDetector:
         Returns:
             PSI score
         """
+        # Guard against empty arrays after dropna
+        if len(reference) == 0 or len(current) == 0:
+            return 0.0  # No data to compare
+
         # Create bins based on reference data
         min_val = min(reference.min(), current.min())
         max_val = max(reference.max(), current.max())

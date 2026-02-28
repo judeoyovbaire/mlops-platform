@@ -5,6 +5,17 @@ variable "cluster_name" {
   type        = string
 }
 
+variable "environment" {
+  description = "Deployment environment"
+  type        = string
+  default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be dev, staging, or prod."
+  }
+}
+
 variable "cluster_version" {
   description = "Kubernetes version for the EKS cluster"
   type        = string
@@ -278,5 +289,8 @@ variable "flow_logs_retention_days" {
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)
-  default     = {}
+  default = {
+    project    = "mlops-platform"
+    managed_by = "terraform"
+  }
 }

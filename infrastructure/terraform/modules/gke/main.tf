@@ -162,8 +162,13 @@ resource "google_container_cluster" "main" {
       }
 
       auto_provisioning_defaults {
+        # Defense-in-depth: scope OAuth to specific APIs.
+        # cloud-platform is still required for Workload Identity token exchange on GKE.
         oauth_scopes = [
-          "https://www.googleapis.com/auth/cloud-platform"
+          "https://www.googleapis.com/auth/logging.write",
+          "https://www.googleapis.com/auth/monitoring",
+          "https://www.googleapis.com/auth/devstorage.read_only",
+          "https://www.googleapis.com/auth/cloud-platform",
         ]
         service_account = google_service_account.node_pool.email
 
@@ -298,8 +303,13 @@ resource "google_container_node_pool" "system" {
     disk_type       = "pd-balanced"
     service_account = google_service_account.node_pool.email
 
+    # Defense-in-depth: scope OAuth to specific APIs.
+    # cloud-platform is still required for Workload Identity token exchange on GKE.
     oauth_scopes = [
-      "https://www.googleapis.com/auth/cloud-platform"
+      "https://www.googleapis.com/auth/logging.write",
+      "https://www.googleapis.com/auth/monitoring",
+      "https://www.googleapis.com/auth/devstorage.read_only",
+      "https://www.googleapis.com/auth/cloud-platform",
     ]
 
     labels = merge(var.labels, {
@@ -352,8 +362,13 @@ resource "google_container_node_pool" "training" {
     service_account = google_service_account.node_pool.email
     spot            = var.training_use_spot
 
+    # Defense-in-depth: scope OAuth to specific APIs.
+    # cloud-platform is still required for Workload Identity token exchange on GKE.
     oauth_scopes = [
-      "https://www.googleapis.com/auth/cloud-platform"
+      "https://www.googleapis.com/auth/logging.write",
+      "https://www.googleapis.com/auth/monitoring",
+      "https://www.googleapis.com/auth/devstorage.read_only",
+      "https://www.googleapis.com/auth/cloud-platform",
     ]
 
     labels = merge(var.labels, {
@@ -421,8 +436,13 @@ resource "google_container_node_pool" "gpu" {
     service_account = google_service_account.node_pool.email
     spot            = var.gpu_use_spot
 
+    # Defense-in-depth: scope OAuth to specific APIs.
+    # cloud-platform is still required for Workload Identity token exchange on GKE.
     oauth_scopes = [
-      "https://www.googleapis.com/auth/cloud-platform"
+      "https://www.googleapis.com/auth/logging.write",
+      "https://www.googleapis.com/auth/monitoring",
+      "https://www.googleapis.com/auth/devstorage.read_only",
+      "https://www.googleapis.com/auth/cloud-platform",
     ]
 
     guest_accelerator {

@@ -19,6 +19,11 @@ variable "kubernetes_version" {
   description = "Kubernetes version for AKS"
   type        = string
   default     = "1.29"
+
+  validation {
+    condition     = can(regex("^1\\.(2[89]|3[0-5])$", var.kubernetes_version))
+    error_message = "Kubernetes version must be a supported AKS version (1.28-1.35)."
+  }
 }
 
 variable "environment" {
@@ -35,7 +40,10 @@ variable "environment" {
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)
-  default     = {}
+  default = {
+    project    = "mlops-platform"
+    managed_by = "terraform"
+  }
 }
 
 # -----------------------------------------------------------------------------

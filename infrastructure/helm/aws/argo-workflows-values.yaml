@@ -5,6 +5,23 @@
 controller:
   replicas: 1
 
+  # Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 8737
+    fsGroup: 8737
+
+  # Container security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 8737
+    privileged: false
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
   # Resource limits
   resources:
     requests:
@@ -38,6 +55,23 @@ controller:
 # Server (UI) configuration
 server:
   replicas: 1
+
+  # Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 8737
+    fsGroup: 8737
+
+  # Container security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 8737
+    privileged: false
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false  # Server needs write access
+    capabilities:
+      drop:
+        - ALL
 
   # Expose via ClusterIP (use port-forward or ingress)
   serviceType: ClusterIP

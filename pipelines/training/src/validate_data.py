@@ -147,13 +147,27 @@ def validate_data(
                 f"Schema validation found {len(failure_cases)} issue(s) — "
                 "proceeding with cleaning pipeline"
             )
-            # Log details but don't halt; the cleaning step may fix some issues.
+            # Log details but don't halt for value-range issues;
+            # the cleaning step may fix some.
             for _, row in failure_cases.iterrows():
                 logger.warning(
                     f"  column={row.get('column')}, "
                     f"check={row.get('check')}, "
                     f"failure_case={row.get('failure_case')}"
                 )
+
+            # Structural failures (dtype/column mismatches) indicate upstream
+            # data problems that cleaning cannot fix — fail fast.
+            structural_failures = failure_cases[
+                failure_cases["check"].str.contains("dtype|column", na=False)
+            ]
+            if len(structural_failures) > 0:
+                raise DataValidationError(
+                    f"Critical schema violations found: {len(structural_failures)} "
+                    "structural issue(s). Value-range issues are handled by the "
+                    "cleaning pipeline, but dtype/column mismatches indicate "
+                    "upstream data problems."
+                ) from exc
 
         # Check for nulls
         null_count = int(df.isnull().sum().sum())

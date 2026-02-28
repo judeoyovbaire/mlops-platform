@@ -52,6 +52,12 @@ variable "cluster_endpoint_public_access_cidrs" {
   default     = [] # Set to your organization's IP ranges if public access needed
 }
 
+variable "kms_key_arn" {
+  description = "KMS key ARN for encrypting secrets. If not provided, uses AWS managed key."
+  type        = string
+  default     = null
+}
+
 # Tags
 
 variable "tags" {

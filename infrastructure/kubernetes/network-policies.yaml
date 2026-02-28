@@ -104,6 +104,32 @@ spec:
 ---
 # MLflow namespace policies
 ---
+# Default deny all egress in mlflow namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: mlflow
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS resolution to cluster DNS (kube-dns/CoreDNS in kube-system)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
 # Default deny all ingress in mlflow namespace
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -221,6 +247,32 @@ spec:
 
 ---
 # Argo Workflows namespace policies
+---
+# Default deny all egress in argo namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: argo
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS resolution to cluster DNS (kube-dns/CoreDNS in kube-system)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
 ---
 # Default deny ingress in argo namespace
 apiVersion: networking.k8s.io/v1

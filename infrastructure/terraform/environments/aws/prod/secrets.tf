@@ -1,4 +1,4 @@
-# Secret Generation and SSM Parameter Store
+# Secret Generation via AWS Secrets Manager (avoids secrets in Terraform state)
 
 # Generate secure random passwords
 resource "random_password" "mlflow_db" {
@@ -23,35 +23,67 @@ resource "random_password" "grafana_admin" {
   special = false
 }
 
-# Store secrets in AWS SSM Parameter Store (SecureString)
-resource "aws_ssm_parameter" "mlflow_db_password" {
-  name        = "/${var.cluster_name}/mlflow/db-password"
+# MLflow database password - generated and managed by Secrets Manager
+resource "aws_secretsmanager_secret" "mlflow_db_password" {
+  name        = "${var.cluster_name}/mlflow/db-password"
   description = "MLflow PostgreSQL database password"
-  type        = "SecureString"
-  value       = random_password.mlflow_db.result
-  key_id      = "alias/aws/ssm"
+  kms_key_id  = var.kms_key_arn
 
   tags = var.tags
 }
 
-resource "aws_ssm_parameter" "minio_root_password" {
-  name        = "/${var.cluster_name}/minio/root-password"
+resource "aws_secretsmanager_secret_version" "mlflow_db_password" {
+  secret_id = aws_secretsmanager_secret.mlflow_db_password.id
+  secret_string = jsonencode({
+    username = "mlflow"
+    password = random_password.mlflow_db.result
+  })
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
+# MinIO root password - generated and managed by Secrets Manager
+resource "aws_secretsmanager_secret" "minio_root_password" {
+  name        = "${var.cluster_name}/minio/root-password"
   description = "MinIO root password"
-  type        = "SecureString"
-  value       = random_password.minio.result
-  key_id      = "alias/aws/ssm"
+  kms_key_id  = var.kms_key_arn
 
   tags = var.tags
 }
 
-resource "aws_ssm_parameter" "argocd_admin_password" {
-  name        = "/${var.cluster_name}/argocd/admin-password"
+resource "aws_secretsmanager_secret_version" "minio_root_password" {
+  secret_id = aws_secretsmanager_secret.minio_root_password.id
+  secret_string = jsonencode({
+    username = "minioadmin"
+    password = random_password.minio.result
+  })
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
+# ArgoCD admin password - generated and managed by Secrets Manager
+resource "aws_secretsmanager_secret" "argocd_admin_password" {
+  name        = "${var.cluster_name}/argocd/admin-password"
   description = "ArgoCD admin password"
-  type        = "SecureString"
-  value       = random_password.argocd_admin.result
-  key_id      = "alias/aws/ssm"
+  kms_key_id  = var.kms_key_arn
 
   tags = var.tags
+}
+
+resource "aws_secretsmanager_secret_version" "argocd_admin_password" {
+  secret_id = aws_secretsmanager_secret.argocd_admin_password.id
+  secret_string = jsonencode({
+    username = "admin"
+    password = random_password.argocd_admin.result
+  })
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
 }
 
 # Slack Webhook URL for AlertManager notifications
@@ -92,4 +124,21 @@ resource "aws_ssm_parameter" "cluster_name_param" {
   value       = module.eks.cluster_name
 
   tags = var.tags
+}
+
+# Outputs - reference ARNs, not values (to avoid state exposure)
+
+output "mlflow_db_secret_arn" {
+  description = "ARN of the MLflow database password secret"
+  value       = aws_secretsmanager_secret.mlflow_db_password.arn
+}
+
+output "minio_secret_arn" {
+  description = "ARN of the MinIO root password secret"
+  value       = aws_secretsmanager_secret.minio_root_password.arn
+}
+
+output "argocd_secret_arn" {
+  description = "ARN of the ArgoCD admin password secret"
+  value       = aws_secretsmanager_secret.argocd_admin_password.arn
 }

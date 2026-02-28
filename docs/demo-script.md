@@ -159,7 +159,7 @@ kubectl get prometheusrules -n monitoring
 - Check Argo Workflows logs: `argo logs <workflow-name>`
 
 **If inference service doesn't start:**
-- Check KServe controller: `kubectl logs -n kserve-system deployment/kserve-controller-manager`
+- Check KServe controller: `kubectl logs -n kserve deployment/kserve-controller-manager`
 - Verify model is registered in MLflow
 - Check pod events: `kubectl describe pod -n mlops`
 

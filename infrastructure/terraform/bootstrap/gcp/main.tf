@@ -65,7 +65,7 @@ resource "google_storage_bucket" "terraform_state" {
   name          = "${var.resource_prefix}-tfstate-${local.project_id}"
   project       = local.project_id
   location      = var.region
-  force_destroy = true # Allow deletion on destroy
+  force_destroy = false
 
   # Enable versioning for state history
   versioning {

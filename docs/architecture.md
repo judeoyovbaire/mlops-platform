@@ -284,7 +284,9 @@ KEDA provides event-driven pod autoscaling that triggers Cluster Autoscaler:
 
 ### 6. GitOps with ArgoCD
 
-All platform configurations are managed through Git, enabling:
+ArgoCD is deployed as part of the platform for GitOps-readiness. Currently, deployments are performed via Terraform/Helm directly (the primary deployment path). ArgoCD provides the foundation for teams to adopt GitOps-based continuous delivery as a future enhancement — syncing Application manifests from Git to the cluster.
+
+When fully adopted, ArgoCD enables:
 - Version-controlled infrastructure
 - Automated sync and drift detection
 - Rollback capabilities

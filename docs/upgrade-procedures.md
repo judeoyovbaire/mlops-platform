@@ -130,7 +130,7 @@ kubectl get deployment -n kserve kserve-controller-manager -o jsonpath='{.spec.t
 
 3. **Apply upgrade:**
    ```bash
-   helm upgrade kserve kserve/kserve \
+   helm upgrade kserve oci://ghcr.io/kserve/charts/kserve \
      --namespace kserve \
      -f infrastructure/helm/aws/kserve-values.yaml
    ```
@@ -153,7 +153,7 @@ kubectl apply -f inferenceservices-backup.yaml
 ### Check Current Version
 
 ```bash
-kubectl get deployment -n mlops mlflow -o jsonpath='{.spec.template.spec.containers[0].image}'
+kubectl get deployment -n mlflow mlflow -o jsonpath='{.spec.template.spec.containers[0].image}'
 ```
 
 ### Procedure
@@ -170,19 +170,19 @@ kubectl get deployment -n mlops mlflow -o jsonpath='{.spec.template.spec.contain
 
 3. **Update deployment:**
    ```bash
-   kubectl set image deployment/mlflow -n mlops \
+   kubectl set image deployment/mlflow -n mlflow \
      mlflow=ghcr.io/mlflow/mlflow:vX.Y.Z
    ```
 
 4. **Run migrations (if required):**
    ```bash
-   kubectl exec -n mlops deploy/mlflow -- mlflow db upgrade
+   kubectl exec -n mlflow deploy/mlflow -- mlflow db upgrade
    ```
 
 5. **Verify MLflow:**
    ```bash
-   kubectl get pods -n mlops -l app=mlflow
-   curl http://mlflow.mlops.svc.cluster.local:5000/health
+   kubectl get pods -n mlflow -l app=mlflow
+   curl http://mlflow.mlflow.svc.cluster.local:5000/health
    ```
 
 ### Rollback
@@ -190,7 +190,7 @@ kubectl get deployment -n mlops mlflow -o jsonpath='{.spec.template.spec.contain
 1. Restore database from snapshot
 2. Rollback deployment:
    ```bash
-   kubectl rollout undo deployment/mlflow -n mlops
+   kubectl rollout undo deployment/mlflow -n mlflow
    ```
 
 ## Argo Workflows Upgrade

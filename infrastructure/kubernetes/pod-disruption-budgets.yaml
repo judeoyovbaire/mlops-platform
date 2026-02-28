@@ -100,3 +100,31 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: grafana
+
+---
+# External Secrets Operator
+# Ensures secret synchronization remains available
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: external-secrets-pdb
+  namespace: external-secrets
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: external-secrets
+
+---
+# ArgoCD Application Controller
+# Ensures GitOps reconciliation remains available
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: argocd-application-controller-pdb
+  namespace: argocd
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-application-controller

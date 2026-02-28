@@ -55,11 +55,11 @@ alertmanager:
               storage: 10Gi
     resources:
       requests:
-        cpu: 10m
-        memory: 32Mi
-      limits:
         cpu: 100m
-        memory: 128Mi
+        memory: 256Mi
+      limits:
+        cpu: 200m
+        memory: 512Mi
 %{ if slack_notifications_enabled }
     # Mount Slack webhook URL from ESO-synced K8s Secret
     secrets:
@@ -227,8 +227,8 @@ prometheus:
   enabled: true
   prometheusSpec:
     replicas: 1
-    retention: 7d
-    retentionSize: 10GB
+    retention: 15d
+    retentionSize: 45GB
 
     # Scrape configs for MLOps components
     additionalScrapeConfigs:

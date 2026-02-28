@@ -151,22 +151,37 @@ resource "helm_release" "minio" {
 
   set {
     name  = "mode"
-    value = "standalone"
+    value = "distributed"
   }
 
   set {
     name  = "replicas"
-    value = "1"
+    value = "4"
   }
 
   set {
     name  = "persistence.size"
-    value = "20Gi"
+    value = "100Gi"
   }
 
   set {
     name  = "resources.requests.memory"
-    value = "256Mi"
+    value = "1Gi"
+  }
+
+  set {
+    name  = "resources.requests.cpu"
+    value = "500m"
+  }
+
+  set {
+    name  = "resources.limits.memory"
+    value = "2Gi"
+  }
+
+  set {
+    name  = "resources.limits.cpu"
+    value = "1000m"
   }
 
   # Use ExternalSecret-managed credentials (avoids secrets in Helm release metadata)

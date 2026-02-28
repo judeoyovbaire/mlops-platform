@@ -61,9 +61,12 @@ def empty_csv_path(temp_dir):
 
 @pytest.fixture
 def all_null_csv_path(temp_dir):
-    """Create a CSV file with all null values."""
+    """Create a CSV file with all null values (Iris columns)."""
     csv_path = temp_dir / "all_null.csv"
-    csv_path.write_text("col1,col2,col3\n,,\n,,\n,,\n")
+    csv_path.write_text(
+        "sepal_length,sepal_width,petal_length,petal_width,species\n"
+        ",,,,\n,,,,\n,,,,\n"
+    )
     return str(csv_path)
 
 

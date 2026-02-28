@@ -49,9 +49,9 @@ class TestTrainModel:
         mock_run.__exit__ = MagicMock(return_value=False)
 
         mocker.patch("mlflow.start_run", return_value=mock_run)
-        mocker.patch("mlflow.log_params")
-        mocker.patch("mlflow.log_metrics")
-        mocker.patch("mlflow.sklearn.log_model")
+        mock_log_params = mocker.patch("mlflow.log_params")
+        mock_log_metrics = mocker.patch("mlflow.log_metrics")
+        mock_log_model = mocker.patch("mlflow.sklearn.log_model")
 
         result = train_model(
             input_path=artifacts["data_path"],
@@ -71,6 +71,11 @@ class TestTrainModel:
         assert result.run_id == "test-run-123"
         assert 0.0 <= result.accuracy <= 1.0
         assert 0.0 <= result.f1 <= 1.0
+
+        # Verify MLflow tracking calls
+        mock_log_params.assert_called()
+        mock_log_metrics.assert_called()
+        mock_log_model.assert_called_once()
 
     def test_file_not_found(self, temp_dir, mocker):
         """Test handling of missing input file."""

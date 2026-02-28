@@ -67,7 +67,10 @@ variable "dns_service_ip" {
 variable "api_server_authorized_ip_ranges" {
   description = "CIDR blocks authorized to access AKS API server (set for production)"
   type        = list(string)
-  default     = [] # Set to your organization's IP ranges
+  # SECURITY: Set to your organization's CIDR ranges before production deployment.
+  # Example: ["203.0.113.0/24", "198.51.100.0/24"]
+  # An empty list allows unrestricted access to the API server.
+  default = []
 }
 
 # Node Pools - Production Sizing

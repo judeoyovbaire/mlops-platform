@@ -113,8 +113,56 @@ prometheus:
     ruleSelector: {}
     ruleNamespaceSelector: {}
 
-    # Additional scrape configs for GPU metrics
-    additionalScrapeConfigs: []
+    # Scrape configs for MLOps components
+    additionalScrapeConfigs:
+      # MLflow metrics
+      - job_name: 'mlflow'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - mlflow
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+
+      # KServe inference services
+      - job_name: 'kserve'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - mlops
+                - kserve
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_serving_kserve_io_inferenceservice]
+            action: keep
+            regex: .+
+          - source_labels: [__meta_kubernetes_pod_container_port_number]
+            action: keep
+            regex: "8080|9090"
+
+      # Argo Workflows metrics
+      - job_name: 'argo-workflows'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - argo
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
 
   # Ingress for Prometheus UI
   ingress:

@@ -42,6 +42,8 @@ artifactRoot:
 # Environment variables for AWS SDK (chart 1.8.1 expects object, not array)
 extraEnvVars:
   AWS_DEFAULT_REGION: "${aws_region}"
+  # SSL mode for RDS PostgreSQL - require encrypted connections
+  PGSSLMODE: "require"
 
 # MLflow 3.9 security: allow connections from kubelet for health checks
 # Setting log.enabled=false prevents chart from adding --gunicorn-opts,

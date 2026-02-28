@@ -129,3 +129,28 @@ output "ecr_repository_arn" {
   description = "ARN of the ECR repository for ML model images"
   value       = aws_ecr_repository.models.arn
 }
+
+# Access Information
+output "access_info" {
+  description = "Access information for deployed services"
+  value       = <<-EOT
+    ============================================================
+    EKS Cluster Access Information
+    ============================================================
+
+    Cluster Name: ${module.eks.cluster_name}
+    Region: ${data.aws_region.current.region}
+    Kubernetes Version: ${var.cluster_version}
+
+    Configure kubectl:
+      aws eks update-kubeconfig --region ${data.aws_region.current.region} --name ${module.eks.cluster_name}
+
+    Service URLs (after port-forwarding):
+      MLflow:         http://localhost:5000
+      ArgoCD:         http://localhost:8080
+      Grafana:        http://localhost:3000
+      Argo Workflows: http://localhost:2746
+
+    ECR Repository: ${aws_ecr_repository.models.repository_url}
+  EOT
+}

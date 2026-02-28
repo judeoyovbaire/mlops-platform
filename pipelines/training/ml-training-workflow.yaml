@@ -12,8 +12,8 @@ spec:
   entrypoint: ml-pipeline
   serviceAccountName: argo-workflow
 
-  # Maximum runtime for the entire workflow (1 hour)
-  activeDeadlineSeconds: 3600
+  # Maximum runtime for the entire workflow (2 hours)
+  activeDeadlineSeconds: 7200
 
   # Security context for all pods in this workflow
   securityContext:
@@ -305,8 +305,8 @@ spec:
     # Step 4: Train model with MLflow tracking
     - name: train-model
       retryStrategy:
-        limit: 2
-        retryPolicy: "OnError"
+        limit: 1
+        retryPolicy: "OnFailure"
       inputs:
         parameters:
           - name: target-column
