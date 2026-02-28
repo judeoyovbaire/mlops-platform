@@ -176,3 +176,117 @@ class TestDriftThresholds:
 
         none_results = [r for r in report.feature_results if r.severity == "none"]
         assert len(none_results) > 0
+
+
+class TestChiSquaredNormalization:
+    """Tests for chi-squared expected frequency normalization."""
+
+    def test_chi_squared_normalized_totals(self, detector):
+        """Expected frequencies should be normalized to match observed total."""
+        rng = np.random.default_rng(42)
+        categories = ["a", "b", "c", "d"]
+        # Different sample sizes to verify normalization
+        ref = pd.Series(rng.choice(categories, 300, p=[0.4, 0.3, 0.2, 0.1]))
+        cur = pd.Series(rng.choice(categories, 500, p=[0.4, 0.3, 0.2, 0.1]))
+        stat, pvalue = detector.compute_chi_squared(ref, cur)
+        # Same underlying distribution → high p-value despite different sample sizes
+        assert pvalue > 0.01
+
+    def test_chi_squared_new_category_in_current(self, detector):
+        """Should handle categories present in current but not reference."""
+        ref = pd.Series(["a", "b", "c"] * 100)
+        cur = pd.Series(["a", "b", "c", "d"] * 75)
+        stat, pvalue = detector.compute_chi_squared(ref, cur)
+        assert stat >= 0
+        assert 0 <= pvalue <= 1
+
+
+class TestCramersV:
+    """Tests for Cramer's V drift score (replaces p-value inversion)."""
+
+    def test_cramers_v_same_distribution(self, detector):
+        """Cramer's V should be near zero for identical distributions."""
+        rng = np.random.default_rng(42)
+        categories = ["cat", "dog", "bird"]
+        ref_data = pd.DataFrame({
+            "animal": rng.choice(categories, 500, p=[0.5, 0.3, 0.2]),
+        })
+        cur_data = pd.DataFrame({
+            "animal": rng.choice(categories, 500, p=[0.5, 0.3, 0.2]),
+        })
+        detector.set_reference_data(ref_data)
+        report = detector.detect_drift(cur_data)
+        # Similar distributions should produce low Cramer's V
+        assert report.feature_results[0].drift_score < 0.2
+
+    def test_cramers_v_different_distribution(self, detector):
+        """Cramer's V should be high for very different distributions."""
+        rng = np.random.default_rng(42)
+        categories = ["cat", "dog", "bird"]
+        ref_data = pd.DataFrame({
+            "animal": rng.choice(categories, 500, p=[0.9, 0.05, 0.05]),
+        })
+        cur_data = pd.DataFrame({
+            "animal": rng.choice(categories, 500, p=[0.05, 0.05, 0.9]),
+        })
+        detector.set_reference_data(ref_data)
+        report = detector.detect_drift(cur_data)
+        # Very different distributions should produce high Cramer's V
+        assert report.feature_results[0].drift_score > 0.3
+        assert "cramers_v" in report.feature_results[0].details
+
+
+class TestJensenShannonEdgeCases:
+    """Tests for Jensen-Shannon divergence edge cases."""
+
+    def test_js_degenerate_input(self, detector):
+        """JS divergence should handle degenerate input (all same value)."""
+        ref = np.ones(100)
+        cur = np.ones(100)
+        result = detector.compute_jensen_shannon(ref, cur)
+        assert result >= 0.0
+        assert not np.isnan(result)
+
+    def test_js_identical_distributions(self, detector):
+        """JS distance should be near zero for identical data."""
+        rng = np.random.default_rng(42)
+        data = rng.normal(0, 1, 500)
+        result = detector.compute_jensen_shannon(data, data)
+        assert result == pytest.approx(0.0, abs=0.01)
+
+    def test_js_very_different_distributions(self, detector):
+        """JS distance should be high for very different distributions."""
+        rng = np.random.default_rng(42)
+        ref = rng.normal(0, 1, 500)
+        cur = rng.normal(10, 1, 500)
+        result = detector.compute_jensen_shannon(ref, cur)
+        assert result > 0.5
+
+
+class TestTracerProviderSingleton:
+    """Tests for TracerProvider singleton behavior."""
+
+    def test_get_tracer_returns_tracer(self):
+        """get_tracer should return a usable tracer object."""
+        sys.path.insert(
+            0,
+            str(Path(__file__).resolve().parents[2] / "pipelines" / "training" / "src"),
+        )
+        from tracing import get_tracer
+
+        tracer = get_tracer("test-service")
+        # Should return an object with start_as_current_span
+        assert hasattr(tracer, "start_as_current_span")
+
+    def test_get_tracer_multiple_calls(self):
+        """Multiple calls to get_tracer should not raise."""
+        sys.path.insert(
+            0,
+            str(Path(__file__).resolve().parents[2] / "pipelines" / "training" / "src"),
+        )
+        from tracing import get_tracer
+
+        t1 = get_tracer("service-a")
+        t2 = get_tracer("service-b")
+        assert hasattr(t1, "start_as_current_span")
+        assert hasattr(t2, "start_as_current_span")

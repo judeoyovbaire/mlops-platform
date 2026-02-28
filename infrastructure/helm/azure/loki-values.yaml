@@ -1,6 +1,7 @@
 # Loki Helm Values for Azure AKS - Production with Blob Storage
 # Chart: grafana/loki
 # Uses Azure Blob Storage with Workload Identity for authentication
+# Note: Alloy pushes to loki.monitoring.svc:3100 (singleBinary mode)
 
 deploymentMode: SingleBinary
 

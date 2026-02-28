@@ -222,6 +222,16 @@ if __name__ == "__main__":
         default=MLFLOW_CONNECTION_TIMEOUT,
         help="MLflow connection timeout in seconds (default: 30)",
     )
+    parser.add_argument(
+        "--version-output",
+        default="/tmp/model_version.txt",  # nosec B108 — Argo Workflow artifact path
+        help="Path to write registered model version",
+    )
+    parser.add_argument(
+        "--alias-output",
+        default="/tmp/model_alias.txt",  # nosec B108 — Argo Workflow artifact path
+        help="Path to write model alias",
+    )
 
     args = parser.parse_args()
 
@@ -234,6 +244,13 @@ if __name__ == "__main__":
             args.run_id,
             mlflow_timeout_seconds=args.mlflow_timeout,
         )
+
+        # Write output parameters for downstream Argo steps
+        with open(args.version_output, "w") as f:
+            f.write(str(result.version) if result.version is not None else "")
+        with open(args.alias_output, "w") as f:
+            f.write(result.alias if result.alias is not None else "")
+
         if result.registered:
             print(f"Registered {result.model_name} v{result.version} with alias '{result.alias}'")
         else:

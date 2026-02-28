@@ -42,6 +42,10 @@ if TYPE_CHECKING:
 # Default collector endpoint (in-cluster)
 _DEFAULT_ENDPOINT = "otel-collector.monitoring:4317"
 
+# Singleton guard — reuse the same TracerProvider across calls so that
+# previously buffered spans are not silently discarded.
+_provider_initialized = False
+
 
 def get_tracer(service_name: str = "ml-pipeline") -> Tracer:
     """Return a configured OTel ``Tracer``.
@@ -59,9 +63,14 @@ def get_tracer(service_name: str = "ml-pipeline") -> Tracer:
     Returns:
         An OpenTelemetry ``Tracer`` instance.
     """
+    global _provider_initialized
+
     if not _OTEL_AVAILABLE:
         # Return a no-op tracer when the SDK is missing
         return trace.get_tracer(service_name) if "trace" in dir() else _NoOpTracer()  # type: ignore[return-value]
+
+    if _provider_initialized:
+        return trace.get_tracer(service_name)
 
     endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", _DEFAULT_ENDPOINT)
 
@@ -70,6 +79,7 @@ def get_tracer(service_name: str = "ml-pipeline") -> Tracer:
     exporter = OTLPSpanExporter(endpoint=endpoint, insecure=True)
     provider.add_span_processor(BatchSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
+    _provider_initialized = True
 
     return trace.get_tracer(service_name)
 

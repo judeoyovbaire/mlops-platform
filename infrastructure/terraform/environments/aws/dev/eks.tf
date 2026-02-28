@@ -4,6 +4,7 @@ module "eks" {
 
   cluster_name    = var.cluster_name
   cluster_version = var.cluster_version
+  environment     = "dev"
 
   vpc_cidr        = var.vpc_cidr
   private_subnets = var.private_subnets

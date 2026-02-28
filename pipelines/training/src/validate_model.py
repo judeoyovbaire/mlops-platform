@@ -132,6 +132,12 @@ def validate_model(
         accuracy = float(accuracy_score(y, y_pred))
     else:
         accuracy = 0.0
+
+    # Guard against NaN metrics (e.g. from degenerate predictions)
+    if np.isnan(accuracy):
+        logger.warning("Accuracy metric is NaN — treating as validation failure")
+        accuracy = 0.0
+
     accuracy_ok = accuracy >= accuracy_threshold
 
     checks = {

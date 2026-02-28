@@ -7,13 +7,11 @@ kserve:
     # Deployment mode: RawDeployment (not Serverless)
     deploymentMode: RawDeployment
 
-    # Ingress configuration
+    # Ingress configuration (RawDeployment mode — no Knative gateways needed)
     ingress:
       ingressClassName: nginx
       domainTemplate: "{{ .Name }}-{{ .Namespace }}.{{ .IngressDomain }}"
       ingressDomain: "mlops.local"
-      ingressGateway: "knative-serving/knative-ingress-gateway"
-      localGateway: "knative-serving/knative-local-gateway"
       urlScheme: http
 
     # Resource limits

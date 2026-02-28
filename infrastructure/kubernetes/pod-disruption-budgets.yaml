@@ -2,6 +2,9 @@
 #
 # These PDBs ensure high availability during voluntary disruptions
 # such as node drains, cluster upgrades, and maintenance.
+# Using maxUnavailable (not minAvailable) so single-replica deployments
+# can still be drained — minAvailable: 1 blocks drains entirely when
+# only one replica exists.
 
 ---
 # MLflow Tracking Server
@@ -12,7 +15,7 @@ metadata:
   name: mlflow-pdb
   namespace: mlflow
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       app: mlflow
@@ -26,7 +29,7 @@ metadata:
   name: argo-workflow-controller-pdb
   namespace: argo
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       app: workflow-controller
@@ -40,7 +43,7 @@ metadata:
   name: argo-server-pdb
   namespace: argo
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       app: argo-server
@@ -54,7 +57,7 @@ metadata:
   name: kserve-controller-pdb
   namespace: kserve
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       control-plane: kserve-controller-manager
@@ -68,7 +71,7 @@ metadata:
   name: karpenter-pdb
   namespace: karpenter
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: karpenter
@@ -82,7 +85,7 @@ metadata:
   name: prometheus-pdb
   namespace: monitoring
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: prometheus
@@ -96,7 +99,7 @@ metadata:
   name: grafana-pdb
   namespace: monitoring
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: grafana
@@ -110,7 +113,7 @@ metadata:
   name: external-secrets-pdb
   namespace: external-secrets
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: external-secrets
@@ -124,7 +127,7 @@ metadata:
   name: argocd-application-controller-pdb
   namespace: argocd
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: argocd-application-controller

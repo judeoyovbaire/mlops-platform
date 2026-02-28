@@ -373,6 +373,9 @@ spec:
 
     # Step 5: Validate model quality gate
     - name: validate-model
+      retryStrategy:
+        limit: 1
+        retryPolicy: "OnError"
       inputs:
         parameters:
           - name: target-column
@@ -425,6 +428,14 @@ spec:
           - name: accuracy-threshold
           - name: model-alias
           - name: run-id
+      outputs:
+        parameters:
+          - name: model-version
+            valueFrom:
+              path: /tmp/model_version.txt
+          - name: model-alias
+            valueFrom:
+              path: /tmp/model_alias.txt
       container:
         image: "{{workflow.parameters.pipeline-image}}"
         command: [python, /app/src/register_model.py]
@@ -439,6 +450,10 @@ spec:
           - "{{inputs.parameters.model-alias}}"
           - --run-id
           - "{{inputs.parameters.run-id}}"
+          - --version-output
+          - /tmp/model_version.txt
+          - --alias-output
+          - /tmp/model_alias.txt
         resources:
           requests:
             cpu: 100m
@@ -453,6 +468,9 @@ spec:
 
     # Step 7: Build serving model with bundled preprocessing
     - name: build-serving-model
+      retryStrategy:
+        limit: 1
+        retryPolicy: "OnError"
       inputs:
         parameters:
           - name: mlflow-tracking-uri

@@ -61,7 +61,7 @@ def detect_encoding(file_path: str) -> str:
     for encoding in ENCODING_FALLBACKS:
         try:
             with open(file_path, encoding=encoding) as f:
-                f.read()
+                f.read(65536)  # Read first 64KB for encoding detection
             logger.info(f"Detected encoding: {encoding}")
             return encoding
         except UnicodeDecodeError:
@@ -195,8 +195,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(args.output), exist_ok=True)
+    # Ensure directory exists (guard against bare filename like "output.csv")
+    output_dir = os.path.dirname(args.output)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
 
     try:
         result = load_data(args.url, args.output)

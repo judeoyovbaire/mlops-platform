@@ -1,6 +1,7 @@
 # Loki Helm Values for GCP GKE - Production with GCS Storage
 # Chart: grafana/loki
 # Uses GCS with Workload Identity Federation for authentication
+# Note: Alloy pushes to loki.monitoring.svc:3100 (singleBinary mode)
 
 deploymentMode: SingleBinary
 

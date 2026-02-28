@@ -1,6 +1,7 @@
 # Loki Helm Values for AWS EKS - Production with S3 Storage
 # Chart: grafana/loki
 # Uses S3 for object storage with IRSA for authentication
+# Note: Alloy pushes to loki.monitoring.svc:3100 (singleBinary mode)
 
 deploymentMode: SingleBinary
 

@@ -88,7 +88,13 @@ resource "kubernetes_namespace" "kserve" {
 
 # Kubernetes Secrets and Service Accounts
 
-# MLflow secrets (using generated password)
+# Retrieve RDS-managed master password from Secrets Manager
+# (RDS auto-rotates this via manage_master_user_password = true)
+data "aws_secretsmanager_secret_version" "mlflow_db_master" {
+  secret_id = module.eks.mlflow_db_secret_arn
+}
+
+# MLflow secrets (using RDS-managed password from Secrets Manager)
 resource "kubernetes_secret" "mlflow_postgres" {
   metadata {
     name      = "mlflow-postgres"
@@ -97,7 +103,7 @@ resource "kubernetes_secret" "mlflow_postgres" {
 
   data = {
     username = "mlflow"
-    password = random_password.mlflow_db.result
+    password = jsondecode(data.aws_secretsmanager_secret_version.mlflow_db_master.secret_string)["password"]
   }
 
   depends_on = [kubernetes_namespace.mlflow]
