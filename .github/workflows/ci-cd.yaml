@@ -11,30 +11,30 @@ on:
     branches: [main]
   schedule:
     # Run weekly E2E tests on Sunday at 2:00 AM UTC
-    - cron: '0 2 * * 0'
+    - cron: "0 2 * * 0"
   workflow_dispatch:
     inputs:
       cloud:
-        description: 'Cloud provider'
+        description: "Cloud provider"
         required: true
-        default: 'aws'
+        default: "aws"
         type: choice
         options:
           - aws
           - azure
           - gcp
       environment:
-        description: 'Environment to deploy'
+        description: "Environment to deploy"
         required: true
-        default: 'dev'
+        default: "dev"
         type: choice
         options:
           - dev
           - prod
       action:
-        description: 'Action to perform'
+        description: "Action to perform"
         required: true
-        default: 'validate-only'
+        default: "validate-only"
         type: choice
         options:
           - validate-only
@@ -44,6 +44,7 @@ on:
 env:
   PYTHON_VERSION: "3.12"
   TERRAFORM_VERSION: "1.14.5"
+  KUBELOGIN_VERSION: "0.2.10"
   AWS_REGION: "eu-west-1"
   AZURE_LOCATION: "westeurope"
   GCP_REGION: "europe-west4"
@@ -105,7 +106,7 @@ jobs:
     name: Validate Terraform
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [scan-container-images]
+    needs: [lint-python]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -212,7 +213,7 @@ jobs:
     name: Validate Kubernetes
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [scan-container-images]
+    needs: [lint-python]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -225,6 +226,8 @@ jobs:
 
       - name: Validate Kubernetes manifests
         run: |
+          # || true: kubeconform may exit non-zero for CRDs not in the schema catalog
+          # (e.g. Kyverno, Tetragon, KServe). Failures are visible in output for review.
           find components infrastructure/kubernetes -name '*.yaml' -o -name '*.yml' | \
             xargs -I {} kubeconform -strict -summary \
               -schema-location default \
@@ -238,7 +241,7 @@ jobs:
     name: Validate Helm
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [scan-container-images]
+    needs: [lint-python]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -261,7 +264,7 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [scan-container-images]
+    needs: [lint-python]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -269,28 +272,28 @@ jobs:
       - name: Run Trivy vulnerability scanner (IaC)
         uses: aquasecurity/trivy-action@0.34.0
         with:
-          scan-type: 'config'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'HIGH,CRITICAL'
-          trivyignores: '.trivyignore'
-          skip-dirs: '**/.terraform'
+          scan-type: "config"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "HIGH,CRITICAL"
+          trivyignores: ".trivyignore"
+          skip-dirs: "**/.terraform"
 
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
 
       - name: Scan Dockerfiles with Trivy
         uses: aquasecurity/trivy-action@0.34.0
         with:
-          scan-type: 'config'
-          scan-ref: 'components/'
-          format: 'table'
-          severity: 'HIGH,CRITICAL'
-          skip-dirs: '**/.terraform'
+          scan-type: "config"
+          scan-ref: "components/"
+          format: "table"
+          severity: "HIGH,CRITICAL"
+          skip-dirs: "**/.terraform"
 
   scan-container-images:
     name: Scan Container Images
@@ -329,55 +332,55 @@ jobs:
       - name: Scan training pipeline image
         uses: aquasecurity/trivy-action@0.34.0
         with:
-          image-ref: 'mlops-platform/ml-training:test'
-          format: 'sarif'
-          output: 'trivy-training-image.sarif'
-          severity: 'HIGH,CRITICAL'
+          image-ref: "mlops-platform/ml-training:test"
+          format: "sarif"
+          output: "trivy-training-image.sarif"
+          severity: "HIGH,CRITICAL"
           ignore-unfixed: true
-          exit-code: '1'
+          exit-code: "1"
 
       - name: Scan pretrained pipeline image
         if: ${{ !cancelled() }}
         uses: aquasecurity/trivy-action@0.34.0
         with:
-          image-ref: 'mlops-platform/hf-pretrained:test'
-          format: 'sarif'
-          output: 'trivy-pretrained-image.sarif'
-          severity: 'HIGH,CRITICAL'
+          image-ref: "mlops-platform/hf-pretrained:test"
+          format: "sarif"
+          output: "trivy-pretrained-image.sarif"
+          severity: "HIGH,CRITICAL"
           ignore-unfixed: true
-          exit-code: '1'
+          exit-code: "1"
 
       - name: Upload training image scan results
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
-          sarif_file: 'trivy-training-image.sarif'
-          category: 'trivy-training-image'
+          sarif_file: "trivy-training-image.sarif"
+          category: "trivy-training-image"
 
       - name: Upload pretrained image scan results
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
-          sarif_file: 'trivy-pretrained-image.sarif'
-          category: 'trivy-pretrained-image'
+          sarif_file: "trivy-pretrained-image.sarif"
+          category: "trivy-pretrained-image"
 
       - name: Generate SBOM for training image
         if: ${{ !cancelled() }}
         uses: aquasecurity/trivy-action@0.34.0
         with:
-          image-ref: 'mlops-platform/ml-training:test'
-          format: 'spdx-json'
-          output: 'sbom-training-image.spdx.json'
-          exit-code: '0'
+          image-ref: "mlops-platform/ml-training:test"
+          format: "spdx-json"
+          output: "sbom-training-image.spdx.json"
+          exit-code: "0"
 
       - name: Generate SBOM for pretrained image
         if: ${{ !cancelled() }}
         uses: aquasecurity/trivy-action@0.34.0
         with:
-          image-ref: 'mlops-platform/hf-pretrained:test'
-          format: 'spdx-json'
-          output: 'sbom-pretrained-image.spdx.json'
-          exit-code: '0'
+          image-ref: "mlops-platform/hf-pretrained:test"
+          format: "spdx-json"
+          output: "sbom-pretrained-image.spdx.json"
+          exit-code: "0"
 
       - name: Upload SBOMs
         uses: actions/upload-artifact@v6
@@ -393,7 +396,7 @@ jobs:
     name: Test Python
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [scan-container-images]
+    needs: [lint-python]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -451,7 +454,16 @@ jobs:
     name: Terraform Plan (AWS)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [lint-python, scan-container-images, validate-terraform, validate-kubernetes, validate-helm, security-scan, test-python]
+    needs:
+      [
+        lint-python,
+        scan-container-images,
+        validate-terraform,
+        validate-kubernetes,
+        validate-helm,
+        security-scan,
+        test-python,
+      ]
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
     steps:
@@ -594,7 +606,16 @@ jobs:
     name: Terraform Plan (Azure)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [lint-python, scan-container-images, validate-terraform, validate-kubernetes, validate-helm, security-scan, test-python]
+    needs:
+      [
+        lint-python,
+        scan-container-images,
+        validate-terraform,
+        validate-kubernetes,
+        validate-helm,
+        security-scan,
+        test-python,
+      ]
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
     steps:
@@ -704,7 +725,16 @@ jobs:
     name: Terraform Plan (GCP)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [lint-python, scan-container-images, validate-terraform, validate-kubernetes, validate-helm, security-scan, test-python]
+    needs:
+      [
+        lint-python,
+        scan-container-images,
+        validate-terraform,
+        validate-kubernetes,
+        validate-helm,
+        security-scan,
+        test-python,
+      ]
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
     steps:
@@ -940,7 +970,7 @@ jobs:
 
       - name: Install kubelogin
         run: |
-          curl -LO https://github.com/Azure/kubelogin/releases/download/v0.2.10/kubelogin-linux-amd64.zip
+          curl -LO https://github.com/Azure/kubelogin/releases/download/v${{ env.KUBELOGIN_VERSION }}/kubelogin-linux-amd64.zip
           unzip kubelogin-linux-amd64.zip -d kubelogin
           sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
           kubelogin --version
@@ -1168,7 +1198,7 @@ jobs:
 
       - name: Install kubelogin
         run: |
-          curl -LO https://github.com/Azure/kubelogin/releases/download/v0.2.10/kubelogin-linux-amd64.zip
+          curl -LO https://github.com/Azure/kubelogin/releases/download/v${{ env.KUBELOGIN_VERSION }}/kubelogin-linux-amd64.zip
           unzip kubelogin-linux-amd64.zip -d kubelogin
           sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
           kubelogin --version
