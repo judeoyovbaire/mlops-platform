@@ -60,6 +60,7 @@ Thumbs.db
 .terraform/
 *.tfstate
 *.tfstate.*
+*.tfplan
 *.tfvars
 !*.tfvars.example
 !helm-versions.auto.tfvars
