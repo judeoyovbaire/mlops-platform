@@ -80,7 +80,7 @@ resource "aws_iam_policy" "karpenter_controller" {
           "iam:ListInstanceProfiles",
           "iam:ListInstanceProfilesForRole"
         ]
-        Resource = "*"
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:instance-profile/*"
       },
       {
         Sid      = "KarpenterPassRoleToNodeRole"

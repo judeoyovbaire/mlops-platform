@@ -479,6 +479,67 @@ spec:
     - Ingress
 
 ---
+# Default deny all egress in monitoring namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+
+---
+# Allow monitoring namespace egress for required communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-egress
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    # DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Internal monitoring communication
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+    # Prometheus scrapes targets in ML namespaces
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mlops
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mlflow
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: argo
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kserve
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: argocd
+    # HTTPS egress for cloud APIs (remote write, alerts, etc.)
+    - ports:
+        - protocol: TCP
+          port: 443
+
+---
 # Allow Prometheus scraping from all namespaces
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

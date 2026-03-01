@@ -106,7 +106,6 @@ jobs:
     name: Validate Terraform
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [lint-python]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -213,7 +212,6 @@ jobs:
     name: Validate Kubernetes
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [lint-python]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -242,7 +240,6 @@ jobs:
     name: Validate Helm
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [lint-python]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -265,7 +262,6 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [lint-python]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -300,7 +296,6 @@ jobs:
     name: Scan Container Images
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [lint-python]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -458,7 +453,6 @@ jobs:
     timeout-minutes: 30
     needs:
       [
-        lint-python,
         scan-container-images,
         validate-terraform,
         validate-kubernetes,
@@ -610,7 +604,6 @@ jobs:
     timeout-minutes: 30
     needs:
       [
-        lint-python,
         scan-container-images,
         validate-terraform,
         validate-kubernetes,
@@ -729,7 +722,6 @@ jobs:
     timeout-minutes: 30
     needs:
       [
-        lint-python,
         scan-container-images,
         validate-terraform,
         validate-kubernetes,
@@ -1289,7 +1281,7 @@ jobs:
 
       - name: Install Kind
         run: |
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64
           chmod +x ./kind
           sudo mv ./kind /usr/local/bin/kind
 

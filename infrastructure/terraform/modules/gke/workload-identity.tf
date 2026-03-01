@@ -51,11 +51,41 @@ resource "google_service_account_iam_member" "external_secrets_workload_identity
   depends_on = [google_container_cluster.main]
 }
 
-# Secret Manager access for ESO
-resource "google_project_iam_member" "external_secrets_secretmanager" {
-  project = var.project_id
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.external_secrets.email}"
+# Secret Manager access for ESO — scoped to specific secrets (least privilege)
+resource "google_secret_manager_secret_iam_member" "eso_mlflow_db_password" {
+  secret_id = google_secret_manager_secret.mlflow_db_password.secret_id
+  project   = var.project_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.external_secrets.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "eso_minio_root_password" {
+  secret_id = google_secret_manager_secret.minio_root_password.secret_id
+  project   = var.project_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.external_secrets.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "eso_argocd_admin_password" {
+  secret_id = google_secret_manager_secret.argocd_admin_password.secret_id
+  project   = var.project_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.external_secrets.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "eso_grafana_admin_password" {
+  secret_id = google_secret_manager_secret.grafana_admin_password.secret_id
+  project   = var.project_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.external_secrets.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "eso_slack_webhook_url" {
+  count     = var.slack_notifications_enabled ? 1 : 0
+  secret_id = google_secret_manager_secret.slack_webhook_url[0].secret_id
+  project   = var.project_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.external_secrets.email}"
 }
 
 # Argo Workflows Service Account

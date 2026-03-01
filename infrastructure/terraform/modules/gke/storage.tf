@@ -193,6 +193,10 @@ resource "google_sql_user" "mlflow" {
   project  = var.project_id
   instance = google_sql_database_instance.mlflow.name
   password = random_password.mlflow_db.result
+
+  lifecycle {
+    ignore_changes = [password]
+  }
 }
 
 # Artifact Registry
@@ -248,6 +252,10 @@ resource "google_secret_manager_secret_version" "mlflow_db_password" {
     username = "mlflow"
     password = random_password.mlflow_db.result
   })
+
+  lifecycle {
+    ignore_changes = [secret_data]
+  }
 }
 
 # MinIO Root Password

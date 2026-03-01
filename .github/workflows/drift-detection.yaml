@@ -22,7 +22,7 @@ on:
           - gcp
 
 env:
-  TERRAFORM_VERSION: "1.10.0"
+  TERRAFORM_VERSION: "1.14.5"
   AWS_REGION: "eu-west-1"
 
 permissions:
