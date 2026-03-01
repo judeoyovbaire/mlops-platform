@@ -157,7 +157,7 @@ def validate_pretrained_model(
     # Compute latency metrics
     avg_latency = sum(latencies) / len(latencies) if latencies else 0.0
     sorted_latencies = sorted(latencies)
-    p95_index = max(0, int(len(sorted_latencies) * 0.95) - 1)
+    p95_index = min(int(len(sorted_latencies) * 0.95), len(sorted_latencies) - 1)
     p95_latency = sorted_latencies[p95_index] if sorted_latencies else 0.0
 
     # Evaluate checks

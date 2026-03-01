@@ -66,8 +66,7 @@ def get_tracer(service_name: str = "ml-pipeline") -> Tracer:
     global _provider_initialized
 
     if not _OTEL_AVAILABLE:
-        # Return a no-op tracer when the SDK is missing
-        return trace.get_tracer(service_name) if "trace" in dir() else _NoOpTracer()  # type: ignore[return-value]
+        return _NoOpTracer()  # type: ignore[return-value]
 
     if _provider_initialized:
         return trace.get_tracer(service_name)

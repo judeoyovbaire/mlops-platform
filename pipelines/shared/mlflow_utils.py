@@ -48,15 +48,15 @@ def run_with_timeout(
     # exit — that blocks until the worker thread finishes, defeating the
     # timeout.  Instead, manage the executor lifecycle explicitly.
     executor = ThreadPoolExecutor(max_workers=1)
-    future = executor.submit(fn)
     try:
+        future = executor.submit(fn)
         result = future.result(timeout=seconds)
     except FuturesTimeoutError as exc:
         future.cancel()
+        raise MLflowTimeoutError(error_message) from exc
+    finally:
         # shutdown(wait=False) allows the caller to proceed immediately.
         # The worker thread (if still blocked on I/O) is a daemon thread that
         # will be cleaned up when the process exits (Kubernetes pod termination).
         executor.shutdown(wait=False)
-        raise MLflowTimeoutError(error_message) from exc
-    executor.shutdown(wait=False)
     return result
