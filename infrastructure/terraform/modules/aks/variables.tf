@@ -21,8 +21,8 @@ variable "kubernetes_version" {
   default     = "1.29"
 
   validation {
-    condition     = can(regex("^1\\.(2[89]|3[0-5])$", var.kubernetes_version))
-    error_message = "Kubernetes version must be a supported AKS version (1.28-1.35)."
+    condition     = can(regex("^1\\.(2[89]|3[0-5])(\\.[0-9]+)?$", var.kubernetes_version))
+    error_message = "Kubernetes version must be a supported AKS version (1.28-1.35), with optional patch version (e.g., 1.34 or 1.34.0)."
   }
 }
 

@@ -22,8 +22,8 @@ variable "cluster_version" {
   default     = "1.34"
 
   validation {
-    condition     = can(regex("^1\\.(2[89]|3[0-4])$", var.cluster_version))
-    error_message = "Cluster version must be a supported EKS version (1.28-1.34)."
+    condition     = can(regex("^1\\.(2[89]|3[0-4])(\\.[0-9]+)?$", var.cluster_version))
+    error_message = "Cluster version must be a supported EKS version (1.28-1.34), with optional patch version (e.g., 1.34 or 1.34.0)."
   }
 }
 
