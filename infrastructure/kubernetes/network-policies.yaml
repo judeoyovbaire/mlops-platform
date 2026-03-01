@@ -144,7 +144,9 @@ spec:
     - Ingress
 
 ---
-# Allow MLflow access from external (NodePort for local development)
+# Allow MLflow access from external (NodePort for local development ONLY)
+# In production, remove this policy and rely on allow-mlflow-from-mlops
+# which restricts access to mlops/argo/kserve namespaces.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

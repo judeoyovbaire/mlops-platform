@@ -13,6 +13,7 @@ output "cluster_endpoint" {
 output "cluster_certificate_authority_data" {
   description = "Base64 encoded certificate data for the cluster"
   value       = module.eks.cluster_certificate_authority_data
+  sensitive   = true
 }
 
 output "oidc_provider_arn" {

@@ -61,6 +61,12 @@ alloy:
 controller:
   type: daemonset
 
+# Note: DaemonSet needs host log access, so readOnlyRootFilesystem
+# and runAsNonRoot may not be feasible. Add what the chart supports.
+securityContext:
+  runAsUser: 0  # Required for reading host log files
+  privileged: false
+
 resources:
   requests:
     cpu: 50m

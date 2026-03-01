@@ -107,3 +107,21 @@ configs:
     url: https://argocd.mlops.local
     application.instanceLabelKey: argocd.argoproj.io/instance
     admin.enabled: true
+    resource.customizations: |
+      serving.kserve.io/InferenceService:
+        health.lua: |
+          hs = {}
+          if obj.status ~= nil then
+            if obj.status.conditions ~= nil then
+              for i, condition in ipairs(obj.status.conditions) do
+                if condition.type == "Ready" and condition.status == "True" then
+                  hs.status = "Healthy"
+                  hs.message = "InferenceService is ready"
+                  return hs
+                end
+              end
+            end
+          end
+          hs.status = "Progressing"
+          hs.message = "Waiting for InferenceService to be ready"
+          return hs

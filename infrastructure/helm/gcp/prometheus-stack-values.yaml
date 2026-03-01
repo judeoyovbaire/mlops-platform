@@ -16,7 +16,11 @@ grafana:
     annotations:
       iam.gke.io/gcp-service-account: "${prometheus_service_account_email}"
 
-  # Ingress configuration (NGINX)
+  # HTTP-only ingress for development. For production, add:
+  #   tls:
+  #     - secretName: grafana-tls
+  #       hosts: [grafana.example.com]
+  # and configure cert-manager for automatic certificate management.
   ingress:
     enabled: true
     ingressClassName: nginx
@@ -168,7 +172,11 @@ prometheus:
             action: keep
             regex: true
 
-  # Ingress for Prometheus UI
+  # HTTP-only ingress for development. For production, add:
+  #   tls:
+  #     - secretName: prometheus-tls
+  #       hosts: [prometheus.example.com]
+  # and configure cert-manager for automatic certificate management.
   ingress:
     enabled: true
     ingressClassName: nginx
@@ -202,6 +210,11 @@ alertmanager:
       - alertmanager-slack-webhook
 %{ endif }
 
+  # HTTP-only ingress for development. For production, add:
+  #   tls:
+  #     - secretName: alertmanager-tls
+  #       hosts: [alertmanager.example.com]
+  # and configure cert-manager for automatic certificate management.
   ingress:
     enabled: true
     ingressClassName: nginx

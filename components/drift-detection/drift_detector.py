@@ -275,6 +275,11 @@ class DriftDetector:
         # Create histograms
         min_val = min(reference.min(), current.min())
         max_val = max(reference.max(), current.max())
+
+        # Guard against constant-valued data
+        if min_val == max_val:
+            return 0.0
+
         bins = np.linspace(min_val, max_val, self.n_bins + 1)
 
         ref_hist, _ = np.histogram(reference, bins=bins, density=True)

@@ -84,7 +84,7 @@ jobs:
             pip-lint-${{ runner.os }}-
 
       - name: Install Ruff and Bandit
-        run: pip install ruff bandit
+        run: pip install ruff==0.9.7 bandit==1.8.3
 
       - name: Run Ruff linter
         run: ruff check pipelines/ examples/ --output-format=github
@@ -225,14 +225,13 @@ jobs:
           kustomize: "5.5.0"
 
       - name: Validate Kubernetes manifests
+        continue-on-error: true
         run: |
-          # || true: kubeconform may exit non-zero for CRDs not in the schema catalog
-          # (e.g. Kyverno, Tetragon, KServe). Failures are visible in output for review.
           find components infrastructure/kubernetes -name '*.yaml' -o -name '*.yml' | \
             xargs -I {} kubeconform -strict -summary \
               -schema-location default \
               -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
-              {} || true
+              {}
 
       - name: Validate Kustomize build
         run: kustomize build infrastructure/kubernetes/ > /dev/null
@@ -972,6 +971,9 @@ jobs:
       - name: Install kubelogin
         run: |
           curl -LO https://github.com/Azure/kubelogin/releases/download/v${{ env.KUBELOGIN_VERSION }}/kubelogin-linux-amd64.zip
+          # Verify download integrity
+          curl -sL https://github.com/Azure/kubelogin/releases/download/v${{ env.KUBELOGIN_VERSION }}/kubelogin-linux-amd64.zip.sha256 -o kubelogin.sha256
+          echo "$(cat kubelogin.sha256)  kubelogin-linux-amd64.zip" | sha256sum -c -
           unzip kubelogin-linux-amd64.zip -d kubelogin
           sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
           kubelogin --version
@@ -1200,6 +1202,9 @@ jobs:
       - name: Install kubelogin
         run: |
           curl -LO https://github.com/Azure/kubelogin/releases/download/v${{ env.KUBELOGIN_VERSION }}/kubelogin-linux-amd64.zip
+          # Verify download integrity
+          curl -sL https://github.com/Azure/kubelogin/releases/download/v${{ env.KUBELOGIN_VERSION }}/kubelogin-linux-amd64.zip.sha256 -o kubelogin.sha256
+          echo "$(cat kubelogin.sha256)  kubelogin-linux-amd64.zip" | sha256sum -c -
           unzip kubelogin-linux-amd64.zip -d kubelogin
           sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
           kubelogin --version

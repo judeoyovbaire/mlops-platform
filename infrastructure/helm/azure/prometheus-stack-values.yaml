@@ -156,7 +156,11 @@ grafana:
       cpu: 500m
       memory: 512Mi
 
-  # NGINX Ingress
+  # HTTP-only ingress for development. For production, add:
+  #   tls:
+  #     - secretName: grafana-tls
+  #       hosts: [grafana.example.com]
+  # and configure cert-manager for automatic certificate management.
   ingress:
     enabled: true
     ingressClassName: nginx

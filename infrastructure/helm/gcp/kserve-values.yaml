@@ -12,6 +12,9 @@ kserve:
       ingressClassName: nginx
       domainTemplate: "{{ .Name }}-{{ .Namespace }}.{{ .IngressDomain }}"
       ingressDomain: "mlops.local"
+      # urlScheme: http — in-cluster RawDeployment mode without TLS termination.
+      # NGINX ingress handles TLS at the edge. For mTLS between services,
+      # enable a service mesh (e.g., Istio) and change to https.
       urlScheme: http
 
     # Resource limits

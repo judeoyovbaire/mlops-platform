@@ -34,7 +34,7 @@ resource "aws_secretsmanager_secret" "minio_root_password" {
 resource "aws_secretsmanager_secret_version" "minio_root_password" {
   secret_id = aws_secretsmanager_secret.minio_root_password.id
   secret_string = jsonencode({
-    username = "minioadmin"
+    username = "minio"
     password = random_password.minio.result
   })
 

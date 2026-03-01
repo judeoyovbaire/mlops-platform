@@ -15,7 +15,10 @@ server:
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/backend-protocol: HTTPS
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
-      alb.ingress.kubernetes.io/certificate-arn: ""  # Add ACM cert ARN for production
+      # certificate-arn: Provide ACM certificate ARN for HTTPS termination.
+      # Without this, the ALB will not terminate TLS.
+      # Example: arn:aws:acm:us-east-1:123456789:certificate/abc-123
+      alb.ingress.kubernetes.io/certificate-arn: ""
     hosts:
       - argocd.mlops.local
     tls:

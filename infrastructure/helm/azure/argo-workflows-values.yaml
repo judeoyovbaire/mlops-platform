@@ -82,7 +82,9 @@ server:
     hosts:
       - argo-workflows.local
 
-  # Extra arguments
+  # auth-mode=server: No authentication required for UI access.
+  # Suitable for dev environments behind VPN/private network.
+  # For production, use auth-mode=sso with OIDC provider.
   extraArgs:
     - --auth-mode=server
 

@@ -191,7 +191,7 @@ def train_model(
 
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=test_size, random_state=random_state
+            X, y, test_size=test_size, random_state=random_state, stratify=y
         )
         logger.info(f"Train set: {len(X_train)}, Test set: {len(X_test)}")
 

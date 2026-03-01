@@ -39,7 +39,10 @@ chaosDaemon:
   runtime: containerd
   socketPath: /run/containerd/containerd.sock
 
-  # Privileged mode required for chaos injection
+  # privileged: true — Required by design for chaos injection.
+  # chaosDaemon needs root + host namespace access to inject faults
+  # (iptables, tc, process signals). Deploy only in test/staging namespaces
+  # and restrict with RBAC/NetworkPolicy.
   privileged: true
 
 # Dashboard Configuration

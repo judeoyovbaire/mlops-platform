@@ -209,7 +209,9 @@ resource "google_container_cluster" "main" {
     }
   }
 
-  # Binary Authorization (optional)
+  # Binary Authorization - disabled by default.
+  # Enable with PROJECT_SINGLETON_POLICY_ENFORCE for production
+  # to ensure only signed/verified container images are deployed.
   binary_authorization {
     evaluation_mode = "DISABLED"
   }

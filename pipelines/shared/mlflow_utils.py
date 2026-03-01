@@ -50,7 +50,7 @@ def run_with_timeout(
     executor = ThreadPoolExecutor(max_workers=1)
     future = executor.submit(fn)
     try:
-        return future.result(timeout=seconds)
+        result = future.result(timeout=seconds)
     except FuturesTimeoutError as exc:
         future.cancel()
         # shutdown(wait=False) allows the caller to proceed immediately.
@@ -58,5 +58,5 @@ def run_with_timeout(
         # will be cleaned up when the process exits (Kubernetes pod termination).
         executor.shutdown(wait=False)
         raise MLflowTimeoutError(error_message) from exc
-    else:
-        executor.shutdown(wait=False)
+    executor.shutdown(wait=False)
+    return result

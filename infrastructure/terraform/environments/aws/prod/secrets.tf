@@ -56,7 +56,7 @@ resource "aws_secretsmanager_secret" "minio_root_password" {
 resource "aws_secretsmanager_secret_version" "minio_root_password" {
   secret_id = aws_secretsmanager_secret.minio_root_password.id
   secret_string = jsonencode({
-    username = "minioadmin"
+    username = "minio"
     password = random_password.minio.result
   })
 
@@ -92,6 +92,7 @@ resource "aws_secretsmanager_secret" "slack_webhook_url" {
 
   name        = "${var.cluster_name}/alertmanager/slack-webhook-url"
   description = "Slack webhook URL for AlertManager notifications"
+  kms_key_id  = var.kms_key_arn
 
   tags = var.tags
 }
