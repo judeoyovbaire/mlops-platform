@@ -138,7 +138,7 @@ def validate_pretrained_model(
                 else:
                     # Validate score range
                     score = entry.get("score")
-                    if isinstance(score, (int, float)):
+                    if isinstance(score, int | float):
                         if not (0.0 <= score <= 1.0) or (
                             isinstance(score, float) and (score != score)
                         ):  # NaN check
