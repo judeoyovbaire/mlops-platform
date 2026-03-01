@@ -22,14 +22,18 @@ logger = logging.getLogger(__name__)
 
 
 def _get_or_create_metric(metric_cls, name, documentation, labelnames):
-    """Return existing metric or create a new one, avoiding ValueError on re-registration."""
+    """Return existing metric or create a new one, avoiding ValueError on re-registration.
+
+    Uses REGISTRY._names_to_collectors (private but stable across prometheus_client 0.x).
+    """
     try:
         return metric_cls(name, documentation, labelnames)
     except ValueError:
-        # Already registered — retrieve from the default registry
-        for collector in REGISTRY._names_to_collectors.values():
-            if hasattr(collector, "_name") and collector._name == name:
-                return collector
+        # Already registered — look up by name directly (avoids iterating
+        # .values() which can raise RuntimeError on concurrent dict mutation)
+        collector = REGISTRY._names_to_collectors.get(name)
+        if collector is not None:
+            return collector
         raise
 
 
@@ -197,6 +201,14 @@ class DriftDetector:
         # Guard against empty arrays after dropna
         if len(reference) == 0 or len(current) == 0:
             return 0.0  # No data to compare
+
+        # Guard against constant-valued data (all identical values)
+        # np.linspace produces duplicate bin edges when min == max,
+        # causing np.histogram to raise ValueError.
+        if reference.min() == reference.max() and current.min() == current.max():
+            return 0.0  # No variance to measure drift
+        if reference.min() == reference.max() or current.min() == current.max():
+            return 0.0  # One distribution is degenerate
 
         # Create bins based on reference data
         min_val = min(reference.min(), current.min())

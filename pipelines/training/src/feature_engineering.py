@@ -135,6 +135,13 @@ def feature_engineering(
             if cols_to_drop:
                 X = X.drop(columns=cols_to_drop)
 
+            if X.shape[1] == 0:
+                raise FeatureEngineeringError(
+                    f"No features remain after dropping target '{target_column}' and "
+                    f"{len(cols_to_drop)} high-cardinality columns ({cols_to_drop}). "
+                    "Check input data or increase --max-categories."
+                )
+
         elif categorical_cols and not encode_categorical:
             logger.info(f"Skipping encoding for categorical columns: {categorical_cols}")
 

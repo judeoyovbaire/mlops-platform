@@ -56,6 +56,10 @@ grafana:
       url: http://loki.monitoring:3100
       access: proxy
       isDefault: false
+      jsonData:
+        httpHeaderName1: X-Scope-OrgID
+      secureJsonData:
+        httpHeaderValue1: mlops
     - name: Tempo
       type: tempo
       url: http://tempo.monitoring:3100

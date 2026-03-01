@@ -47,7 +47,7 @@ extraEnvVars:
 # MLflow 3.x security settings
 extraArgs:
   host: "0.0.0.0"
-  allowed-hosts: "*"
+  allowed-hosts: "mlflow.mlflow.svc.cluster.local,mlflow.mlflow.svc,mlflow.mlflow,localhost"
   workers: "2" # Aligned across all clouds for consistency
 
 # Disable chart's gunicorn logging

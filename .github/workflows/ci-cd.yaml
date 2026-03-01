@@ -440,10 +440,10 @@ jobs:
           path: coverage.xml
 
       - name: Audit Python dependencies
+        continue-on-error: true
         run: |
           pip install pip-audit
-          # Soft-fail: pip-audit may flag transitive deps we can't control
-          pip-audit --requirement <(pip freeze) || true
+          pip-audit --requirement <(pip freeze)
 
       - name: Validate Argo Workflow YAML
         run: |

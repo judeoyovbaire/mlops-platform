@@ -289,9 +289,24 @@ resource "aws_iam_role_policy" "terraform_eks_ec2" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "EKSFullAccess"
-        Effect   = "Allow"
-        Action   = "eks:*"
+        Sid    = "EKSFullAccess"
+        Effect = "Allow"
+        Action = [
+          "eks:CreateCluster", "eks:DeleteCluster", "eks:DescribeCluster",
+          "eks:UpdateClusterConfig", "eks:UpdateClusterVersion",
+          "eks:TagResource", "eks:UntagResource",
+          "eks:ListClusters", "eks:ListTagsForResource",
+          "eks:CreateNodegroup", "eks:DeleteNodegroup", "eks:DescribeNodegroup",
+          "eks:UpdateNodegroupConfig", "eks:UpdateNodegroupVersion",
+          "eks:ListNodegroups",
+          "eks:CreateAddon", "eks:DeleteAddon", "eks:DescribeAddon",
+          "eks:UpdateAddon", "eks:ListAddons",
+          "eks:DescribeAddonVersions",
+          "eks:AssociateAccessPolicy", "eks:CreateAccessEntry",
+          "eks:DeleteAccessEntry", "eks:DescribeAccessEntry",
+          "eks:ListAccessEntries", "eks:ListAccessPolicies",
+          "eks:AssociateIdentityProviderConfig"
+        ]
         Resource = "*"
       },
       {
@@ -307,9 +322,18 @@ resource "aws_iam_role_policy" "terraform_eks_ec2" {
         Resource = "*"
       },
       {
-        Sid      = "AutoScalingAccess"
-        Effect   = "Allow"
-        Action   = "autoscaling:*"
+        Sid    = "AutoScalingAccess"
+        Effect = "Allow"
+        Action = [
+          "autoscaling:CreateAutoScalingGroup", "autoscaling:DeleteAutoScalingGroup",
+          "autoscaling:DescribeAutoScalingGroups", "autoscaling:UpdateAutoScalingGroup",
+          "autoscaling:CreateLaunchConfiguration", "autoscaling:DeleteLaunchConfiguration",
+          "autoscaling:DescribeLaunchConfigurations",
+          "autoscaling:CreateOrUpdateTags", "autoscaling:DeleteTags",
+          "autoscaling:DescribeTags",
+          "autoscaling:SetDesiredCapacity",
+          "autoscaling:TerminateInstanceInAutoScalingGroup"
+        ]
         Resource = "*"
       }
     ]
@@ -455,9 +479,17 @@ resource "aws_iam_role_policy" "terraform_services" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "KMSFullAccess"
-        Effect   = "Allow"
-        Action   = "kms:*"
+        Sid    = "KMSFullAccess"
+        Effect = "Allow"
+        Action = [
+          "kms:CreateKey", "kms:DescribeKey", "kms:GetKeyPolicy",
+          "kms:GetKeyRotationStatus", "kms:ListResourceTags",
+          "kms:TagResource", "kms:UntagResource",
+          "kms:EnableKeyRotation", "kms:CreateAlias",
+          "kms:DeleteAlias", "kms:ListAliases",
+          "kms:CreateGrant", "kms:ListGrants", "kms:RetireGrant",
+          "kms:ScheduleKeyDeletion", "kms:PutKeyPolicy"
+        ]
         Resource = "*"
       },
       {

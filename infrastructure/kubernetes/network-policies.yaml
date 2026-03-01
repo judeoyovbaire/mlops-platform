@@ -38,7 +38,9 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Allow HTTPS (S3, public internet for dependencies if needed)
+    # Allows HTTPS egress to any destination — required for cloud storage
+    # (S3/GCS/Blob Storage) whose IP ranges vary by region and cloud provider.
+    # Network-level restriction to specific CIDRs is not portable across clouds.
     - to: []
       ports:
         - protocol: TCP
@@ -488,7 +490,17 @@ spec:
   policyTypes:
     - Ingress
   ingress:
-    - ports:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: argo
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mlops
+      ports:
         - protocol: TCP
           port: 9090
 

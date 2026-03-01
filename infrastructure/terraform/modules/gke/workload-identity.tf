@@ -86,9 +86,10 @@ resource "google_service_account_iam_member" "argo_controller_workload_identity"
 }
 
 # GCS access for Argo artifacts (using MLflow artifacts bucket for simplicity)
+# objectUser = objectViewer + objectCreator + delete own objects (no admin needed)
 resource "google_storage_bucket_iam_member" "argo_gcs" {
   bucket = google_storage_bucket.mlflow_artifacts.name
-  role   = "roles/storage.objectAdmin"
+  role   = "roles/storage.objectUser"
   member = "serviceAccount:${google_service_account.argo_workflows.email}"
 }
 
@@ -212,10 +213,10 @@ resource "google_service_account_iam_member" "loki_workload_identity" {
   depends_on = [google_container_cluster.main]
 }
 
-# GCS access for Loki logs
+# GCS access for Loki logs (objectUser = create + read + delete own objects)
 resource "google_storage_bucket_iam_member" "loki_gcs" {
   bucket = google_storage_bucket.loki_logs.name
-  role   = "roles/storage.objectAdmin"
+  role   = "roles/storage.objectUser"
   member = "serviceAccount:${google_service_account.loki.email}"
 }
 
@@ -236,9 +237,9 @@ resource "google_service_account_iam_member" "tempo_workload_identity" {
   depends_on = [google_container_cluster.main]
 }
 
-# GCS access for Tempo traces
+# GCS access for Tempo traces (objectUser = create + read + delete own objects)
 resource "google_storage_bucket_iam_member" "tempo_gcs" {
   bucket = google_storage_bucket.tempo_traces.name
-  role   = "roles/storage.objectAdmin"
+  role   = "roles/storage.objectUser"
   member = "serviceAccount:${google_service_account.tempo.email}"
 }

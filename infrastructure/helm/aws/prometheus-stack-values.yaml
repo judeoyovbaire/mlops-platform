@@ -155,14 +155,16 @@ grafana:
       cpu: 500m
       memory: 1Gi
 
-  # Ingress for external access
+  # Ingress for external access (HTTPS via ALB, matching MLflow ingress pattern)
   ingress:
     enabled: true
     ingressClassName: alb
     annotations:
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/target-type: ip
-      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/certificate-arn: "${acm_certificate_arn}"
       alb.ingress.kubernetes.io/healthcheck-path: /api/health
     hosts:
       - grafana.mlops.local
@@ -190,6 +192,10 @@ grafana:
       url: http://loki.monitoring:3100
       access: proxy
       isDefault: false
+      jsonData:
+        httpHeaderName1: X-Scope-OrgID
+      secureJsonData:
+        httpHeaderValue1: mlops
     - name: Tempo
       type: tempo
       url: http://tempo.monitoring:3100

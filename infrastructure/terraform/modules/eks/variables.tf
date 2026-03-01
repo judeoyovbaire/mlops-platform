@@ -208,9 +208,9 @@ variable "mlflow_db_engine_version" {
 }
 
 variable "mlflow_db_skip_final_snapshot" {
-  description = "Skip final snapshot when destroying RDS (set to false for production)"
+  description = "Skip final snapshot when destroying RDS (set to true only for dev)"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "mlflow_db_backup_retention_period" {

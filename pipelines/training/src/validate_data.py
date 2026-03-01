@@ -138,6 +138,7 @@ def validate_data(
 
         # Schema validation — catches structural issues (wrong dtypes, out-of-range
         # values, unexpected categories) before the cleaning pipeline runs.
+        original_dtypes = df.dtypes.to_dict()
         try:
             IrisSchema.validate(df, lazy=True)
             logger.info("Schema validation passed")
@@ -168,6 +169,14 @@ def validate_data(
                     "cleaning pipeline, but dtype/column mismatches indicate "
                     "upstream data problems."
                 ) from exc
+
+        # Log any dtype coercions that occurred during schema validation
+        for col in df.columns:
+            if col in original_dtypes and df[col].dtype != original_dtypes[col]:
+                logger.info(
+                    f"Schema coercion: column '{col}' dtype changed from "
+                    f"{original_dtypes[col]} to {df[col].dtype}"
+                )
 
         # Check for nulls
         null_count = int(df.isnull().sum().sum())

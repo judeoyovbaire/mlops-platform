@@ -279,6 +279,12 @@ def train_model(
                 joblib.dump(model, model_output_path)
                 logger.info(f"Model saved to {model_output_path}")
 
+                # Ensure output directories exist for run ID and accuracy files
+                for out_path in [run_id_output_path, accuracy_output_path]:
+                    out_dir = os.path.dirname(out_path)
+                    if out_dir:
+                        os.makedirs(out_dir, exist_ok=True)
+
                 # Save run ID and accuracy for next pipeline steps
                 with open(run_id_output_path, "w") as f:
                     f.write(run_id)

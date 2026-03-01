@@ -121,6 +121,15 @@ def validate_model(
 
     predict_ok = prediction_failures == 0
 
+    # Check for NaN/Inf predictions (only applicable to numeric output)
+    if len(y_pred) > 0 and np.issubdtype(y_pred.dtype, np.floating):
+        nan_count = int(np.sum(np.isnan(y_pred)))
+        inf_count = int(np.sum(np.isinf(y_pred)))
+        if nan_count > 0 or inf_count > 0:
+            logger.warning(f"Model produced {nan_count} NaN and {inf_count} Inf predictions")
+            prediction_failures = nan_count + inf_count
+            predict_ok = False
+
     # --- Check 2: class diversity ---
     num_classes_predicted = int(len(np.unique(y_pred))) if len(y_pred) > 0 else 0
     class_diversity_ok = num_classes_predicted >= 2

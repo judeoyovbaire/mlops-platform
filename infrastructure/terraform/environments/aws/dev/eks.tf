@@ -35,7 +35,8 @@ module "eks" {
   gpu_max_size       = 2
   gpu_desired_size   = 0
 
-  mlflow_db_instance_class = "db.t3.small"
+  mlflow_db_instance_class      = "db.t3.small"
+  mlflow_db_skip_final_snapshot = true # Dev doesn't need final snapshots
 
   # Grant cluster admin access to GitHub Actions role and root account
   # GitHub Actions for CI/CD deployments, root for local access

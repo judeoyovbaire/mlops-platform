@@ -105,6 +105,11 @@ def validate_pretrained_model(
 
     # Determine test inputs
     if test_inputs is None:
+        if task != "text-classification":
+            logger.warning(
+                f"Using default text-classification inputs for task '{task}'. "
+                "Provide task-specific --test-inputs for accurate validation."
+            )
         test_inputs = DEFAULT_VALIDATION_INPUTS
 
     # Run inference on all test inputs
@@ -130,6 +135,15 @@ def validate_pretrained_model(
                 elif "label" not in entry or "score" not in entry:
                     logger.warning(f"Input {i}: missing 'label' or 'score' keys: {entry.keys()}")
                     schema_valid = False
+                else:
+                    # Validate score range
+                    score = entry.get("score")
+                    if isinstance(score, (int, float)):
+                        if not (0.0 <= score <= 1.0) or (
+                            isinstance(score, float) and (score != score)
+                        ):  # NaN check
+                            schema_valid = False
+                            logger.warning(f"Input {i}: score {score} outside [0, 1] or NaN")
             else:
                 logger.warning(f"Input {i}: unexpected output format: {type(result)}")
                 schema_valid = False

@@ -50,7 +50,7 @@ extraEnvVars:
 # which allows uvicorn (default) to be used with security middleware flags
 extraArgs:
   host: "0.0.0.0"
-  allowed-hosts: "*"
+  allowed-hosts: "mlflow.mlflow.svc.cluster.local,mlflow.mlflow.svc,mlflow.mlflow,localhost"
   workers: "2"
 
 # Disable chart's gunicorn logging (uses --gunicorn-opts which breaks security middleware)

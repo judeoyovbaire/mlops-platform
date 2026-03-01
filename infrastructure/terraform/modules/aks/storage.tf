@@ -31,8 +31,14 @@ resource "azurerm_storage_account" "mlflow" {
   }
 
   # Block public access
-  public_network_access_enabled   = true # Required for AKS access
+  public_network_access_enabled   = false
   allow_nested_items_to_be_public = false
+
+  # Restrict network access to AKS subnet (matching Key Vault pattern)
+  network_rules {
+    default_action             = "Deny"
+    virtual_network_subnet_ids = [azurerm_subnet.aks.id]
+  }
 
   tags = var.tags
 }

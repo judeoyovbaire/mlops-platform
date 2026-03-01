@@ -102,6 +102,9 @@ artifactRepository:
   s3:
     bucket: argo-artifacts
     endpoint: minio.argo.svc:9000
+    # insecure: true — MinIO runs in-cluster without TLS.
+    # Network policy restricts access to argo namespace only.
+    # For production with sensitive data, enable MinIO TLS.
     insecure: true
     accessKeySecret:
       name: minio

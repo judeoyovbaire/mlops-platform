@@ -57,6 +57,8 @@ config:
     otlp/tempo:
       endpoint: tempo.monitoring:4317
       tls:
+        # insecure: true — in-cluster gRPC between OTel Collector and Tempo.
+        # Both pods run in the monitoring namespace behind network policies.
         insecure: true
     # Metrics → Prometheus scrape endpoint
     prometheus:
