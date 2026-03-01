@@ -45,21 +45,21 @@ resource "azurerm_storage_account" "mlflow" {
 
 resource "azurerm_storage_container" "mlflow_artifacts" {
   name                  = "mlflow-artifacts"
-  storage_account_name  = azurerm_storage_account.mlflow.name
+  storage_account_id    = azurerm_storage_account.mlflow.id
   container_access_type = "private"
 }
 
 # Blob Storage containers for Loki logs
 resource "azurerm_storage_container" "loki_logs" {
   name                  = "loki-logs"
-  storage_account_name  = azurerm_storage_account.mlflow.name
+  storage_account_id    = azurerm_storage_account.mlflow.id
   container_access_type = "private"
 }
 
 # Blob Storage containers for Tempo traces
 resource "azurerm_storage_container" "tempo_traces" {
   name                  = "tempo-traces"
-  storage_account_name  = azurerm_storage_account.mlflow.name
+  storage_account_id    = azurerm_storage_account.mlflow.id
   container_access_type = "private"
 }
 

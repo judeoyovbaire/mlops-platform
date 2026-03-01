@@ -227,7 +227,9 @@ jobs:
       - name: Validate Kubernetes manifests
         continue-on-error: true
         run: |
-          find components infrastructure/kubernetes -name '*.yaml' -o -name '*.yml' | \
+          find components infrastructure/kubernetes \
+            \( -name '*.yaml' -o -name '*.yml' \) \
+            -not -name 'kustomization.yaml' | \
             xargs -I {} kubeconform -strict -summary \
               -schema-location default \
               -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
