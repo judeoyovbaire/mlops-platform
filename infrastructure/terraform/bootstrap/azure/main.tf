@@ -140,14 +140,14 @@ resource "azuread_application_federated_identity_credential" "github_environment
 
 # Contributor role scoped to resource group (not subscription-wide)
 resource "azurerm_role_assignment" "github_contributor" {
-  scope                = azurerm_resource_group.terraform.id
+  scope                = azurerm_resource_group.bootstrap.id
   role_definition_name = "Contributor"
   principal_id         = azuread_service_principal.github_actions.object_id
 }
 
 # User Access Administrator scoped to resource group (not subscription-wide)
 resource "azurerm_role_assignment" "github_user_access_admin" {
-  scope                = azurerm_resource_group.terraform.id
+  scope                = azurerm_resource_group.bootstrap.id
   role_definition_name = "User Access Administrator"
   principal_id         = azuread_service_principal.github_actions.object_id
 }
