@@ -19,8 +19,10 @@ cloud secret manager CLI, then run `terraform apply -refresh-only` to sync state
 
 ## CI/CD Pipeline Hardening (F8)
 
-GitHub Actions workflows pin major versions (e.g. `actions/checkout@v4`). For
-supply-chain hardening in production:
+GitHub Actions workflows pin major versions (e.g. `actions/checkout@v4`). Python
+linting tools are pinned to exact versions (`ruff==0.9.7`, `bandit==1.8.3`) for
+reproducible builds. Binary downloads (e.g., kubelogin) include SHA256 checksum
+verification. For additional supply-chain hardening in production:
 
 - Pin to exact commit SHAs instead of version tags:
   `actions/checkout@<full-sha>` (use Dependabot or Renovate to auto-update)

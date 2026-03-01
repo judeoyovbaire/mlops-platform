@@ -17,7 +17,7 @@ Before any upgrade:
 
 ### Supported Versions
 
-The platform supports EKS versions 1.28 through 1.34. Upgrade one minor version at a time.
+The platform supports EKS versions 1.28 through 1.34 (with optional patch versions, e.g., `1.34` or `1.34.0`). Upgrade one minor version at a time.
 
 ### Procedure
 
@@ -234,14 +234,20 @@ helm rollback argo-workflows -n argo
 
 1. **Update version constraints:**
    ```hcl
-   # versions.tf
+   # versions.tf (example — current platform uses AWS ~>6.0, Azure ~>4.0)
    required_providers {
      aws = {
        source  = "hashicorp/aws"
-       version = "~> 5.X"
+       version = "~> 6.0"
      }
    }
    ```
+
+   **Note:** The AWS provider v5 to v6 migration required cascading upgrades
+   to EKS module (~>21.0), VPC module (~>6.0), and IAM module (~>6.0).
+   Key renames in EKS v21: `cluster_name` to `name`, `cluster_version` to
+   `kubernetes_version`, `cluster_addons` to `addons`. See commit history
+   for full migration details.
 
 2. **Update lock file:**
    ```bash

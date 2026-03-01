@@ -524,6 +524,11 @@ eBPF-based runtime security from the Cilium project:
 - No static credentials
 - Managed Identity per workload
 
+**GCP: Workload Identity Federation**
+- Federated credentials with GCP IAM
+- No static credentials
+- GCP Service Account per workload
+
 ### Security Layers
 
 ```
@@ -621,6 +626,13 @@ The dashboard uses node labels and resource pricing to estimate costs:
 - CPU: $0.048/core/hour
 - Memory: $0.006/GB/hour
 - GPU: $0.526/GPU/hour
+
+### Observability Stack Security
+
+All observability components run with hardened security contexts:
+- **Loki, Tempo, OTel Collector**: `runAsNonRoot`, `readOnlyRootFilesystem`, `drop ALL` capabilities
+- **Alloy (log shipper)**: Runs as root (`runAsUser: 0`) — required for reading host log files as a DaemonSet, but `privileged: false`
+- **Chaos Mesh daemon**: Runs privileged — required by design for fault injection (iptables, tc, process signals). Deploy only in test/staging namespaces
 
 ### Prometheus Monitoring
 
@@ -733,11 +745,11 @@ make port-forward-argocd   # localhost:8080
 ```
 Push to main
     │
-    ├── validate-manifests (kubeconform)
-    ├── lint-python (ruff)
+    ├── validate-manifests (kubeconform, continue-on-error for CRDs)
+    ├── lint-python (ruff==0.9.7, bandit==1.8.3)
     ├── validate-terraform (AWS + Azure + GCP)
     ├── security-scan (trivy)
-    └── test-python (pipeline compilation)
+    └── test-python (pytest with coverage)
          │
          ├── terraform-plan-aws (parallel)
          ├── terraform-plan-azure (parallel)
@@ -906,9 +918,9 @@ Current versions deployed by the platform (aligned across all clouds):
 | NGINX Ingress | 4.14.3 | Kubernetes Ingress (Azure/GCP) |
 | cert-manager | 1.19.3 | TLS certificate management |
 | Prometheus Stack | 81.6.9 | Monitoring and alerting |
-| Loki | 6.24.0 | Log aggregation |
-| Tempo | 1.15.0 | Distributed tracing |
-| OpenTelemetry Collector | 0.108.0 | Unified telemetry pipeline |
+| Loki | 6.24.0 | Log aggregation (hardened securityContext) |
+| Tempo | 1.15.0 | Distributed tracing (hardened securityContext) |
+| OpenTelemetry Collector | 0.108.0 | Unified telemetry pipeline (hardened securityContext) |
 | External Secrets | 1.2.1 | SSM / Key Vault / Secret Manager integration |
 | Kyverno | 3.6.2 | Policy engine |
 | Tetragon | 1.6.0 | Runtime security |

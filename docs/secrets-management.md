@@ -6,7 +6,7 @@ This document describes the secrets management strategy for the MLOps platform.
 
 The platform uses a multi-layered approach to secrets management:
 
-1. **Cloud Secret Stores**: AWS SSM Parameter Store, Azure Key Vault, GCP Secret Manager
+1. **Cloud Secret Stores**: AWS Secrets Manager, Azure Key Vault, GCP Secret Manager
 2. **External Secrets Operator**: Syncs cloud secrets to Kubernetes
 3. **Auto-generated Secrets**: Passwords generated at deployment time
 4. **IRSA/Workload Identity**: No static credentials for cloud access
@@ -15,9 +15,9 @@ The platform uses a multi-layered approach to secrets management:
 
 | Secret | Storage | Rotation | Notes |
 |--------|---------|----------|-------|
-| MLflow DB Password | SSM/Key Vault/Secret Manager | Manual | Auto-generated at deploy |
-| MinIO Root Password | SSM/Key Vault/Secret Manager | Manual | Auto-generated at deploy |
-| ArgoCD Admin Password | SSM/Key Vault/Secret Manager | Manual | Bcrypt hashed |
+| MLflow DB Password | Secrets Manager/Key Vault/Secret Manager | Manual | Auto-generated at deploy |
+| MinIO Root Password | Secrets Manager/Key Vault/Secret Manager | Manual | Auto-generated, username: `minio` |
+| ArgoCD Admin Password | Secrets Manager/Key Vault/Secret Manager | Manual | Bcrypt hashed |
 | Grafana Admin Password | External Secrets | Manual | Via cloud secret store |
 | AWS/Azure/GCP Credentials | IRSA/Workload Identity | Automatic | No static credentials |
 
@@ -35,11 +35,9 @@ The platform uses a multi-layered approach to secrets management:
 2. Update cloud secret store:
    ```bash
    # AWS
-   aws ssm put-parameter \
-     --name "/mlops-platform-dev/mlflow/db-password" \
-     --value "$NEW_PASSWORD" \
-     --type SecureString \
-     --overwrite
+   aws secretsmanager put-secret-value \
+     --secret-id "mlops-platform-dev/mlflow/db-password" \
+     --secret-string "{\"username\":\"mlflow\",\"password\":\"$NEW_PASSWORD\"}"
 
    # Azure
    az keyvault secret set \

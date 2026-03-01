@@ -13,7 +13,9 @@ Comprehensive documentation for the MLOps Platform.
 | [Disaster Recovery](disaster-recovery.md) | Backup and recovery procedures |
 | [API Reference](api-reference.md) | MLflow and KServe API documentation |
 | [Upgrade Procedures](upgrade-procedures.md) | Component upgrade guides |
+| [Operational Notes](operational-notes.md) | Production deployment guidance |
 | [Troubleshooting](troubleshooting.md) | Common issues and solutions |
+| [Demo Script](demo-script.md) | 5-minute platform demo with talking points |
 
 ## Runbooks
 
@@ -23,6 +25,10 @@ Operational guides for day-to-day platform management:
 |---------|-------------|
 | [Operations](runbooks/operations.md) | Daily operations, deployments, scaling |
 | [Troubleshooting](runbooks/troubleshooting.md) | Common issues and solutions |
+| [MLflow Connection Issues](runbooks/mlflow-connection-issues.md) | MLflow connectivity diagnostics |
+| [Karpenter Node Issues](runbooks/karpenter-node-not-provisioning.md) | GPU node provisioning troubleshooting |
+| [Terraform Rollback](runbooks/terraform-rollback.md) | Terraform rollback procedures |
+| [Database Restore](runbooks/database-restore.md) | RDS/PostgreSQL/Cloud SQL restore |
 
 ## Component Documentation
 
