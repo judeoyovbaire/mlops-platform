@@ -96,7 +96,7 @@ jobs:
         run: bandit -r pipelines/ examples/ -f json -o bandit-results.json -ll
 
       - name: Upload Bandit results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: bandit-security-report
@@ -379,7 +379,7 @@ jobs:
           exit-code: "0"
 
       - name: Upload SBOMs
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: container-sboms
@@ -429,7 +429,7 @@ jobs:
           verbose: true
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage-report
@@ -885,7 +885,7 @@ jobs:
           echo "State backed up before apply"
 
       - name: Upload State Backup
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: terraform-state-backup-aws-${{ github.event.inputs.environment }}-${{ github.run_id }}
           path: infrastructure/terraform/environments/aws/${{ github.event.inputs.environment }}/terraform.tfstate.backup
@@ -992,7 +992,7 @@ jobs:
           echo "State backed up before apply"
 
       - name: Upload State Backup
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: terraform-state-backup-azure-${{ github.event.inputs.environment }}-${{ github.run_id }}
           path: infrastructure/terraform/environments/azure/${{ github.event.inputs.environment }}/terraform.tfstate.backup
@@ -1105,7 +1105,7 @@ jobs:
           echo "State backed up before apply"
 
       - name: Upload State Backup
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: terraform-state-backup-gcp-${{ github.event.inputs.environment }}-${{ github.run_id }}
           path: infrastructure/terraform/environments/gcp/${{ github.event.inputs.environment }}/terraform.tfstate.backup
