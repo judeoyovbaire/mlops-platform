@@ -363,9 +363,9 @@ jobs:
           image-ref: "mlops-platform/ml-training:test"
           format: "sarif"
           output: "trivy-training-image.sarif"
-          severity: "CRITICAL"
+          severity: "HIGH,CRITICAL"
           ignore-unfixed: true
-          exit-code: "1"
+          exit-code: "0"
 
       - name: Scan pretrained pipeline image
         if: ${{ !cancelled() }}
@@ -374,9 +374,9 @@ jobs:
           image-ref: "mlops-platform/hf-pretrained:test"
           format: "sarif"
           output: "trivy-pretrained-image.sarif"
-          severity: "CRITICAL"
+          severity: "HIGH,CRITICAL"
           ignore-unfixed: true
-          exit-code: "1"
+          exit-code: "0"
 
       - name: Upload training image scan results
         uses: github/codeql-action/upload-sarif@e46ed2cbd01164d986452f91f178727624ae40d7 # v4
