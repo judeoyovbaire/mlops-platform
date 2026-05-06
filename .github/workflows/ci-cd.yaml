@@ -85,7 +85,7 @@ jobs:
 
       - name: Run Bandit security scan
         run: |
-          uv pip install --system bandit==1.8.3
+          pip install bandit==1.8.3
           bandit -r pipelines/ examples/ -f json -o bandit-results.json -ll
 
       - name: Upload Bandit results
