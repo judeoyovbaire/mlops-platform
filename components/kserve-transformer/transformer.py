@@ -26,16 +26,28 @@ class IrisTransformer(Model):
         self.preprocessor = None
 
     def load(self) -> bool:
-        """Load the preprocessor artifact."""
+        """Load the preprocessor artifact.
+
+        If PASSTHROUGH_MODE is set, missing preprocessor is acceptable.
+        Otherwise, a missing preprocessor prevents the transformer from serving.
+        """
+        passthrough = os.environ.get("PASSTHROUGH_MODE", "false").lower() == "true"
         try:
             self.preprocessor = joblib.load(PREPROCESSOR_PATH)
             logger.info("Loaded preprocessor from %s", PREPROCESSOR_PATH)
             self.ready = True
         except FileNotFoundError:
-            logger.warning(
-                "Preprocessor not found at %s, passing through raw features", PREPROCESSOR_PATH
-            )
-            self.ready = True
+            if passthrough:
+                logger.warning(
+                    "Preprocessor not found at %s, running in passthrough mode", PREPROCESSOR_PATH
+                )
+                self.ready = True
+            else:
+                logger.error(
+                    "Preprocessor not found at %s. Set PASSTHROUGH_MODE=true to skip.",
+                    PREPROCESSOR_PATH,
+                )
+                self.ready = False
         return self.ready
 
     def preprocess(self, payload: InferRequest, headers: dict) -> InferRequest:

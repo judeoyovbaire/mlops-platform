@@ -65,7 +65,7 @@ resource "kubectl_manifest" "require_resource_limits" {
         policies.kyverno.io/description: >-
           Containers must have resource limits set.
     spec:
-      validationFailureAction: Audit
+      validationFailureAction: Enforce
       background: true
       rules:
         - name: validate-resources
@@ -222,7 +222,7 @@ resource "kubectl_manifest" "disallow_latest_tag" {
           Container images must use explicit version tags, not 'latest'.
           Ensures reproducibility of ML model deployments.
     spec:
-      validationFailureAction: Audit
+      validationFailureAction: Enforce
       background: true
       rules:
         - name: validate-image-tag

@@ -145,13 +145,18 @@ spec:
 
 ---
 # Allow MLflow access from external (NodePort for local development ONLY)
-# In production, remove this policy and rely on allow-mlflow-from-mlops
-# which restricts access to mlops/argo/kserve namespaces.
+# Deploy this policy ONLY in dev/local environments.
+# In production, rely on allow-mlflow-from-mlops which restricts access
+# to mlops/argo/kserve namespaces.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-mlflow-external
   namespace: mlflow
+  labels:
+    environment: dev
+  annotations:
+    description: "Local development only — do not deploy in production clusters"
 spec:
   podSelector:
     matchLabels:
@@ -159,8 +164,11 @@ spec:
   policyTypes:
     - Ingress
   ingress:
-    # Allow from any source (needed for NodePort access in local dev)
-    - ports:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: default
+      ports:
         - protocol: TCP
           port: 5000
 
@@ -568,7 +576,7 @@ spec:
           port: 9090
 
 ---
-# Allow Grafana access from ingress controller and all namespaces
+# Allow Grafana access from ingress controller namespace only
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -581,7 +589,14 @@ spec:
   policyTypes:
     - Ingress
   ingress:
-    - ports:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
         - protocol: TCP
           port: 3000
 

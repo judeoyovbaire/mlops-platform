@@ -6,9 +6,12 @@ WORKDIR /app
 RUN apt-get update && apt-get upgrade -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
+# Install uv for fast, hash-verified dependency resolution
+COPY --from=ghcr.io/astral-sh/uv:0.7.2@sha256:89a052af62c612d0e05d2596f03edba77d7d904c4478b387a5dc6305821fe0a1 /uv /usr/local/bin/uv
+
 # Install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip install --system --no-cache -r requirements.txt
 
 # Copy application
 COPY drift_detector.py .

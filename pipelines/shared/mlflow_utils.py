@@ -55,8 +55,8 @@ def run_with_timeout(
         future.cancel()
         raise MLflowTimeoutError(error_message) from exc
     finally:
-        # shutdown(wait=False) allows the caller to proceed immediately.
-        # The worker thread (if still blocked on I/O) is a daemon thread that
-        # will be cleaned up when the process exits (Kubernetes pod termination).
-        executor.shutdown(wait=False)
+        # shutdown(wait=False, cancel_futures=True) terminates pending futures
+        # and allows the caller to proceed immediately. Running threads complete
+        # asynchronously but are daemon threads cleaned up at process exit.
+        executor.shutdown(wait=False, cancel_futures=True)
     return result

@@ -290,3 +290,58 @@ class TestTracerProviderSingleton:
         t2 = get_tracer("service-b")
         assert hasattr(t1, "start_as_current_span")
         assert hasattr(t2, "start_as_current_span")
+
+
+class TestDriftDetectorMain:
+    """Tests for the drift detector main() entry point."""
+
+    def test_main_initializes_detector(self, monkeypatch):
+        """main() should initialize a DriftDetector and start the metrics server."""
+        from unittest.mock import patch
+
+        monkeypatch.setenv("MODEL_NAME", "test-model")
+        monkeypatch.setenv("METRICS_PORT", "9999")
+        monkeypatch.setenv("DRIFT_THRESHOLD", "0.2")
+        monkeypatch.setenv("CHECK_INTERVAL_SECONDS", "10")
+        monkeypatch.delenv("REFERENCE_DATA_PATH", raising=False)
+        monkeypatch.delenv("PRODUCTION_DATA_PATH", raising=False)
+
+        with (
+            patch("drift_detector.start_http_server") as mock_server,
+            patch("time.sleep", side_effect=SystemExit),
+        ):
+            with pytest.raises(SystemExit):
+                from drift_detector import main
+
+                main()
+
+            mock_server.assert_called_once_with(9999)
+
+    def test_main_loads_reference_data(self, monkeypatch, tmp_path):
+        """main() should load reference data when REFERENCE_DATA_PATH is set."""
+        from unittest.mock import patch
+
+        import pandas as pd
+
+        ref_file = tmp_path / "reference.csv"
+        pd.DataFrame({"a": [1.0, 2.0], "b": [3.0, 4.0]}).to_csv(ref_file, index=False)
+
+        monkeypatch.setenv("MODEL_NAME", "test-model")
+        monkeypatch.setenv("METRICS_PORT", "9998")
+        monkeypatch.setenv("REFERENCE_DATA_PATH", str(ref_file))
+        monkeypatch.delenv("PRODUCTION_DATA_PATH", raising=False)
+
+        with (
+            patch("drift_detector.start_http_server"),
+            patch("time.sleep", side_effect=SystemExit),
+            patch("drift_detector.DriftDetector") as MockDetector,
+        ):
+            mock_instance = MockDetector.return_value
+            mock_instance.reference_data = None
+
+            with pytest.raises(SystemExit):
+                from drift_detector import main
+
+                main()
+
+            mock_instance.set_reference_data.assert_called_once()

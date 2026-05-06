@@ -98,7 +98,7 @@ resource "kubectl_manifest" "kyverno_require_limits" {
           Pods must specify resource limits to prevent resource exhaustion.
           Critical for ML workloads that can consume unbounded resources.
     spec:
-      validationFailureAction: Audit  # Start with Audit, change to Enforce after validation
+      validationFailureAction: Enforce
       background: true
       rules:
         - name: validate-resources
@@ -141,7 +141,7 @@ resource "kubectl_manifest" "kyverno_disallow_latest_tag" {
           Container images must use explicit version tags, not 'latest'.
           Ensures reproducibility of ML model deployments.
     spec:
-      validationFailureAction: Audit
+      validationFailureAction: Enforce
       background: true
       rules:
         - name: validate-image-tag

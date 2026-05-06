@@ -522,6 +522,7 @@ resource "google_compute_firewall" "health_check" {
 
   allow {
     protocol = "tcp"
+    ports    = ["80", "443", "8080", "8443", "10256"]
   }
 
   # GCP health check IP ranges

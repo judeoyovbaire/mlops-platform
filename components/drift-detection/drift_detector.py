@@ -8,7 +8,7 @@ Exposes metrics for Prometheus scraping.
 import logging
 import os
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import numpy as np
@@ -22,19 +22,17 @@ logger = logging.getLogger(__name__)
 
 
 def _get_or_create_metric(metric_cls, name, documentation, labelnames):
-    """Return existing metric or create a new one, avoiding ValueError on re-registration.
-
-    Uses REGISTRY._names_to_collectors (private but stable across prometheus_client 0.x).
-    """
+    """Return existing metric or create a new one, avoiding ValueError on re-registration."""
     try:
         return metric_cls(name, documentation, labelnames)
     except ValueError:
-        # Already registered — look up by name directly (avoids iterating
-        # .values() which can raise RuntimeError on concurrent dict mutation)
-        collector = REGISTRY._names_to_collectors.get(name)
-        if collector is not None:
-            return collector
-        raise
+        # Already registered — unregister first, then re-create with same config.
+        # This avoids accessing private REGISTRY internals.
+        try:
+            REGISTRY.unregister(REGISTRY._names_to_collectors[name])
+        except (KeyError, AttributeError):
+            pass
+        return metric_cls(name, documentation, labelnames)
 
 
 DRIFT_SCORE = _get_or_create_metric(
@@ -351,7 +349,7 @@ class DriftDetector:
 
         return DriftReport(
             model_name=self.model_name,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             features_analyzed=n_features,
             features_drifted=n_drifted,
             overall_drift_score=overall_score,
@@ -464,32 +462,54 @@ def main():
     Exceptions propagate as non-zero exit codes so that Kubernetes
     CronJob / Argo Workflow failures surface in alerting.
     """
+    import time
+
     # Configuration from environment
     model_name = os.getenv("MODEL_NAME", "default-model")
     metrics_port = int(os.getenv("METRICS_PORT", "8000"))
     drift_threshold = float(os.getenv("DRIFT_THRESHOLD", "0.1"))
     check_interval = int(os.getenv("CHECK_INTERVAL_SECONDS", "300"))
+    reference_data_path = os.getenv("REFERENCE_DATA_PATH", "")
+    production_data_path = os.getenv("PRODUCTION_DATA_PATH", "")
 
     # Start Prometheus metrics server
     start_http_server(metrics_port)
-    logger.info(f"Metrics server started on port {metrics_port}")
+    logger.info("Metrics server started on port %d", metrics_port)
 
-    # Initialize detector (used in production when integrated with data pipelines)
-    DriftDetector(model_name=model_name, drift_threshold=drift_threshold)
+    # Initialize detector
+    detector = DriftDetector(model_name=model_name, drift_threshold=drift_threshold)
 
-    logger.info(f"Drift detector initialized for model: {model_name}")
-    logger.info(f"Drift threshold: {drift_threshold}")
-    logger.info(f"Check interval: {check_interval}s")
+    logger.info("Drift detector initialized for model: %s", model_name)
+    logger.info("Drift threshold: %s", drift_threshold)
+    logger.info("Check interval: %ds", check_interval)
 
-    # In production, this would be integrated with data pipelines
-    # For now, we just start the metrics server.
-    # Note: exceptions intentionally propagate (non-zero exit) so that
-    # Kubernetes CronJob failures are surfaced to alerting.
-    import time
+    # Load reference data if path is configured
+    if reference_data_path:
+        try:
+            reference_df = pd.read_csv(reference_data_path)
+            detector.set_reference_data(reference_df)
+            logger.info(
+                "Loaded reference data from %s (%d rows)", reference_data_path, len(reference_df)
+            )
+        except Exception:
+            logger.exception("Failed to load reference data from %s", reference_data_path)
 
+    # Main detection loop
     while True:
         time.sleep(check_interval)
-        logger.info("Drift check cycle completed")
+        if production_data_path and detector.reference_data is not None:
+            try:
+                production_df = pd.read_csv(production_data_path)
+                result = detector.detect_drift(production_df)
+                logger.info(
+                    "Drift check completed: drift_detected=%s, score=%.4f",
+                    result.is_drifted,
+                    result.overall_drift_score,
+                )
+            except Exception:
+                logger.exception("Drift check failed")
+        else:
+            logger.info("Drift check cycle completed (no data paths configured)")
 
 
 if __name__ == "__main__":

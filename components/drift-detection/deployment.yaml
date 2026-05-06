@@ -58,6 +58,9 @@ spec:
             capabilities:
               drop:
                 - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           livenessProbe:
             httpGet:
               path: /metrics
@@ -70,6 +73,10 @@ spec:
               port: metrics
             initialDelaySeconds: 5
             periodSeconds: 10
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 100Mi
 ---
 apiVersion: v1
 kind: Service

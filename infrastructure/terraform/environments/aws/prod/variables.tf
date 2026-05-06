@@ -275,3 +275,49 @@ variable "slack_webhook_url" {
   default     = ""
   sensitive   = true
 }
+
+# Progressive Delivery & Observability (shared across dev/prod)
+
+variable "helm_argo_rollouts_version" {
+  description = "Argo Rollouts Helm chart version"
+  type        = string
+  default     = "2.39.1"
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_rollouts_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
+}
+
+variable "helm_argo_events_version" {
+  description = "Argo Events Helm chart version"
+  type        = string
+  default     = "2.4.14"
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_events_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
+}
+
+variable "helm_opencost_version" {
+  description = "OpenCost Helm chart version"
+  type        = string
+  default     = "1.44.0"
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_opencost_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
+}
+
+variable "helm_dcgm_exporter_version" {
+  description = "NVIDIA DCGM Exporter Helm chart version"
+  type        = string
+  default     = "3.6.1"
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_dcgm_exporter_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
+}

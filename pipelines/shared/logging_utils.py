@@ -10,7 +10,7 @@ import logging
 import os
 import uuid
 from contextvars import ContextVar
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 # Context variable for correlation ID - thread-safe and async-safe
@@ -51,7 +51,7 @@ class StructuredFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format the log record as a JSON string."""
         log_data: dict[str, Any] = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -99,7 +99,7 @@ class HumanReadableFormatter(logging.Formatter):
         correlation_id = get_correlation_id()
         short_id = correlation_id[:8] if correlation_id else "--------"
 
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
         base = f"{timestamp} [{short_id}] {record.levelname:8} {record.name}: {record.getMessage()}"
 
         if record.exc_info:

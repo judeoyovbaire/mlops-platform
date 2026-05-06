@@ -3,7 +3,7 @@ name = "mlops-platform"
 version = "0.1.0"
 description = "Production-ready MLOps platform for model training, versioning, and deployment"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [
     {name = "Jude Oyovbaire", email = "jude@ratiolabs.dev"}
@@ -13,8 +13,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 
@@ -29,16 +27,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-    "pytest-cov>=4.0.0",
-    "pytest-mock>=3.12.0",
-    "pytest-xdist>=3.5.0",
-    "ruff>=0.11.0",
-    "mypy>=1.8.0",
+drift-detection = [
     "prometheus_client>=0.20.0",
     "scipy>=1.12.0",
-    "hypothesis>=6.100.0",
 ]
 
 feast = [
@@ -106,7 +97,7 @@ exclude_lines = [
 show_missing = true
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py312"
 line-length = 100
 # Exclude files with special import requirements
 exclude = [
@@ -133,7 +124,7 @@ ignore = [
 known-first-party = ["pipelines"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_ignores = true
 disallow_untyped_defs = true

@@ -227,7 +227,7 @@ variable "mlflow_db_backup_retention_period" {
 variable "mlflow_db_deletion_protection" {
   description = "Enable deletion protection for RDS (recommended for production)"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "mlflow_db_multi_az" {
