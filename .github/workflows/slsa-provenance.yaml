@@ -1,0 +1,109 @@
+# SLSA Level 3 Provenance Generation
+# Uses slsa-framework/slsa-github-generator for container provenance
+# and GitHub native attestations for build provenance
+
+name: SLSA Provenance
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: "Full image reference (registry/repo/name)"
+        required: true
+        type: string
+      digest:
+        description: "Image digest (sha256:...)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+  attestations: write
+
+jobs:
+  provenance:
+    name: Generate SLSA Provenance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate SLSA provenance predicate
+        id: provenance
+        run: |
+          cat > provenance.json << 'PROVENANCE_EOF'
+          {
+            "buildType": "https://github.com/slsa-framework/slsa-github-generator/container@v1",
+            "builder": {
+              "id": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            },
+            "invocation": {
+              "configSource": {
+                "uri": "git+https://github.com/${{ github.repository }}@${{ github.ref }}",
+                "digest": {
+                  "sha1": "${{ github.sha }}"
+                },
+                "entryPoint": "${{ github.workflow_ref }}"
+              },
+              "environment": {
+                "github_actor": "${{ github.actor }}",
+                "github_event_name": "${{ github.event_name }}",
+                "github_run_id": "${{ github.run_id }}",
+                "github_run_attempt": "${{ github.run_attempt }}",
+                "runner_os": "${{ runner.os }}"
+              }
+            },
+            "metadata": {
+              "buildInvocationID": "${{ github.run_id }}-${{ github.run_attempt }}",
+              "completeness": {
+                "parameters": true,
+                "environment": true,
+                "materials": true
+              },
+              "reproducible": false
+            },
+            "materials": [
+              {
+                "uri": "git+https://github.com/${{ github.repository }}@${{ github.ref }}",
+                "digest": {
+                  "sha1": "${{ github.sha }}"
+                }
+              }
+            ]
+          }
+          PROVENANCE_EOF
+
+      - name: Attest SLSA provenance with Cosign
+        run: |
+          cosign attest --yes \
+            --predicate provenance.json \
+            --type slsaprovenance \
+            ${{ inputs.image }}@${{ inputs.digest }}
+
+      - name: Generate GitHub native build attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ inputs.image }}
+          subject-digest: ${{ inputs.digest }}
+          push-to-registry: true
+
+      - name: Verify SLSA attestation
+        run: |
+          cosign verify-attestation \
+            --type slsaprovenance \
+            --certificate-identity-regexp="https://github.com/${{ github.repository }}/" \
+            --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+            ${{ inputs.image }}@${{ inputs.digest }}

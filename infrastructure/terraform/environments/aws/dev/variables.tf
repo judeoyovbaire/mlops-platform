@@ -184,6 +184,30 @@ variable "cluster_endpoint_public_access_cidrs" {
 
 # Slack Notifications
 
+variable "helm_argo_rollouts_version" {
+  description = "Argo Rollouts Helm chart version"
+  type        = string
+  default     = "2.39.1"
+}
+
+variable "helm_argo_events_version" {
+  description = "Argo Events Helm chart version"
+  type        = string
+  default     = "2.4.14"
+}
+
+variable "helm_opencost_version" {
+  description = "OpenCost Helm chart version"
+  type        = string
+  default     = "1.44.0"
+}
+
+variable "helm_dcgm_exporter_version" {
+  description = "NVIDIA DCGM Exporter Helm chart version"
+  type        = string
+  default     = "3.6.1"
+}
+
 variable "slack_notifications_enabled" {
   description = "Enable Slack notifications for AlertManager"
   type        = bool

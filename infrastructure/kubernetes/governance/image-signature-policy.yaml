@@ -1,0 +1,83 @@
+# Kyverno ClusterPolicy: Enforce Cosign image signature verification
+# Requires all container images in mlops/argo namespaces to be signed
+# via Sigstore keyless signing (GitHub Actions OIDC)
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signatures
+  annotations:
+    policies.kyverno.io/title: Verify Container Image Signatures
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Verifies that all container images in the mlops and argo namespaces
+      are signed using Cosign keyless signing via Sigstore. Images must be
+      signed by the repository's GitHub Actions workflow using OIDC identity.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-cosign-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - mlops
+                - argo
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/*/mlops-platform/*"
+          attestors:
+            - entries:
+                - keyless:
+                    issuer: "https://token.actions.githubusercontent.com"
+                    subjectRegExp: "https://github.com/.*/.github/workflows/.*"
+                    rekor:
+                      url: "https://rekor.sigstore.dev"
+          mutateDigest: true
+          verifyDigest: true
+          required: true
+
+---
+# Audit policy for non-GHCR images (don't block but log)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: audit-unsigned-images
+  annotations:
+    policies.kyverno.io/title: Audit Unsigned Container Images
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Audits container images from external registries that are not signed.
+      This policy runs in Audit mode to detect but not block unsigned images.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: audit-external-images
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - mlops
+                - argo
+      validate:
+        message: >-
+          Container image {{ request.object.spec.containers[].image }} is not from
+          the trusted GHCR registry. Consider using signed images from ghcr.io.
+        foreach:
+          - list: "request.object.spec.containers[]"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.image }}"
+                    operator: NotEquals
+                    value: "ghcr.io/*"

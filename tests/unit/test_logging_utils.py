@@ -3,8 +3,6 @@
 import json
 import logging
 
-import pytest
-
 from pipelines.shared.logging_utils import (
     CorrelatedLoggerAdapter,
     HumanReadableFormatter,

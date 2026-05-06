@@ -1,0 +1,146 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: progressive-delivery-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "MLOps"
+data:
+  progressive-delivery.json: |
+    {
+      "annotations": {"list": []},
+      "editable": true,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+          "id": 100,
+          "panels": [],
+          "title": "Rollout Status",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "mappings": [
+                {"options": {"0": {"text": "Paused"}, "1": {"text": "Progressing"}, "2": {"text": "Degraded"}, "3": {"text": "Healthy"}}, "type": "value"}
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "yellow", "value": null},
+                  {"color": "blue", "value": 1},
+                  {"color": "red", "value": 2},
+                  {"color": "green", "value": 3}
+                ]
+              }
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 1},
+          "id": 1,
+          "options": {"colorMode": "background", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "rollout_info{name=\"ml-model-rollout\",namespace=\"mlops\"}", "legendFormat": "Status"}],
+          "title": "Rollout Phase",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "percentunit"}},
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 1},
+          "id": 2,
+          "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "rollout_info_replicas_canary_percentage{name=\"ml-model-rollout\",namespace=\"mlops\"} / 100", "legendFormat": "Canary %"}],
+          "title": "Canary Traffic Weight",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}},
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 1},
+          "id": 3,
+          "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "rollout_info_replicas_available{name=\"ml-model-rollout\",namespace=\"mlops\"}", "legendFormat": "Available"}],
+          "title": "Available Replicas",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}},
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 1},
+          "id": 4,
+          "options": {"colorMode": "background", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "rollout_info_replicas_unavailable{name=\"ml-model-rollout\",namespace=\"mlops\"}", "legendFormat": "Unavailable"}],
+          "title": "Unavailable Replicas",
+          "type": "stat"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5},
+          "id": 101,
+          "panels": [],
+          "title": "Canary Analysis",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never"}, "unit": "percentunit"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+          "id": 5,
+          "options": {"legend": {"calcs": ["mean", "last"], "displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "sum(rate(revision_request_count{response_code=\"200\",namespace=\"mlops\"}[2m])) by (revision_name) / sum(rate(revision_request_count{namespace=\"mlops\"}[2m])) by (revision_name)", "legendFormat": "{{ revision_name }}"}
+          ],
+          "title": "Success Rate by Revision",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never"}, "unit": "ms", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 500}]}}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+          "id": 6,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "histogram_quantile(0.95, sum(rate(revision_request_latencies_bucket{namespace=\"mlops\"}[2m])) by (le, revision_name)) * 1000", "legendFormat": "{{ revision_name }}"}
+          ],
+          "title": "P95 Latency by Revision (ms)",
+          "type": "timeseries"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 14},
+          "id": 102,
+          "panels": [],
+          "title": "AnalysisRun Results",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2, "stacking": {"mode": "normal"}}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 15},
+          "id": 7,
+          "options": {"legend": {"calcs": ["sum"], "displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "analysis_run_metric_phase{namespace=\"mlops\",phase=\"Successful\"}", "legendFormat": "Successful"},
+            {"expr": "analysis_run_metric_phase{namespace=\"mlops\",phase=\"Failed\"}", "legendFormat": "Failed"},
+            {"expr": "analysis_run_metric_phase{namespace=\"mlops\",phase=\"Inconclusive\"}", "legendFormat": "Inconclusive"}
+          ],
+          "title": "AnalysisRun Metric Results Over Time",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 38,
+      "tags": ["progressive-delivery", "argo-rollouts", "canary"],
+      "templating": {"list": []},
+      "time": {"from": "now-1h", "to": "now"},
+      "title": "Progressive Delivery Dashboard",
+      "uid": "progressive-delivery",
+      "version": 1
+    }

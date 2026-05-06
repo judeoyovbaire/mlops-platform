@@ -9,7 +9,7 @@ import pytest
 
 # drift-detection is a standalone component, not an installed package
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "components" / "drift-detection"))
-from drift_detector import DriftDetector, DriftResult, DriftReport  # noqa: E402
+from drift_detector import DriftDetector, DriftReport  # noqa: E402
 
 
 @pytest.fixture
@@ -22,30 +22,36 @@ def detector():
 def reference_df():
     """Create reference data (normal distribution)."""
     rng = np.random.default_rng(42)
-    return pd.DataFrame({
-        "feature_a": rng.normal(0, 1, 200),
-        "feature_b": rng.normal(5, 2, 200),
-    })
+    return pd.DataFrame(
+        {
+            "feature_a": rng.normal(0, 1, 200),
+            "feature_b": rng.normal(5, 2, 200),
+        }
+    )
 
 
 @pytest.fixture
 def similar_df():
     """Current data drawn from same distribution as reference."""
     rng = np.random.default_rng(99)
-    return pd.DataFrame({
-        "feature_a": rng.normal(0, 1, 200),
-        "feature_b": rng.normal(5, 2, 200),
-    })
+    return pd.DataFrame(
+        {
+            "feature_a": rng.normal(0, 1, 200),
+            "feature_b": rng.normal(5, 2, 200),
+        }
+    )
 
 
 @pytest.fixture
 def drifted_df():
     """Current data drawn from a shifted distribution."""
     rng = np.random.default_rng(99)
-    return pd.DataFrame({
-        "feature_a": rng.normal(3, 1, 200),   # mean shifted from 0 to 3
-        "feature_b": rng.normal(10, 4, 200),   # mean shifted, std doubled
-    })
+    return pd.DataFrame(
+        {
+            "feature_a": rng.normal(3, 1, 200),  # mean shifted from 0 to 3
+            "feature_b": rng.normal(10, 4, 200),  # mean shifted, std doubled
+        }
+    )
 
 
 class TestComputePSI:
@@ -208,12 +214,16 @@ class TestCramersV:
         """Cramer's V should be near zero for identical distributions."""
         rng = np.random.default_rng(42)
         categories = ["cat", "dog", "bird"]
-        ref_data = pd.DataFrame({
-            "animal": rng.choice(categories, 500, p=[0.5, 0.3, 0.2]),
-        })
-        cur_data = pd.DataFrame({
-            "animal": rng.choice(categories, 500, p=[0.5, 0.3, 0.2]),
-        })
+        ref_data = pd.DataFrame(
+            {
+                "animal": rng.choice(categories, 500, p=[0.5, 0.3, 0.2]),
+            }
+        )
+        cur_data = pd.DataFrame(
+            {
+                "animal": rng.choice(categories, 500, p=[0.5, 0.3, 0.2]),
+            }
+        )
         detector.set_reference_data(ref_data)
         report = detector.detect_drift(cur_data)
         # Similar distributions should produce low Cramer's V
@@ -223,12 +233,16 @@ class TestCramersV:
         """Cramer's V should be high for very different distributions."""
         rng = np.random.default_rng(42)
         categories = ["cat", "dog", "bird"]
-        ref_data = pd.DataFrame({
-            "animal": rng.choice(categories, 500, p=[0.9, 0.05, 0.05]),
-        })
-        cur_data = pd.DataFrame({
-            "animal": rng.choice(categories, 500, p=[0.05, 0.05, 0.9]),
-        })
+        ref_data = pd.DataFrame(
+            {
+                "animal": rng.choice(categories, 500, p=[0.9, 0.05, 0.05]),
+            }
+        )
+        cur_data = pd.DataFrame(
+            {
+                "animal": rng.choice(categories, 500, p=[0.05, 0.05, 0.9]),
+            }
+        )
         detector.set_reference_data(ref_data)
         report = detector.detect_drift(cur_data)
         # Very different distributions should produce high Cramer's V

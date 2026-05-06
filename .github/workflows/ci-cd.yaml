@@ -70,30 +70,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
       - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
-      - name: Cache pip dependencies
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/pip
-          key: pip-lint-${{ runner.os }}-${{ hashFiles('**/pyproject.toml') }}
-          restore-keys: |
-            pip-lint-${{ runner.os }}-
-
-      - name: Install Ruff and Bandit
-        run: pip install ruff==0.9.7 bandit==1.8.3
+      - name: Install dependencies
+        run: uv sync --frozen
 
       - name: Run Ruff linter
-        run: ruff check pipelines/ examples/ --output-format=github
+        run: uv run ruff check pipelines/ examples/ --output-format=github
 
       - name: Run Ruff formatter check
-        run: ruff format --check pipelines/ examples/
+        run: uv run ruff format --check pipelines/ examples/
 
       - name: Run Bandit security scan
-        run: bandit -r pipelines/ examples/ -f json -o bandit-results.json -ll
+        run: |
+          uv run pip install bandit==1.8.3
+          uv run bandit -r pipelines/ examples/ -f json -o bandit-results.json -ll
 
       - name: Upload Bandit results
         uses: actions/upload-artifact@v7
@@ -397,26 +394,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
 
-      - name: Cache pip dependencies
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/pip
-          key: pip-test-${{ runner.os }}-${{ hashFiles('**/pyproject.toml') }}
-          restore-keys: |
-            pip-test-${{ runner.os }}-
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+        run: uv sync --frozen
 
       - name: Run unit tests with coverage
-        run: pytest tests/ -v --tb=short --cov=pipelines --cov-report=xml --cov-report=term-missing --cov-fail-under=70 -n auto
+        run: uv run pytest tests/ -v --tb=short --cov=pipelines --cov-report=xml --cov-report=term-missing --cov-fail-under=70 -n auto
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
@@ -437,14 +427,35 @@ jobs:
 
       - name: Audit Python dependencies
         continue-on-error: true
-        run: |
-          pip install pip-audit
-          pip-audit --requirement <(pip freeze)
+        run: uv run pip-audit
 
       - name: Validate Argo Workflow YAML
         run: |
-          python3 -c "import yaml; list(yaml.safe_load_all(open('pipelines/training/ml-training-workflow.yaml')))"
+          uv run python -c "import yaml; list(yaml.safe_load_all(open('pipelines/training/ml-training-workflow.yaml')))"
           echo "Argo Workflow YAML is valid"
+
+  test-property:
+    name: Property-Based Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [lint-python]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run property-based tests
+        run: uv run pytest tests/property/ -v --tb=short
 
   # Stage 2: Terraform Plan (requires cloud credentials)
   terraform-plan-aws:
@@ -1269,15 +1280,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+        run: uv sync --frozen
 
       - name: Install Kind
         run: |
@@ -1323,7 +1335,7 @@ jobs:
         env:
           E2E_CLUSTER_TEST: "true"
         run: |
-          pytest tests/e2e/ -v --tb=short -m e2e
+          uv run pytest tests/e2e/ -v --tb=short -m e2e
 
       - name: Cleanup
         if: always()

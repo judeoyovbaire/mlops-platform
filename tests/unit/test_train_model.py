@@ -134,7 +134,7 @@ class TestTrainModel:
         mocker.patch("mlflow.log_metrics")
         mocker.patch("mlflow.sklearn.log_model")
 
-        result = train_model(
+        train_model(
             input_path=artifacts["data_path"],
             model_output_path=artifacts["model_path"],
             target="species",

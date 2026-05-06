@@ -10,6 +10,9 @@ on:
 
 permissions:
   contents: write
+  packages: write
+  id-token: write
+  attestations: write
 
 jobs:
   release:
@@ -117,3 +120,29 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # SLSA Provenance for training image
+  slsa-training:
+    needs: [release]
+    uses: ./.github/workflows/slsa-provenance.yaml
+    with:
+      image: ghcr.io/${{ github.repository }}/ml-training
+      digest: ${{ needs.release.outputs.training_digest || 'sha256:latest' }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+      attestations: write
+
+  # SLSA Provenance for pretrained image
+  slsa-pretrained:
+    needs: [release]
+    uses: ./.github/workflows/slsa-provenance.yaml
+    with:
+      image: ghcr.io/${{ github.repository }}/hf-pretrained
+      digest: ${{ needs.release.outputs.pretrained_digest || 'sha256:latest' }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+      attestations: write

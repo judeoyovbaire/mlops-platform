@@ -17,6 +17,10 @@ An Architecture Decision Record captures an important architectural decision mad
 | [005](005-oidc-authentication-over-static-credentials.md) | OIDC Authentication Over Static Credentials | Accepted | 2025-01 |
 | [006](006-argo-workflows-over-kubeflow-pipelines.md) | Argo Workflows Over Kubeflow Pipelines | Accepted | 2025-01 |
 | [007](007-skip-service-mesh.md) | Skip Service Mesh | Accepted | 2026-02 |
+| [008](008-supply-chain-security.md) | Supply Chain Security with Sigstore and SLSA | Accepted | 2026-05 |
+| [009](009-progressive-delivery.md) | Argo Rollouts for Progressive Delivery | Accepted | 2026-05 |
+| [010](010-terraform-over-opentofu.md) | Terraform Over OpenTofu | Accepted | 2026-05 |
+| [011](011-uv-over-pip.md) | uv Over pip for Python Package Management | Accepted | 2026-05 |
 
 ## Creating a New ADR
 

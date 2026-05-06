@@ -1,0 +1,37 @@
+# NVIDIA DCGM Exporter Helm values
+# DaemonSet runs on GPU nodes and exports metrics for Prometheus scraping
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: nvidia.com/gpu.present
+              operator: In
+              values:
+                - "true"
+
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+serviceMonitor:
+  enabled: true
+  namespace: monitoring
+  interval: 15s
+  additionalLabels:
+    release: prometheus
+
+# Metrics to collect (DCGM field IDs)
+arguments:
+  - "-f"
+  - "/etc/dcgm-exporter/dcp-metrics-included.csv"

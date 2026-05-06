@@ -1,0 +1,70 @@
+# Cron-based EventSource for scheduled model retraining
+# Triggers retraining pipeline on a configurable schedule
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: schedule-retraining
+  namespace: argo-events
+spec:
+  eventBusName: default
+  calendar:
+    # Weekly retraining every Monday at 6 AM UTC
+    weekly-retrain:
+      schedule: "0 6 * * 1"
+      timezone: "UTC"
+      metadata:
+        trigger: scheduled
+        model_name: ml-model
+
+    # Daily data validation check at midnight UTC
+    daily-validation:
+      schedule: "0 0 * * *"
+      timezone: "UTC"
+      metadata:
+        trigger: validation
+        model_name: ml-model
+
+---
+# Sensor: triggers Argo Workflow on schedule events
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: schedule-retrain-sensor
+  namespace: argo-events
+spec:
+  eventBusName: default
+  dependencies:
+    - name: weekly-retrain
+      eventSourceName: schedule-retraining
+      eventName: weekly-retrain
+  triggers:
+    - template:
+        name: trigger-retraining-workflow
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: scheduled-retrain-
+                namespace: argo
+              spec:
+                workflowTemplateRef:
+                  name: ml-training-pipeline
+                arguments:
+                  parameters:
+                    - name: model-name
+                      value: ml-model
+                    - name: trigger-source
+                      value: scheduled
+          parameters:
+            - src:
+                dependencyName: weekly-retrain
+                dataKey: metadata.model_name
+              dest: spec.arguments.parameters.0.value
+      retryStrategy:
+        steps: 3
+        duration: 60s
+        factor: 2

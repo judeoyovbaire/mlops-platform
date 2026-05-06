@@ -1,0 +1,31 @@
+# NATS-based EventBus for Argo Events
+# Provides reliable message delivery between EventSources and Sensors
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventBus
+metadata:
+  name: default
+  namespace: argo-events
+spec:
+  nats:
+    native:
+      replicas: 3
+      auth: token
+      containerTemplate:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+      metricsContainerTemplate:
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+      antiAffinity: true
+      persistence:
+        storageClassName: ""
+        accessMode: ReadWriteOnce
+        volumeSize: 10Gi

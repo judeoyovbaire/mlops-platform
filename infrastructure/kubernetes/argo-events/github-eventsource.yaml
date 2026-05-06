@@ -1,0 +1,87 @@
+# GitHub EventSource for data repository push events
+# Triggers retraining when new data is pushed to the data repository
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: github-data-push
+  namespace: argo-events
+spec:
+  eventBusName: default
+  github:
+    data-repo-push:
+      repositories:
+        - owner: mlops-platform
+          names:
+            - ml-data
+      webhook:
+        endpoint: /github/data-push
+        port: "12001"
+        method: POST
+      events:
+        - push
+      apiToken:
+        name: github-access
+        key: token
+      webhookSecret:
+        name: github-access
+        key: webhook-secret
+      contentType: json
+      active: true
+      filter:
+        expression: "(body.ref == 'refs/heads/main')"
+
+---
+# Sensor: triggers retraining on data push
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: github-data-push-sensor
+  namespace: argo-events
+spec:
+  eventBusName: default
+  dependencies:
+    - name: data-push
+      eventSourceName: github-data-push
+      eventName: data-repo-push
+      filters:
+        data:
+          - path: body.ref
+            type: string
+            value:
+              - "refs/heads/main"
+  triggers:
+    - template:
+        name: trigger-data-retraining
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: data-push-retrain-
+                namespace: argo
+              spec:
+                workflowTemplateRef:
+                  name: ml-training-pipeline
+                arguments:
+                  parameters:
+                    - name: model-name
+                      value: ml-model
+                    - name: trigger-source
+                      value: github-push
+                    - name: git-commit
+                      value: ""
+          parameters:
+            - src:
+                dependencyName: data-push
+                dataKey: body.after
+              dest: spec.arguments.parameters.2.value
+      retryStrategy:
+        steps: 3
+        duration: 60s
+        factor: 2
+      rateLimit:
+        unit: hour
+        requestsPerUnit: 2

@@ -10,14 +10,16 @@ LABEL maintainer="mlops-platform" \
 WORKDIR /app
 ENV PYTHONPATH=/app
 
-# Patch OS-level vulnerabilities and upgrade pip
+# Patch OS-level vulnerabilities
 RUN apt-get update && apt-get upgrade -y --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir --upgrade pip
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv for fast dependency resolution
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # Install Python dependencies (layer cached across rebuilds)
 COPY pretrained/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip install --system --no-cache -r requirements.txt
 
 # Copy shared utilities
 COPY shared/ /app/shared/

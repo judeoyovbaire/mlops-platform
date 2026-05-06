@@ -58,7 +58,6 @@ class TestGitHubActionsWorkflows:
                 content = yaml.safe_load(f)
                 if content and "jobs" in content:
                     jobs = content["jobs"]
-                    job_names = " ".join(jobs.keys()).lower()
                     # Check workflow has validation/planning steps
                     has_validation = any(
                         "plan" in name.lower()
@@ -87,7 +86,7 @@ class TestGitHubActionsWorkflows:
             with open(workflow) as f:
                 content = yaml.safe_load(f)
                 if content and "jobs" in content:
-                    for job_name, job in content["jobs"].items():
+                    for _job_name, job in content["jobs"].items():
                         for step in job.get("steps", []):
                             if "uses" in step:
                                 uses = step["uses"]

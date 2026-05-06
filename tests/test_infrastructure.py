@@ -4,11 +4,10 @@ Infrastructure Configuration Tests.
 Tests that verify Terraform and Kubernetes configurations are valid and follow best practices.
 """
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
-
-import re
 
 import pytest
 import yaml

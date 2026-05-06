@@ -8,5 +8,10 @@ resources:
   - resource-quotas.yaml
   - drift-retrain-trigger.yaml
   - governance/model-registry-policies.yaml
+  - governance/image-signature-policy.yaml
   - dashboards/mlops-overview-dashboard.yaml
   - dashboards/cloud-cost-dashboard.yaml
+  - dashboards/progressive-delivery-dashboard.yaml
+  - dashboards/gpu-dashboard.yaml
+  - progressive-delivery/
+  - argo-events/

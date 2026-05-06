@@ -60,9 +60,7 @@ class TestRetrainingWorkflowStructure:
         """Verify retrain step depends on check-drift."""
         templates = workflow_doc["spec"]["workflowSpec"]["templates"]
         dag_template = next(t for t in templates if t["name"] == "automated-retrain")
-        retrain_task = next(
-            t for t in dag_template["dag"]["tasks"] if t["name"] == "retrain"
-        )
+        retrain_task = next(t for t in dag_template["dag"]["tasks"] if t["name"] == "retrain")
 
         assert "check-drift" in retrain_task["dependencies"]
         assert "when" in retrain_task  # Should be conditional on drift
@@ -71,9 +69,7 @@ class TestRetrainingWorkflowStructure:
         """Verify promote step depends on validate-new-model."""
         templates = workflow_doc["spec"]["workflowSpec"]["templates"]
         dag_template = next(t for t in templates if t["name"] == "automated-retrain")
-        promote_task = next(
-            t for t in dag_template["dag"]["tasks"] if t["name"] == "promote-model"
-        )
+        promote_task = next(t for t in dag_template["dag"]["tasks"] if t["name"] == "promote-model")
 
         assert "validate-new-model" in promote_task["dependencies"]
         assert "when" in promote_task  # Should be conditional on validation

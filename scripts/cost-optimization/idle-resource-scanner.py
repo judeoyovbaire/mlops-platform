@@ -14,7 +14,7 @@ import argparse
 import json
 import sys
 from datetime import datetime, timedelta
-from typing import Dict, List, Any
+from typing import Any
 
 try:
     from kubernetes import client, config
@@ -44,9 +44,9 @@ class IdleResourceScanner:
         self.custom_api = client.CustomObjectsApi()
         self.namespace = namespace
         self.idle_threshold = timedelta(hours=idle_threshold_hours)
-        self.findings: List[Dict[str, Any]] = []
+        self.findings: list[dict[str, Any]] = []
 
-    def scan_all(self) -> Dict[str, Any]:
+    def scan_all(self) -> dict[str, Any]:
         """Run all scans and return findings."""
         print("Starting idle resource scan...")
 
@@ -86,17 +86,19 @@ class IdleResourceScanner:
                 if last_transition:
                     age = datetime.now(last_transition.tzinfo) - last_transition
                     if age > self.idle_threshold and total_restarts == 0:
-                        self.findings.append({
-                            "type": "idle_pod",
-                            "severity": "low",
-                            "resource": f"{pod.metadata.namespace}/{pod.metadata.name}",
-                            "details": {
-                                "age_hours": age.total_seconds() / 3600,
-                                "restarts": total_restarts,
-                                "phase": pod.status.phase
-                            },
-                            "recommendation": "Review if pod is still needed or scale down"
-                        })
+                        self.findings.append(
+                            {
+                                "type": "idle_pod",
+                                "severity": "low",
+                                "resource": f"{pod.metadata.namespace}/{pod.metadata.name}",
+                                "details": {
+                                    "age_hours": age.total_seconds() / 3600,
+                                    "restarts": total_restarts,
+                                    "phase": pod.status.phase,
+                                },
+                                "recommendation": "Review if pod is still needed or scale down",
+                            }
+                        )
 
     def scan_underutilized_deployments(self) -> None:
         """Scan for deployments with more replicas than needed."""
@@ -113,16 +115,15 @@ class IdleResourceScanner:
 
                     # Flag if all replicas ready but > 2 (potential over-provisioning)
                     if spec_replicas >= 3 and ready_replicas == spec_replicas:
-                        self.findings.append({
-                            "type": "overprovisioned_deployment",
-                            "severity": "medium",
-                            "resource": f"{ns}/{dep.metadata.name}",
-                            "details": {
-                                "replicas": spec_replicas,
-                                "ready": ready_replicas
-                            },
-                            "recommendation": f"Consider reducing replicas if traffic is low"
-                        })
+                        self.findings.append(
+                            {
+                                "type": "overprovisioned_deployment",
+                                "severity": "medium",
+                                "resource": f"{ns}/{dep.metadata.name}",
+                                "details": {"replicas": spec_replicas, "ready": ready_replicas},
+                                "recommendation": "Consider reducing replicas if traffic is low",
+                            }
+                        )
             except client.ApiException:
                 continue
 
@@ -140,9 +141,11 @@ class IdleResourceScanner:
         # Build set of PVCs in use
         used_pvcs = set()
         for pod in pods.items:
-            for volume in (pod.spec.volumes or []):
+            for volume in pod.spec.volumes or []:
                 if volume.persistent_volume_claim:
-                    pvc_key = f"{pod.metadata.namespace}/{volume.persistent_volume_claim.claim_name}"
+                    pvc_key = (
+                        f"{pod.metadata.namespace}/{volume.persistent_volume_claim.claim_name}"
+                    )
                     used_pvcs.add(pvc_key)
 
         # Find orphaned PVCs
@@ -150,17 +153,19 @@ class IdleResourceScanner:
             pvc_key = f"{pvc.metadata.namespace}/{pvc.metadata.name}"
             if pvc_key not in used_pvcs:
                 storage = pvc.spec.resources.requests.get("storage", "unknown")
-                self.findings.append({
-                    "type": "orphaned_pvc",
-                    "severity": "high",
-                    "resource": pvc_key,
-                    "details": {
-                        "storage_requested": storage,
-                        "storage_class": pvc.spec.storage_class_name,
-                        "phase": pvc.status.phase
-                    },
-                    "recommendation": "Delete if no longer needed to reduce storage costs"
-                })
+                self.findings.append(
+                    {
+                        "type": "orphaned_pvc",
+                        "severity": "high",
+                        "resource": pvc_key,
+                        "details": {
+                            "storage_requested": storage,
+                            "storage_class": pvc.spec.storage_class_name,
+                            "phase": pvc.status.phase,
+                        },
+                        "recommendation": "Delete if no longer needed to reduce storage costs",
+                    }
+                )
 
     def scan_idle_services(self) -> None:
         """Scan for services with no endpoints."""
@@ -177,16 +182,18 @@ class IdleResourceScanner:
 
                 for svc in services.items:
                     if svc.metadata.name not in endpoint_names:
-                        self.findings.append({
-                            "type": "service_no_endpoints",
-                            "severity": "medium",
-                            "resource": f"{ns}/{svc.metadata.name}",
-                            "details": {
-                                "type": svc.spec.type,
-                                "ports": [p.port for p in (svc.spec.ports or [])]
-                            },
-                            "recommendation": "Service has no backends - verify configuration"
-                        })
+                        self.findings.append(
+                            {
+                                "type": "service_no_endpoints",
+                                "severity": "medium",
+                                "resource": f"{ns}/{svc.metadata.name}",
+                                "details": {
+                                    "type": svc.spec.type,
+                                    "ports": [p.port for p in (svc.spec.ports or [])],
+                                },
+                                "recommendation": "Service has no backends - verify configuration",
+                            }
+                        )
             except client.ApiException:
                 continue
 
@@ -199,7 +206,7 @@ class IdleResourceScanner:
                 group="serving.kserve.io",
                 version="v1beta1",
                 namespace="mlops",
-                plural="inferenceservices"
+                plural="inferenceservices",
             )
 
             for isvc in isvc_list.get("items", []):
@@ -209,28 +216,26 @@ class IdleResourceScanner:
 
                 # Check if service is ready but potentially idle
                 is_ready = any(
-                    c.get("type") == "Ready" and c.get("status") == "True"
-                    for c in conditions
+                    c.get("type") == "Ready" and c.get("status") == "True" for c in conditions
                 )
 
                 if is_ready:
                     # In production, you'd check actual traffic metrics
-                    self.findings.append({
-                        "type": "inference_service_review",
-                        "severity": "info",
-                        "resource": f"mlops/{name}",
-                        "details": {
-                            "ready": is_ready,
-                            "url": status.get("url", "N/A")
-                        },
-                        "recommendation": "Review traffic metrics to determine if service is utilized"
-                    })
+                    self.findings.append(
+                        {
+                            "type": "inference_service_review",
+                            "severity": "info",
+                            "resource": f"mlops/{name}",
+                            "details": {"ready": is_ready, "url": status.get("url", "N/A")},
+                            "recommendation": "Review traffic metrics to determine if service is utilized",
+                        }
+                    )
 
         except client.ApiException as e:
             if e.status != 404:
                 print(f"Warning: Could not scan InferenceServices: {e}")
 
-    def _generate_report(self) -> Dict[str, Any]:
+    def _generate_report(self) -> dict[str, Any]:
         """Generate summary report of findings."""
         severity_counts = {"high": 0, "medium": 0, "low": 0, "info": 0}
         for finding in self.findings:
@@ -244,7 +249,7 @@ class IdleResourceScanner:
             "total_findings": len(self.findings),
             "severity_breakdown": severity_counts,
             "potential_monthly_savings_usd": potential_savings,
-            "findings": self.findings
+            "findings": self.findings,
         }
 
     def _estimate_savings(self) -> float:
@@ -271,16 +276,15 @@ class IdleResourceScanner:
 def main():
     parser = argparse.ArgumentParser(description="Scan for idle MLOps resources")
     parser.add_argument("-n", "--namespace", help="Namespace to scan")
-    parser.add_argument("-t", "--threshold", type=int, default=24,
-                       help="Hours of inactivity threshold")
-    parser.add_argument("-o", "--output", choices=["json", "text"], default="text",
-                       help="Output format")
+    parser.add_argument(
+        "-t", "--threshold", type=int, default=24, help="Hours of inactivity threshold"
+    )
+    parser.add_argument(
+        "-o", "--output", choices=["json", "text"], default="text", help="Output format"
+    )
     args = parser.parse_args()
 
-    scanner = IdleResourceScanner(
-        namespace=args.namespace,
-        idle_threshold_hours=args.threshold
-    )
+    scanner = IdleResourceScanner(namespace=args.namespace, idle_threshold_hours=args.threshold)
 
     report = scanner.scan_all()
 

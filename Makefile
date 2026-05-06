@@ -9,7 +9,7 @@
         terraform-init-azure terraform-plan-azure terraform-apply-azure terraform-destroy-azure \
         terraform-init-gcp terraform-plan-gcp terraform-apply-gcp terraform-destroy-gcp \
         port-forward-mlflow port-forward-argocd port-forward-grafana port-forward-prometheus \
-        port-forward-argo-wf validate-workflow deploy-example \
+        port-forward-argo-wf port-forward-argo-rollouts validate-workflow deploy-example \
         deploy-local destroy-local status-local
 
 # Default target
@@ -243,12 +243,8 @@ lint: lint-python lint-terraform
 
 lint-python:
 	@echo "Linting Python code..."
-	@if command -v ruff > /dev/null; then \
-		ruff check pipelines/ examples/; \
-		ruff format --check pipelines/ examples/; \
-	else \
-		echo "ruff not installed, skipping Python lint"; \
-	fi
+	uv run ruff check pipelines/ examples/
+	uv run ruff format --check pipelines/ examples/
 
 lint-terraform:
 	@echo "Linting Terraform code..."
@@ -256,10 +252,8 @@ lint-terraform:
 
 format:
 	@echo "Formatting code..."
-	@if command -v ruff > /dev/null; then \
-		ruff format pipelines/ examples/; \
-		ruff check --fix pipelines/ examples/; \
-	fi
+	uv run ruff format pipelines/ examples/
+	uv run ruff check --fix pipelines/ examples/
 	$(TERRAFORM) fmt -recursive infrastructure/terraform/
 	@echo "Formatting complete!"
 
@@ -268,11 +262,11 @@ test: test-unit
 
 test-unit:
 	@echo "Running unit tests..."
-	pytest tests/ -v --tb=short
+	uv run pytest tests/ -v --tb=short
 
 test-cov:
 	@echo "Running tests with coverage..."
-	pytest tests/ -v --cov=examples --cov=pipelines --cov-report=term-missing --cov-report=html
+	uv run pytest tests/ -v --cov=examples --cov=pipelines --cov-report=term-missing --cov-report=html
 	@echo "Coverage report generated in htmlcov/"
 
 # Development (post-deployment - cloud-agnostic)
@@ -305,6 +299,11 @@ port-forward-prometheus:
 	@echo "Access Prometheus at http://localhost:9090"
 	$(KUBECTL) port-forward svc/prometheus-kube-prometheus-prometheus 9090:9090 -n monitoring
 
+port-forward-argo-rollouts:
+	@echo "Forwarding Argo Rollouts Dashboard to localhost:3100..."
+	@echo "Access Argo Rollouts Dashboard at http://localhost:3100"
+	$(KUBECTL) port-forward svc/argo-rollouts-dashboard 3100:3100 -n argo-rollouts
+
 validate-workflow:
 	@echo "Validating Argo Workflow..."
 	@$(PYTHON) -c "import yaml; list(yaml.safe_load_all(open('$(PIPELINE_DIR)/ml-training-workflow.yaml')))"
@@ -336,7 +335,7 @@ build-pretrained-image:
 
 deps:
 	@echo "Installing development dependencies..."
-	pip install -e ".[dev]"
+	uv sync
 
 clean:
 	@echo "Cleaning generated files..."

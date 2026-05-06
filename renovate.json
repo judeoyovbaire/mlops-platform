@@ -1,0 +1,67 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":automergeMinor",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "labels": ["dependencies"],
+  "pre-commit": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "description": "Group Terraform providers together",
+      "matchManagers": ["terraform"],
+      "matchDepTypes": ["provider"],
+      "groupName": "terraform-providers",
+      "automerge": true
+    },
+    {
+      "description": "Group Python linting tools (ruff + pre-commit)",
+      "matchPackageNames": ["ruff", "astral-sh/ruff-pre-commit"],
+      "groupName": "python-linting",
+      "automerge": true
+    },
+    {
+      "description": "Group GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "description": "Group Argo ecosystem Helm charts",
+      "matchPackagePatterns": ["^argo-"],
+      "matchManagers": ["terraform"],
+      "groupName": "argo-ecosystem"
+    },
+    {
+      "description": "Group monitoring tools (Prometheus, Grafana, Loki, Tempo)",
+      "matchPackagePatterns": ["prometheus", "grafana", "loki", "tempo", "alloy", "otel"],
+      "matchManagers": ["terraform"],
+      "groupName": "observability-stack"
+    },
+    {
+      "description": "Auto-merge patch updates for all packages",
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "description": "Pin Docker digests for reproducibility",
+      "matchManagers": ["dockerfile"],
+      "pinDigests": true
+    },
+    {
+      "description": "Group Python test dependencies",
+      "matchPackageNames": ["pytest", "pytest-cov", "pytest-mock", "pytest-xdist", "hypothesis"],
+      "groupName": "python-testing"
+    }
+  ],
+  "schedule": ["before 8am on Monday"],
+  "timezone": "Europe/London",
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2
+}

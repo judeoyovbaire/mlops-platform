@@ -59,7 +59,7 @@ data:
           "pluginVersion": "10.0.0",
           "targets": [
             {
-              "expr": "sum(sum_over_time(node_total_hourly_cost[24h])) / 24 * 30",
+              "expr": "sum(opencost_pod_cost_total) * 730",
               "legendFormat": "Monthly Estimate",
               "refId": "A"
             }
@@ -98,7 +98,7 @@ data:
           "pluginVersion": "10.0.0",
           "targets": [
             {
-              "expr": "sum(node_total_hourly_cost)",
+              "expr": "sum(opencost_pod_cost_total)",
               "legendFormat": "Hourly Cost",
               "refId": "A"
             }
@@ -217,7 +217,7 @@ data:
           "pluginVersion": "10.0.0",
           "targets": [
             {
-              "expr": "sum by (namespace) (container_cpu_allocation * on(node) group_left() node_cpu_hourly_cost + container_memory_allocation_bytes / 1024 / 1024 / 1024 * on(node) group_left() node_ram_hourly_cost) * 24 * 30",
+              "expr": "sum by (namespace) (opencost_pod_cost_total) * 730",
               "legendFormat": "{{ namespace }}",
               "refId": "A"
             }
@@ -267,7 +267,7 @@ data:
           "pluginVersion": "10.0.0",
           "targets": [
             {
-              "expr": "sum by (namespace) (container_cpu_allocation * on(node) group_left() node_cpu_hourly_cost + container_memory_allocation_bytes / 1024 / 1024 / 1024 * on(node) group_left() node_ram_hourly_cost)",
+              "expr": "sum by (namespace) (opencost_pod_cost_total)",
               "legendFormat": "{{ namespace }}",
               "refId": "A"
             }
@@ -325,7 +325,7 @@ data:
           "pluginVersion": "10.0.0",
           "targets": [
             {
-              "expr": "node_total_hourly_cost * 24 * 30",
+              "expr": "opencost_node_cost_total * 730",
               "legendFormat": "{{ node }}",
               "refId": "A"
             }
@@ -375,7 +375,7 @@ data:
           "pluginVersion": "10.0.0",
           "targets": [
             {
-              "expr": "node_total_hourly_cost * 24 * 30",
+              "expr": "opencost_node_cost_total * 730",
               "format": "table",
               "instant": true,
               "legendFormat": "",

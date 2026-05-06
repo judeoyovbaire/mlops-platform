@@ -1,0 +1,54 @@
+# AnalysisTemplate for Argo Rollouts canary analysis
+# Validates canary health via Prometheus metrics before promoting
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: ml-model-canary-analysis
+  namespace: mlops
+spec:
+  args:
+    - name: service-name
+    - name: canary-hash
+  metrics:
+    # Success rate must be >= 95% during canary window
+    - name: success-rate
+      interval: 60s
+      count: 5
+      successCondition: result[0] >= 0.95
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+          query: |
+            sum(rate(revision_request_count{response_code="200",revision_name=~"{{args.service-name}}-.*canary.*"}[2m]))
+            /
+            sum(rate(revision_request_count{revision_name=~"{{args.service-name}}-.*canary.*"}[2m]))
+
+    # P95 latency must be <= 500ms
+    - name: latency-p95
+      interval: 60s
+      count: 5
+      successCondition: result[0] <= 500
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+          query: |
+            histogram_quantile(0.95,
+              sum(rate(revision_request_latencies_bucket{revision_name=~"{{args.service-name}}-.*canary.*"}[2m])) by (le)
+            ) * 1000
+
+    # Error rate must be < 5%
+    - name: error-rate
+      interval: 60s
+      count: 5
+      successCondition: result[0] < 0.05
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+          query: |
+            sum(rate(revision_request_count{response_code!="200",revision_name=~"{{args.service-name}}-.*canary.*"}[2m]))
+            /
+            sum(rate(revision_request_count{revision_name=~"{{args.service-name}}-.*canary.*"}[2m]))

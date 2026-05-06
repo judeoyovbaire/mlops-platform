@@ -73,6 +73,9 @@ mlruns/
 *.log
 logs/
 
+# Hypothesis database (property-based testing)
+.hypothesis/
+
 # Compiled pipeline outputs
 *.yaml.compiled
 ml_training_pipeline.yaml

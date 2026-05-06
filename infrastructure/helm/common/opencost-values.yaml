@@ -1,0 +1,29 @@
+# OpenCost Helm values
+# Real-time Kubernetes cost allocation using Prometheus metrics
+
+opencost:
+  prometheus:
+    internal:
+      enabled: true
+      serviceName: prometheus-kube-prometheus-prometheus
+      namespaceName: monitoring
+      port: 9090
+
+  exporter:
+    defaultClusterId: mlops-platform
+    extraEnv:
+      EMIT_KSM_V1_METRICS: "false"
+      EMIT_KSM_V1_METRICS_ONLY: "true"
+
+  ui:
+    enabled: true
+
+  metrics:
+    serviceMonitor:
+      enabled: true
+      namespace: monitoring
+      additionalLabels:
+        release: prometheus
+
+  customPricing:
+    enabled: false
