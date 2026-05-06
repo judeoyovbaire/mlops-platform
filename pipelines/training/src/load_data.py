@@ -15,14 +15,9 @@ from dataclasses import dataclass
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 
-try:
-    from pipelines.shared.exceptions import DataLoadError, InvalidURLError, NetworkError
-    from pipelines.shared.logging_utils import get_logger
-    from pipelines.training.src.tracing import get_tracer
-except ImportError:
-    from shared.exceptions import DataLoadError, InvalidURLError, NetworkError
-    from shared.logging_utils import get_logger
-    from tracing import get_tracer
+from pipelines.shared.exceptions import DataLoadError, InvalidURLError, NetworkError
+from pipelines.shared.logging_utils import get_logger
+from pipelines.training.src.tracing import get_tracer
 
 logger = get_logger(__name__)
 tracer = get_tracer("load-data")

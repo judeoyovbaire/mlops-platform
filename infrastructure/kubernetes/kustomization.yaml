@@ -7,11 +7,15 @@ resources:
   - pod-disruption-budgets.yaml
   - resource-quotas.yaml
   - drift-retrain-trigger.yaml
+  - vpa.yaml
   - governance/model-registry-policies.yaml
   - governance/image-signature-policy.yaml
   - dashboards/mlops-overview-dashboard.yaml
   - dashboards/cloud-cost-dashboard.yaml
   - dashboards/progressive-delivery-dashboard.yaml
   - dashboards/gpu-dashboard.yaml
+  - dashboards/ml-pipeline-dashboard.yaml
   - progressive-delivery/
   - argo-events/
+  - slo/
+  - gateway/

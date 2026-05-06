@@ -52,3 +52,13 @@ spec:
             sum(rate(revision_request_count{response_code!="200",revision_name=~"{{args.service-name}}-.*canary.*"}[2m]))
             /
             sum(rate(revision_request_count{revision_name=~"{{args.service-name}}-.*canary.*"}[2m]))
+
+    - name: drift-score
+      interval: 1m
+      successCondition: result[0] < 0.1
+      failureLimit: 3
+      provider:
+        prometheus:
+          address: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+          query: |
+            max(model_data_drift_score{model_name="{{args.service-name}}"})

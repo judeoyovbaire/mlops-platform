@@ -1,0 +1,51 @@
+# Gateway API resources for inference routing.
+# Coexists with existing Ingress resources during progressive migration.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: inference-gateway
+  namespace: mlops
+  labels:
+    app.kubernetes.io/component: gateway
+spec:
+  gatewayClassName: nginx
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: https
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: inference-tls-cert
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+# HTTPRoute for sklearn-iris inference endpoint
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: sklearn-iris-route
+  namespace: mlops
+  labels:
+    app.kubernetes.io/component: gateway
+spec:
+  parentRefs:
+    - name: inference-gateway
+  hostnames:
+    - "inference.mlops.example.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1/models/sklearn-iris
+      backendRefs:
+        - name: sklearn-iris-predictor-default
+          port: 80
+          weight: 100

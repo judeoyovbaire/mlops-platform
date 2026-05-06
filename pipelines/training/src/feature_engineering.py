@@ -17,20 +17,12 @@ import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-try:
-    from pipelines.shared.exceptions import (
-        FeatureEngineeringError,
-        MissingColumnError,
-    )
-    from pipelines.shared.logging_utils import get_logger
-    from pipelines.training.src.tracing import get_tracer
-except ImportError:
-    from shared.exceptions import (
-        FeatureEngineeringError,
-        MissingColumnError,
-    )
-    from shared.logging_utils import get_logger
-    from tracing import get_tracer
+from pipelines.shared.exceptions import (
+    FeatureEngineeringError,
+    MissingColumnError,
+)
+from pipelines.shared.logging_utils import get_logger
+from pipelines.training.src.tracing import get_tracer
 
 logger = get_logger(__name__)
 tracer = get_tracer("feature-engineering")

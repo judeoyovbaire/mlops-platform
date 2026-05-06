@@ -207,76 +207,151 @@ variable "helm_nginx_ingress_version" {
   description = "NGINX Ingress Controller Helm chart version"
   type        = string
   default     = "4.14.3"
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_nginx_ingress_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_cert_manager_version" {
   description = "cert-manager Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_cert_manager_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_argocd_version" {
   description = "ArgoCD Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argocd_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_kserve_version" {
   description = "KServe Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_kserve_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_mlflow_version" {
   description = "MLflow Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_mlflow_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_argo_workflows_version" {
   description = "Argo Workflows Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_workflows_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_minio_version" {
   description = "MinIO Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_minio_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_prometheus_stack_version" {
   description = "kube-prometheus-stack Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_prometheus_stack_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_kyverno_version" {
   description = "Kyverno Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_kyverno_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_tetragon_version" {
   description = "Tetragon Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_tetragon_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_external_secrets_version" {
   description = "External Secrets Operator Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_external_secrets_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_loki_version" {
   description = "Loki Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_loki_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_tempo_version" {
   description = "Tempo Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_tempo_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_otel_collector_version" {
   description = "OpenTelemetry Collector Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_otel_collector_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_alloy_version" {
   description = "Grafana Alloy Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_alloy_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 # Slack Notifications

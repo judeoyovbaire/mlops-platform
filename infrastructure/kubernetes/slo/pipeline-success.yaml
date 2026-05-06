@@ -1,0 +1,35 @@
+# Sloth PrometheusServiceLevel for pipeline success rate SLO.
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: pipeline-success-rate
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/component: slo
+spec:
+  service: ml-pipeline
+  labels:
+    team: platform
+  slos:
+    - name: pipeline-success
+      objective: 95
+      description: "95% of ML pipeline runs should complete successfully"
+      sli:
+        events:
+          errorQuery: >
+            sum(increase(argo_workflows_count{status="Failed"}[{{.window}}]))
+          totalQuery: >
+            sum(increase(argo_workflows_count[{{.window}}]))
+      alerting:
+        name: PipelineSuccessBurnRate
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "ML pipeline success rate SLO burn rate is too high"
+        pageAlert:
+          labels:
+            severity: critical
+        ticketAlert:
+          labels:
+            severity: warning

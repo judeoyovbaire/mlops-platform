@@ -1,0 +1,129 @@
+# OAuth2 Proxy for authenticating inference requests.
+# Uses External Secrets Operator (ESO) to mount OIDC client credentials.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy
+  namespace: mlops
+  labels:
+    app: oauth2-proxy
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: oauth2-proxy
+  template:
+    metadata:
+      labels:
+        app: oauth2-proxy
+    spec:
+      containers:
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.7.1
+          args:
+            - --provider=oidc
+            - --email-domain=*
+            - --upstream=static://200
+            - --http-address=0.0.0.0:4180
+            - --oidc-issuer-url=$(OIDC_ISSUER_URL)
+            - --cookie-secure=true
+            - --cookie-httponly=true
+            - --cookie-samesite=lax
+          env:
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-credentials
+                  key: client-id
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-credentials
+                  key: client-secret
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-credentials
+                  key: cookie-secret
+            - name: OIDC_ISSUER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-credentials
+                  key: oidc-issuer-url
+          ports:
+            - containerPort: 4180
+              name: http
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth2-proxy
+  namespace: mlops
+  labels:
+    app: oauth2-proxy
+spec:
+  selector:
+    app: oauth2-proxy
+  ports:
+    - port: 4180
+      targetPort: http
+      name: http
+---
+# ExternalSecret for OIDC credentials — configure your SecretStore separately
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: oauth2-proxy-credentials
+  namespace: mlops
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: cluster-secret-store
+    kind: ClusterSecretStore
+  target:
+    name: oauth2-proxy-credentials
+  data:
+    - secretKey: client-id
+      remoteRef:
+        key: mlops/oauth2-proxy
+        property: client-id
+    - secretKey: client-secret
+      remoteRef:
+        key: mlops/oauth2-proxy
+        property: client-secret
+    - secretKey: cookie-secret
+      remoteRef:
+        key: mlops/oauth2-proxy
+        property: cookie-secret
+    - secretKey: oidc-issuer-url
+      remoteRef:
+        key: mlops/oauth2-proxy
+        property: oidc-issuer-url

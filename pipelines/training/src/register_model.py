@@ -13,24 +13,14 @@ import mlflow
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
 
-try:
-    from pipelines.shared.exceptions import (
-        InvalidThresholdError,
-        MLflowTimeoutError,
-        ModelRegistrationError,
-    )
-    from pipelines.shared.logging_utils import get_logger
-    from pipelines.shared.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
-    from pipelines.training.src.tracing import get_tracer
-except ImportError:
-    from shared.exceptions import (
-        InvalidThresholdError,
-        MLflowTimeoutError,
-        ModelRegistrationError,
-    )
-    from shared.logging_utils import get_logger
-    from shared.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
-    from tracing import get_tracer
+from pipelines.shared.exceptions import (
+    InvalidThresholdError,
+    MLflowTimeoutError,
+    ModelRegistrationError,
+)
+from pipelines.shared.logging_utils import get_logger
+from pipelines.shared.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
+from pipelines.training.src.tracing import get_tracer
 
 logger = get_logger(__name__)
 tracer = get_tracer("register-model")

@@ -29,7 +29,8 @@ spec:
         fsGroup: 1000
       containers:
         - name: drift-detector
-          image: drift-detector:latest
+          # CI/CD pipeline replaces this tag with an image digest at deploy time
+          image: ghcr.io/judeoyovbaire/mlops-platform/drift-detector:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000

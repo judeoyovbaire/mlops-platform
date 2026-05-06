@@ -97,7 +97,7 @@ metadata:
       All models must have lineage information linking back to the
       MLflow experiment and training run.
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
     - name: require-mlflow-lineage
@@ -133,7 +133,7 @@ metadata:
     policies.kyverno.io/description: >-
       Production models should have baseline performance metrics documented.
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
     - name: require-performance-metrics
@@ -175,7 +175,7 @@ metadata:
     policies.kyverno.io/description: >-
       Model versions should follow semantic versioning (X.Y.Z format).
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
     - name: validate-version-format

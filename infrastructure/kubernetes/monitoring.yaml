@@ -209,6 +209,15 @@ spec:
             summary: "Kyverno policy violation detected"
             description: "Policy {{ $labels.policy_name }} has been violated. Check resources for compliance."
 
+        # -------------------------------------------------------------------------
+        # Aspirational alerts: The metrics below (model_prediction_latency_seconds,
+        # model_prediction_requests_total, model_data_drift_score) are design
+        # targets that will be emitted once the inference pipeline and drift
+        # detector are deployed with Prometheus instrumentation. Until then,
+        # these alerts serve as documentation of the intended observability
+        # contract.
+        # -------------------------------------------------------------------------
+
         # Data drift detected — triggers automated retraining via Argo Events
         - alert: DataDriftDetected
           expr: |

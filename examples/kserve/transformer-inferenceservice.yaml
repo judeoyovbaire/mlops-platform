@@ -1,0 +1,43 @@
+# InferenceService with Transformer + Predictor pattern.
+# The transformer applies preprocessing (feature scaling, encoding) before
+# forwarding to the sklearn predictor, decoupling preprocessing from the model.
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: sklearn-iris-with-transformer
+  namespace: mlops
+  labels:
+    mlops.io/model-name: iris-classifier
+    mlops.io/model-version: "1.0.0"
+    mlops.io/model-owner: platform-team
+    mlops.io/model-stage: staging
+  annotations:
+    mlops.io/mlflow-experiment-id: "1"
+    mlops.io/mlflow-run-id: "placeholder"
+spec:
+  transformer:
+    containers:
+      - name: transformer
+        image: ghcr.io/judeoyovbaire/mlops-platform/kserve-transformer:latest
+        env:
+          - name: PREPROCESSOR_PATH
+            value: /mnt/models/preprocessor.joblib
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+  predictor:
+    model:
+      modelFormat:
+        name: sklearn
+      storageUri: gs://mlops-models/iris-classifier/v1
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 1
+          memory: 1Gi

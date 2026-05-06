@@ -24,6 +24,12 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
 
+  # Default rate limiting for inference endpoints
+  # Applied via InferenceService annotations in examples/kserve/
+  # nginx.ingress.kubernetes.io/limit-rps: "50"
+  # nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
+  # nginx.ingress.kubernetes.io/limit-connections: "20"
+
 # Default serving runtimes
 servingRuntimes:
   sklearn:

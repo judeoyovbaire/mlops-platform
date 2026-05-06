@@ -50,12 +50,6 @@ env:
   GCP_REGION: "europe-west4"
   GCP_ZONE: "europe-west4-a"
 
-permissions:
-  id-token: write
-  contents: read
-  pull-requests: write
-  security-events: write
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -66,12 +60,14 @@ jobs:
     name: Lint Python
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-cache: true
 
@@ -93,7 +89,7 @@ jobs:
           uv run bandit -r pipelines/ examples/ -f json -o bandit-results.json -ll
 
       - name: Upload Bandit results
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
           name: bandit-security-report
@@ -103,17 +99,19 @@ jobs:
     name: Validate Terraform
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Cache Terraform plugins
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: |
             ~/.terraform.d/plugin-cache
@@ -209,18 +207,19 @@ jobs:
     name: Validate Kubernetes
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup kubeconform
-        uses: yokawasa/action-setup-kube-tools@v0.13.1
+        uses: yokawasa/action-setup-kube-tools@3e3886c11bfa25fe33f8eb90f59542dd151da442 # v0.13.1
         with:
           kubeconform: "0.6.7"
           kustomize: "5.5.0"
 
       - name: Validate Kubernetes manifests
-        continue-on-error: true
         run: |
           find components infrastructure/kubernetes \
             \( -name '*.yaml' -o -name '*.yml' \) \
@@ -228,6 +227,7 @@ jobs:
             xargs -I {} kubeconform -strict -summary \
               -schema-location default \
               -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+              --skip AnalysisTemplate,ClusterPolicy,Rollout,EventBus,EventSource,Sensor,InferenceService,ServiceMonitor,PodMonitor,PrometheusRule \
               {}
 
       - name: Validate Kustomize build
@@ -237,9 +237,11 @@ jobs:
     name: Validate Helm
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Install yamllint
         run: pip install yamllint
@@ -259,12 +261,15 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Run Trivy vulnerability scanner (IaC)
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
           scan-type: "config"
           scan-ref: "."
@@ -275,13 +280,13 @@ jobs:
           skip-dirs: "**/.terraform"
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@e46ed2cbd01164d986452f91f178727624ae40d7 # v4
         if: always()
         with:
           sarif_file: "trivy-results.sarif"
 
       - name: Scan Dockerfiles with Trivy
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
           scan-type: "config"
           scan-ref: "components/"
@@ -289,19 +294,49 @@ jobs:
           severity: "HIGH,CRITICAL"
           skip-dirs: "**/.terraform"
 
+  checkov-scan:
+    name: Checkov IaC Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@9201a8e6eaa919e3444d7c4ca691896efde4f033 # v12.3101.0
+        with:
+          directory: infrastructure/terraform/
+          soft_fail: true
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+          skip_check: CKV_TF_1,CKV_TF_2
+
+      - name: Upload Checkov results
+        uses: github/codeql-action/upload-sarif@e46ed2cbd01164d986452f91f178727624ae40d7 # v4
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+          category: checkov
+
   scan-container-images:
     name: Scan Container Images
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
 
       - name: Build pipeline training image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         with:
           context: ./pipelines
           file: ./pipelines/training/Dockerfile
@@ -312,7 +347,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build pretrained pipeline image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         with:
           context: ./pipelines
           file: ./pipelines/pretrained/Dockerfile
@@ -323,7 +358,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Scan training pipeline image
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
           image-ref: "mlops-platform/ml-training:test"
           format: "sarif"
@@ -334,7 +369,7 @@ jobs:
 
       - name: Scan pretrained pipeline image
         if: ${{ !cancelled() }}
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
           image-ref: "mlops-platform/hf-pretrained:test"
           format: "sarif"
@@ -344,14 +379,14 @@ jobs:
           exit-code: "1"
 
       - name: Upload training image scan results
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@e46ed2cbd01164d986452f91f178727624ae40d7 # v4
         if: always()
         with:
           sarif_file: "trivy-training-image.sarif"
           category: "trivy-training-image"
 
       - name: Upload pretrained image scan results
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@e46ed2cbd01164d986452f91f178727624ae40d7 # v4
         if: always()
         with:
           sarif_file: "trivy-pretrained-image.sarif"
@@ -359,7 +394,7 @@ jobs:
 
       - name: Generate SBOM for training image
         if: ${{ !cancelled() }}
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
           image-ref: "mlops-platform/ml-training:test"
           format: "spdx-json"
@@ -368,7 +403,7 @@ jobs:
 
       - name: Generate SBOM for pretrained image
         if: ${{ !cancelled() }}
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
           image-ref: "mlops-platform/hf-pretrained:test"
           format: "spdx-json"
@@ -376,7 +411,7 @@ jobs:
           exit-code: "0"
 
       - name: Upload SBOMs
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
           name: container-sboms
@@ -389,13 +424,15 @@ jobs:
     name: Test Python
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     needs: [lint-python]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-cache: true
 
@@ -406,10 +443,10 @@ jobs:
         run: uv sync --frozen
 
       - name: Run unit tests with coverage
-        run: uv run pytest tests/ -v --tb=short --cov=pipelines --cov-report=xml --cov-report=term-missing --cov-fail-under=70 -n auto
+        run: uv run pytest tests/ -v --tb=short --cov=pipelines --cov-report=xml --cov-report=term-missing --cov-fail-under=80 -n auto
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
@@ -419,7 +456,7 @@ jobs:
           verbose: true
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
           name: coverage-report
@@ -438,13 +475,15 @@ jobs:
     name: Property-Based Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
     needs: [lint-python]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-cache: true
 
@@ -462,6 +501,10 @@ jobs:
     name: Terraform Plan (AWS)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
     needs:
       [
         scan-container-images,
@@ -475,10 +518,10 @@ jobs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -487,13 +530,13 @@ jobs:
 
       - name: Setup Terraform
         if: steps.aws-creds.outcome == 'success'
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Cache Terraform plugins
         if: steps.aws-creds.outcome == 'success'
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: |
             ~/.terraform.d/plugin-cache
@@ -570,7 +613,7 @@ jobs:
 
       - name: Comment Plan on PR
         if: steps.aws-creds.outcome == 'success' && github.event_name == 'pull_request'
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const fs = require('fs');
@@ -613,6 +656,10 @@ jobs:
     name: Terraform Plan (Azure)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
     needs:
       [
         scan-container-images,
@@ -626,10 +673,10 @@ jobs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Azure Login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -639,13 +686,13 @@ jobs:
 
       - name: Setup Terraform
         if: steps.azure-creds.outcome == 'success'
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Cache Terraform plugins
         if: steps.azure-creds.outcome == 'success'
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: |
             ~/.terraform.d/plugin-cache
@@ -731,6 +778,10 @@ jobs:
     name: Terraform Plan (GCP)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
     needs:
       [
         scan-container-images,
@@ -744,10 +795,10 @@ jobs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Authenticate to Google Cloud (OIDC)
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
@@ -756,13 +807,13 @@ jobs:
 
       - name: Setup Terraform
         if: steps.gcp-creds.outcome == 'success'
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Cache Terraform plugins
         if: steps.gcp-creds.outcome == 'success'
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: |
             ~/.terraform.d/plugin-cache
@@ -779,7 +830,7 @@ jobs:
 
       - name: Set up Cloud SDK
         if: steps.gcp-creds.outcome == 'success'
-        uses: google-github-actions/setup-gcloud@v3
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
 
       - name: Terraform Init
         if: steps.gcp-creds.outcome == 'success'
@@ -842,26 +893,29 @@ jobs:
     name: Deploy Infrastructure (AWS)
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
     needs: [terraform-plan-aws]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'aws' && github.event.inputs.action == 'deploy-infra'
     environment: ${{ github.event.inputs.environment }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Cache Terraform plugins
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: |
             ~/.terraform.d/plugin-cache
@@ -896,7 +950,7 @@ jobs:
           echo "State backed up before apply"
 
       - name: Upload State Backup
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: terraform-state-backup-aws-${{ github.event.inputs.environment }}-${{ github.run_id }}
           path: infrastructure/terraform/environments/aws/${{ github.event.inputs.environment }}/terraform.tfstate.backup
@@ -939,27 +993,30 @@ jobs:
     name: Deploy Infrastructure (Azure)
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
     needs: [terraform-plan-azure]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'azure' && github.event.inputs.action == 'deploy-infra'
     environment: ${{ github.event.inputs.environment }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Azure Login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Cache Terraform plugins
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: |
             ~/.terraform.d/plugin-cache
@@ -1003,7 +1060,7 @@ jobs:
           echo "State backed up before apply"
 
       - name: Upload State Backup
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: terraform-state-backup-azure-${{ github.event.inputs.environment }}-${{ github.run_id }}
           path: infrastructure/terraform/environments/azure/${{ github.event.inputs.environment }}/terraform.tfstate.backup
@@ -1066,29 +1123,32 @@ jobs:
     name: Deploy Infrastructure (GCP)
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
     needs: [terraform-plan-gcp]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'gcp' && github.event.inputs.action == 'deploy-infra'
     environment: ${{ github.event.inputs.environment }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Authenticate to Google Cloud (OIDC)
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v3
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Cache Terraform plugins
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: |
             ~/.terraform.d/plugin-cache
@@ -1116,7 +1176,7 @@ jobs:
           echo "State backed up before apply"
 
       - name: Upload State Backup
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: terraform-state-backup-gcp-${{ github.event.inputs.environment }}-${{ github.run_id }}
           path: infrastructure/terraform/environments/gcp/${{ github.event.inputs.environment }}/terraform.tfstate.backup
@@ -1162,15 +1222,18 @@ jobs:
     name: Deploy Model (AWS)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
     needs: [terraform-plan-aws]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'aws' && github.event.inputs.action == 'deploy-model'
     environment: ${{ github.event.inputs.environment }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -1190,15 +1253,18 @@ jobs:
     name: Deploy Model (Azure)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
     needs: [terraform-plan-azure]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'azure' && github.event.inputs.action == 'deploy-model'
     environment: ${{ github.event.inputs.environment }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Azure Login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -1234,21 +1300,24 @@ jobs:
     name: Deploy Model (GCP)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
     needs: [terraform-plan-gcp]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'gcp' && github.event.inputs.action == 'deploy-model'
     environment: ${{ github.event.inputs.environment }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Authenticate to Google Cloud (OIDC)
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v3
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
 
       - name: Install gke-gcloud-auth-plugin
         run: gcloud components install gke-gcloud-auth-plugin --quiet
@@ -1271,6 +1340,8 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
     needs: [test-python]
     if: |
       github.event_name == 'schedule' ||
@@ -1278,10 +1349,10 @@ jobs:
       (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'e2e-test'))
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-cache: true
 
@@ -1346,6 +1417,8 @@ jobs:
     name: Pipeline Summary
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     needs: [terraform-plan-aws, terraform-plan-azure, terraform-plan-gcp]
     if: always() && (github.event_name == 'push' || github.event_name == 'pull_request')
     steps:

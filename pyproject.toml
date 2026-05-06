@@ -25,6 +25,7 @@ dependencies = [
     "pandera>=0.20.0",
     "transformers>=4.36.0",
     "huggingface_hub>=0.20.0",
+    "shap>=0.43.0",
 ]
 
 [project.optional-dependencies]
@@ -38,6 +39,10 @@ dev = [
     "prometheus_client>=0.20.0",
     "scipy>=1.12.0",
     "hypothesis>=6.100.0",
+]
+
+feast = [
+    "feast>=0.43.0",
 ]
 
 [build-system]
@@ -62,6 +67,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = [

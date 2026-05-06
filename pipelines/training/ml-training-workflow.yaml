@@ -195,6 +195,12 @@ spec:
       retryStrategy:
         limit: 2
         retryPolicy: "OnError"
+      memoize:
+        key: "load-data-{{inputs.parameters.dataset-url}}"
+        maxAge: "24h"
+        cache:
+          configMap:
+            name: pipeline-cache
       inputs:
         parameters:
           - name: dataset-url
@@ -267,6 +273,12 @@ spec:
       retryStrategy:
         limit: 2
         retryPolicy: "OnError"
+      memoize:
+        key: "feature-eng-{{inputs.parameters.target-column}}"
+        maxAge: "24h"
+        cache:
+          configMap:
+            name: pipeline-cache
       inputs:
         parameters:
           - name: target-column

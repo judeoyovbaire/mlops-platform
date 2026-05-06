@@ -13,24 +13,14 @@ from dataclasses import dataclass
 import pandas as pd
 import pandera
 
-try:
-    from pipelines.shared.exceptions import (
-        DataValidationError,
-        EmptyDataError,
-        InsufficientDataError,
-    )
-    from pipelines.shared.logging_utils import get_logger
-    from pipelines.training.src.schema import IrisSchema
-    from pipelines.training.src.tracing import get_tracer
-except ImportError:
-    from schema import IrisSchema
-    from shared.exceptions import (
-        DataValidationError,
-        EmptyDataError,
-        InsufficientDataError,
-    )
-    from shared.logging_utils import get_logger
-    from tracing import get_tracer
+from pipelines.shared.exceptions import (
+    DataValidationError,
+    EmptyDataError,
+    InsufficientDataError,
+)
+from pipelines.shared.logging_utils import get_logger
+from pipelines.training.src.schema import IrisSchema
+from pipelines.training.src.tracing import get_tracer
 
 logger = get_logger(__name__)
 tracer = get_tracer("validate-data")

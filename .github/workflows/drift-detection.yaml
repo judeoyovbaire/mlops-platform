@@ -39,10 +39,10 @@ jobs:
       drift_detected: ${{ steps.detect.outputs.drift_detected }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -51,7 +51,7 @@ jobs:
 
       - name: Setup Terraform
         if: steps.aws-creds.outcome == 'success'
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
@@ -98,7 +98,7 @@ jobs:
 
       - name: Create Issue for Drift
         if: steps.detect.outputs.drift_detected == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const fs = require('fs');
@@ -157,10 +157,10 @@ jobs:
       drift_detected: ${{ steps.detect.outputs.drift_detected }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Azure Login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -170,7 +170,7 @@ jobs:
 
       - name: Setup Terraform
         if: steps.azure-creds.outcome == 'success'
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
@@ -209,7 +209,7 @@ jobs:
 
       - name: Create Issue for Drift
         if: steps.detect.outputs.drift_detected == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const fs = require('fs');
@@ -254,10 +254,10 @@ jobs:
       drift_detected: ${{ steps.detect.outputs.drift_detected }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Authenticate to Google Cloud (OIDC)
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
@@ -266,7 +266,7 @@ jobs:
 
       - name: Setup Terraform
         if: steps.gcp-creds.outcome == 'success'
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
@@ -295,7 +295,7 @@ jobs:
 
       - name: Create Issue for Drift
         if: steps.detect.outputs.drift_detected == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const fs = require('fs');

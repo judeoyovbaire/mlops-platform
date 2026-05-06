@@ -85,82 +85,162 @@ variable "helm_aws_lb_controller_version" {
   description = "AWS Load Balancer Controller Helm chart version"
   type        = string
   default     = "1.17.1"
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_aws_lb_controller_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_cert_manager_version" {
   description = "cert-manager Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_cert_manager_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_argocd_version" {
   description = "ArgoCD Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argocd_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_kserve_version" {
   description = "KServe Helm chart version (CRD and controller)"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_kserve_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_mlflow_version" {
   description = "MLflow Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_mlflow_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_argo_workflows_version" {
   description = "Argo Workflows Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_workflows_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_minio_version" {
   description = "MinIO Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_minio_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_prometheus_stack_version" {
   description = "kube-prometheus-stack Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_prometheus_stack_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_karpenter_version" {
   description = "Karpenter Helm chart version"
   type        = string
   default     = "1.8.3"
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_karpenter_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_tetragon_version" {
   description = "Tetragon Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_tetragon_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_kyverno_version" {
   description = "Kyverno Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_kyverno_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_external_secrets_version" {
   description = "External Secrets Operator Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_external_secrets_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_loki_version" {
   description = "Loki Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_loki_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_tempo_version" {
   description = "Tempo Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_tempo_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_otel_collector_version" {
   description = "OpenTelemetry Collector Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_otel_collector_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_alloy_version" {
   description = "Grafana Alloy Helm chart version"
   type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_alloy_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 # -----------------------------------------------------------------------------
@@ -176,10 +256,10 @@ variable "cluster_endpoint_public_access" {
 variable "cluster_endpoint_public_access_cidrs" {
   description = "CIDR blocks allowed to access the EKS API public endpoint. Restrict to your organization's IP ranges for production-grade security."
   type        = list(string)
-  # WARNING: 0.0.0.0/0 is open to the internet. Acceptable for portfolio demo,
-  # but restrict to GitHub Actions runner CIDRs + your IP for real deployments.
-  # GitHub Actions IPs: curl -s https://api.github.com/meta | jq '.actions'
-  default = ["0.0.0.0/0"]
+  # Default: RFC 1918 private range. For production deployments, replace with
+  # your organization's VPN/office CIDRs + GitHub Actions runner IPs:
+  #   curl -s https://api.github.com/meta | jq '.actions'
+  default = ["10.0.0.0/8"]
 }
 
 # Slack Notifications
@@ -188,24 +268,44 @@ variable "helm_argo_rollouts_version" {
   description = "Argo Rollouts Helm chart version"
   type        = string
   default     = "2.39.1"
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_rollouts_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_argo_events_version" {
   description = "Argo Events Helm chart version"
   type        = string
   default     = "2.4.14"
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_events_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_opencost_version" {
   description = "OpenCost Helm chart version"
   type        = string
   default     = "1.44.0"
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_opencost_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "helm_dcgm_exporter_version" {
   description = "NVIDIA DCGM Exporter Helm chart version"
   type        = string
   default     = "3.6.1"
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_dcgm_exporter_version))
+    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+  }
 }
 
 variable "slack_notifications_enabled" {

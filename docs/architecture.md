@@ -927,3 +927,39 @@ Current versions deployed by the platform (aligned across all clouds):
 | MinIO | 5.4.0 | S3-compatible object storage |
 | Chaos Mesh | 2.8.1 | Chaos engineering and resilience testing |
 | vLLM | 0.8.0 | High-throughput LLM inference |
+
+## Design Decisions I'd Revisit
+
+Documented for transparency — these are decisions I'd evaluate differently in a greenfield build.
+
+### 1. Terragrunt for DRY Configuration
+
+The current approach duplicates `variables.tf` defaults across 6 environment directories.
+Terragrunt's `include` blocks and `generate` would eliminate ~70% of this duplication while
+preserving per-environment overrides. An ADR is tracked in `docs/adr/012-terragrunt-evaluation.md`.
+
+### 2. Gateway API over Ingress
+
+The platform uses `networking.k8s.io/v1 Ingress` with nginx-specific annotations.
+Gateway API (`gateway.networking.k8s.io/v1`) provides a more expressive, portable routing
+model with first-class support for traffic splitting, header-based routing, and multi-tenant
+isolation — all useful for canary model deployments.
+
+### 3. KServe Transformer for Preprocessing
+
+The `build_serving_model.py` step bundles a ColumnTransformer into an MLflow pyfunc model.
+KServe's native Transformer pattern (a sidecar container that preprocesses requests before
+forwarding to the predictor) would decouple preprocessing versioning from model versioning
+and enable independent scaling.
+
+### 4. Feast for Feature Consistency
+
+Feature engineering currently runs inline in the Argo pipeline with no shared feature store.
+Feast (or a similar feature platform) would provide point-in-time-correct joins, feature
+versioning, and online/offline consistency — reducing training/serving skew.
+
+### 5. VPA for Right-Sizing Inference Pods
+
+Inference pod resource requests are currently static. Vertical Pod Autoscaler in
+recommendation-only mode would surface data-driven resource suggestions, enabling
+cost optimization without risking OOM kills from aggressive limits.

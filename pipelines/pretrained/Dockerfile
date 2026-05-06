@@ -29,3 +29,6 @@ COPY pretrained/src/ /app/src/
 
 # Non-root user for security
 USER 1000
+
+# Ephemeral pipeline container — no health endpoint to check
+HEALTHCHECK NONE

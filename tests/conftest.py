@@ -2,14 +2,23 @@
 Pytest configuration and shared fixtures for MLOps Platform tests.
 """
 
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import numpy as np
-import pandas as pd
-import pytest
-from sklearn.datasets import load_iris
+# Centralized path setup for standalone components not installed as packages
+_repo_root = Path(__file__).resolve().parents[1]
+_drift_detection_path = str(_repo_root / "components" / "drift-detection")
+_training_src_path = str(_repo_root / "pipelines" / "training" / "src")
+for _p in (_drift_detection_path, _training_src_path):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+import pytest  # noqa: E402
+from sklearn.datasets import load_iris  # noqa: E402
 
 
 @pytest.fixture(scope="session")

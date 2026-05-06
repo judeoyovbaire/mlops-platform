@@ -1,0 +1,36 @@
+# Sloth PrometheusServiceLevel for inference availability SLO.
+# Generates multi-window burn-rate alerts and recording rules.
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: inference-availability
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/component: slo
+spec:
+  service: inference
+  labels:
+    team: platform
+  slos:
+    - name: requests-availability
+      objective: 99.9
+      description: "99.9% of inference requests should return successfully (2xx)"
+      sli:
+        events:
+          errorQuery: >
+            sum(rate(revision_request_count{response_code!~"2.."}[{{.window}}]))
+          totalQuery: >
+            sum(rate(revision_request_count[{{.window}}]))
+      alerting:
+        name: InferenceAvailabilityBurnRate
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Inference availability SLO burn rate is too high"
+        pageAlert:
+          labels:
+            severity: critical
+        ticketAlert:
+          labels:
+            severity: warning

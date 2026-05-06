@@ -132,3 +132,35 @@ Add load testing to your CI/CD pipeline:
 **Test fails:**
 - Verify inference service is ready: `kubectl get inferenceservice -n mlops`
 - Check pod logs: `kubectl logs -n mlops -l serving.kserve.io/inferenceservice=sklearn-iris`
+
+## Benchmark Results
+
+Performance targets for inference endpoints under load testing.
+
+| Metric | Target | Measured | Status |
+|--------|--------|----------|--------|
+| P50 Latency | < 50ms | _pending_ | |
+| P95 Latency | < 200ms | _pending_ | |
+| P99 Latency | < 500ms | _pending_ | |
+| Throughput | > 100 RPS | _pending_ | |
+| Error Rate | < 0.1% | _pending_ | |
+
+### Test Configuration
+
+- **Tool**: Locust / k6
+- **Duration**: 5 minutes sustained load
+- **Concurrency**: 50 virtual users
+- **Model**: sklearn-iris (4-feature input, 3-class output)
+- **Cluster**: 3-node development cluster
+
+### Running Benchmarks
+
+```bash
+# Using the provided Locustfile
+locust -f examples/load-testing/locustfile.py \
+  --host=http://<inference-service-url> \
+  --users=50 --spawn-rate=10 --run-time=5m \
+  --csv=results/benchmark
+```
+
+Results should be recorded in this table after each major infrastructure change.

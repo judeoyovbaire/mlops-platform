@@ -102,6 +102,12 @@ ingress:
   # Disable TLS for dev
   disableIstioVirtualHost: true
 
+# Default rate limiting for inference endpoints
+# Applied via InferenceService annotations in examples/kserve/
+# nginx.ingress.kubernetes.io/limit-rps: "50"
+# nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
+# nginx.ingress.kubernetes.io/limit-connections: "20"
+
 # Logger configuration (disabled for dev)
 logger:
   enabled: false

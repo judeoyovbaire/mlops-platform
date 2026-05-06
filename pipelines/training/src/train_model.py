@@ -19,16 +19,10 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import GridSearchCV, cross_val_score, train_test_split
 
-try:
-    from pipelines.shared.exceptions import MLflowTimeoutError, ModelTrainingError
-    from pipelines.shared.logging_utils import get_logger
-    from pipelines.shared.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
-    from pipelines.training.src.tracing import get_tracer
-except ImportError:
-    from shared.exceptions import MLflowTimeoutError, ModelTrainingError
-    from shared.logging_utils import get_logger
-    from shared.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
-    from tracing import get_tracer
+from pipelines.shared.exceptions import MLflowTimeoutError, ModelTrainingError
+from pipelines.shared.logging_utils import get_logger
+from pipelines.shared.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_timeout
+from pipelines.training.src.tracing import get_tracer
 
 logger = get_logger(__name__)
 tracer = get_tracer("train-model")
@@ -270,6 +264,31 @@ def train_model(
 
                 logger.info(f"Metrics - Accuracy: {accuracy:.4f}, F1: {f1:.4f}")
                 mlflow.log_metrics({"accuracy": accuracy, "f1_score": f1})
+
+                # SHAP feature importance (optional — skip if shap not installed)
+                try:
+                    import shap
+
+                    explainer = shap.TreeExplainer(model)
+                    X_test_sample = X_test[:100] if len(X_test) > 100 else X_test
+                    shap_values = explainer.shap_values(X_test_sample)
+                    if isinstance(shap_values, list):
+                        # Multi-class: average absolute SHAP values across classes
+                        mean_shap = np.mean([np.abs(sv).mean(axis=0) for sv in shap_values], axis=0)
+                    else:
+                        mean_shap = np.abs(shap_values).mean(axis=0)
+                    feature_names = (
+                        X_test.columns
+                        if hasattr(X_test, "columns")
+                        else [f"feature_{i}" for i in range(len(mean_shap))]
+                    )
+                    for fname, importance in zip(feature_names, mean_shap, strict=False):
+                        mlflow.log_metric(f"shap_importance_{fname}", float(importance))
+                    logger.info(
+                        "Logged SHAP feature importance for %d features", len(feature_names)
+                    )
+                except Exception as shap_err:
+                    logger.warning("SHAP feature importance skipped: %s", shap_err)
 
                 # Log model to MLflow
                 mlflow.sklearn.log_model(model, "model", input_example=X_train.head(1))

@@ -23,12 +23,8 @@ import mlflow.pyfunc
 import numpy as np
 import pandas as pd
 
-try:
-    from pipelines.shared.exceptions import ModelTrainingError
-    from pipelines.shared.logging_utils import get_logger
-except ImportError:
-    from shared.exceptions import ModelTrainingError
-    from shared.logging_utils import get_logger
+from pipelines.shared.exceptions import ModelTrainingError
+from pipelines.shared.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

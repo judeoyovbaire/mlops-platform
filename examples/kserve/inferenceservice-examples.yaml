@@ -12,6 +12,12 @@ metadata:
     app.kubernetes.io/component: inference
     app.kubernetes.io/part-of: mlops-platform
     app.kubernetes.io/managed-by: kserve
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
+    nginx.ingress.kubernetes.io/auth-url: "https://$host/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "https://$host/oauth2/start?rd=$escaped_request_uri"
 spec:
   predictor:
     serviceAccountName: kserve-inference

@@ -6,17 +6,11 @@ Uses Hypothesis to verify:
 - Drift scores are bounded [0, 1] or non-negative
 """
 
-import sys
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
+from drift_detector import DriftDetector
 from hypothesis import given, settings
 from hypothesis import strategies as st
-
-# drift-detection is a standalone component
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "components" / "drift-detection"))
-from drift_detector import DriftDetector  # noqa: E402
 
 
 @given(

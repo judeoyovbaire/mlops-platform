@@ -75,7 +75,11 @@ def get_tracer(service_name: str = "ml-pipeline") -> Tracer:
 
     resource = Resource.create({"service.name": service_name})
     provider = TracerProvider(resource=resource)
-    exporter = OTLPSpanExporter(endpoint=endpoint, insecure=True)
+    # Threat model: insecure=True is acceptable for in-cluster gRPC to the
+    # OTel Collector behind a NetworkPolicy.  Set OTEL_EXPORTER_OTLP_INSECURE=false
+    # and configure TLS when exporting spans outside the cluster.
+    insecure = os.environ.get("OTEL_EXPORTER_OTLP_INSECURE", "true").lower() == "true"
+    exporter = OTLPSpanExporter(endpoint=endpoint, insecure=insecure)
     provider.add_span_processor(BatchSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
     _provider_initialized = True

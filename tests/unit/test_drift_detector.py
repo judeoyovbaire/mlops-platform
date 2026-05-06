@@ -1,15 +1,9 @@
 """Unit tests for drift_detector module."""
 
-import sys
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 import pytest
-
-# drift-detection is a standalone component, not an installed package
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "components" / "drift-detection"))
-from drift_detector import DriftDetector, DriftReport  # noqa: E402
+from drift_detector import DriftDetector, DriftReport
 
 
 @pytest.fixture
@@ -282,10 +276,6 @@ class TestTracerProviderSingleton:
 
     def test_get_tracer_returns_tracer(self):
         """get_tracer should return a usable tracer object."""
-        sys.path.insert(
-            0,
-            str(Path(__file__).resolve().parents[2] / "pipelines" / "training" / "src"),
-        )
         from tracing import get_tracer
 
         tracer = get_tracer("test-service")
@@ -294,10 +284,6 @@ class TestTracerProviderSingleton:
 
     def test_get_tracer_multiple_calls(self):
         """Multiple calls to get_tracer should not raise."""
-        sys.path.insert(
-            0,
-            str(Path(__file__).resolve().parents[2] / "pipelines" / "training" / "src"),
-        )
         from tracing import get_tracer
 
         t1 = get_tracer("service-a")

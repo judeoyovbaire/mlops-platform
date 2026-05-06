@@ -1,0 +1,26 @@
+# VerticalPodAutoscaler for inference workloads (recommendation-only mode).
+# Provides data-driven resource suggestions without automatic resizing.
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: sklearn-iris-predictor-vpa
+  namespace: mlops
+  labels:
+    app.kubernetes.io/name: sklearn-iris-predictor
+    app.kubernetes.io/component: inference
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sklearn-iris-predictor-default
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: kserve-container
+        minAllowed:
+          cpu: 100m
+          memory: 128Mi
+        maxAllowed:
+          cpu: 4
+          memory: 4Gi
