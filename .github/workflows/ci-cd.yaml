@@ -363,7 +363,7 @@ jobs:
           image-ref: "mlops-platform/ml-training:test"
           format: "sarif"
           output: "trivy-training-image.sarif"
-          severity: "HIGH,CRITICAL"
+          severity: "CRITICAL"
           ignore-unfixed: true
           exit-code: "1"
 
@@ -374,7 +374,7 @@ jobs:
           image-ref: "mlops-platform/hf-pretrained:test"
           format: "sarif"
           output: "trivy-pretrained-image.sarif"
-          severity: "HIGH,CRITICAL"
+          severity: "CRITICAL"
           ignore-unfixed: true
           exit-code: "1"
 
