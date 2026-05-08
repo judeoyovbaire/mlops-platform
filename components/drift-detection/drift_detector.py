@@ -27,7 +27,7 @@ def _get_or_create_metric(metric_cls, name, documentation, labelnames):
         return metric_cls(name, documentation, labelnames)
     except ValueError:
         # Already registered — unregister first, then re-create with same config.
-        # This avoids accessing private REGISTRY internals.
+        # Note: _names_to_collectors is a private API; wrapped in try/except as fallback.
         try:
             REGISTRY.unregister(REGISTRY._names_to_collectors[name])
         except (KeyError, AttributeError):
@@ -503,7 +503,7 @@ def main():
                 result = detector.detect_drift(production_df)
                 logger.info(
                     "Drift check completed: drift_detected=%s, score=%.4f",
-                    result.is_drifted,
+                    result.features_drifted > 0,
                     result.overall_drift_score,
                 )
             except Exception:
