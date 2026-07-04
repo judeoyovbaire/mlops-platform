@@ -560,6 +560,28 @@ jobs:
           uv run python -c "import sys; sys.path.insert(0, 'pipelines/feature-store'); import features; print('Feast features loaded OK')"
         continue-on-error: true
 
+      - name: Validate compiled lockfiles are in sync
+        # Each image's requirements.txt is a compiled lockfile generated from
+        # requirements.in (all transitive deps pinned + hashed). Recompiling
+        # preserves existing pins (uv uses the output file as preferences),
+        # so this fails only when .in changed without regenerating .txt.
+        run: |
+          set -euo pipefail
+          for dir in pipelines/training pipelines/pretrained components/kserve-transformer; do
+            uv pip compile "$dir/requirements.in" \
+              --python-version 3.12 \
+              --python-platform x86_64-unknown-linux-gnu \
+              --generate-hashes \
+              -o "$dir/requirements.txt" \
+              --quiet
+          done
+          if ! git diff --exit-code -- '**/requirements.txt'; then
+            echo "::error::Lockfile(s) out of sync with requirements.in." \
+              "Regenerate with the uv pip compile command in the file header."
+            exit 1
+          fi
+          echo "All lockfiles in sync"
+
   # Stage 2: Terraform Plan (requires cloud credentials)
   terraform-plan-aws:
     name: Terraform Plan (AWS)
