@@ -1,6 +1,6 @@
 # MLOps Platform on Kubernetes
 
-A production-ready, multi-cloud MLOps platform for model training, versioning, and deployment on **AWS EKS**, **Azure AKS**, or **GCP GKE**. Enables data science teams to go from experiment to production with self-service workflows.
+A multi-cloud MLOps **reference platform** for model training, versioning, and deployment on **AWS EKS**, **Azure AKS**, or **GCP GKE**. Designed around a self-service path from experiment to production — end-to-end verification is in progress (see [Design Targets](#design-targets) and [Roadmap](#roadmap)).
 
 [![CI/CD](https://github.com/judeoyovbaire/mlops-platform/actions/workflows/ci-cd.yaml/badge.svg)](https://github.com/judeoyovbaire/mlops-platform/actions/workflows/ci-cd.yaml)
 
@@ -18,7 +18,7 @@ ML teams often spend more time on infrastructure than on actual machine learning
 
 ## The Solution
 
-This platform provides self-service ML infrastructure where data scientists deploy models without DevOps tickets:
+The target architecture: self-service ML infrastructure where data scientists deploy models without DevOps tickets (see [Design Targets](#design-targets) for verification status):
 
 ```
 Data Scientist                    Platform (Automated)
@@ -486,16 +486,19 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 
 ### Completed
 - [x] **Multi-cloud infrastructure** — EKS, AKS, GKE with GPU autoscaling (Karpenter / KEDA / NAP)
-- [x] **ML platform** — MLflow 3.x, KServe, Argo Workflows, ArgoCD
+- [x] **ML platform** — MLflow, KServe, Argo Workflows, ArgoCD
 - [x] **Observability** — Prometheus, Grafana, Loki, Alloy, Tempo, cost dashboards
 - [x] **Security** — PSA, Kyverno, Tetragon, External Secrets, network policies
 - [x] **CI/CD** — GitHub Actions with OIDC auth, multi-cloud plan/deploy, Trivy scanning
-- [x] **Production readiness** — dev/prod configs, backup, VPC Flow Logs, drift detection
+- [x] **Production readiness** — dev/prod configs, backup, VPC Flow Logs, DR runbooks
 - [x] **Examples** — distributed training, data versioning, canary deploys, chaos testing, LLM inference
-- [x] **Pipelines** — Iris quickstart pipeline + [HuggingFace pretrained model pipeline](pipelines/pretrained/) (GPU-optimized, production-grade)
+- [x] **Pipelines** — Iris quickstart pipeline + [HuggingFace pretrained model pipeline](pipelines/pretrained/) with automated validation and MLflow registration
 
-### Future Enhancements
+### In Progress / Future Enhancements
+- [ ] End-to-end verification — deploy → canary → auto-rollback demonstrated on a live cluster
 - [ ] GitOps-driven promotion — ArgoCD ApplicationSets for auto-deploy to dev, PR-based promotion to prod
+- [ ] Drift detection wired end-to-end (components and examples exist; production data capture and event wiring in progress)
+- [ ] LLM inference verified on live GPUs with committed throughput/latency/cost benchmarks
 - [ ] A/B testing framework for model comparison
 - [ ] Feature store integration (Feast)
 - [ ] Model explainability dashboards (SHAP/LIME)
@@ -525,9 +528,9 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 | **Cost (dev)** | $350-450/mo | Variable | $$$ | $$$ | $$$ |
 | **GPU Autoscaling** | ✅ Karpenter/KEDA/NAP | ⚠️ Manual | ✅ Managed | ✅ Managed | ✅ Managed |
 | **Model Serving** | ✅ KServe (CNCF) | ✅ KServe | ✅ Built-in | ✅ Built-in | ✅ Built-in |
-| **Experiment Tracking** | ✅ MLflow 3.x | ✅ MLflow | ✅ Built-in | ✅ Built-in | ✅ Built-in |
+| **Experiment Tracking** | ✅ MLflow | ✅ MLflow | ✅ Built-in | ✅ Built-in | ✅ Built-in |
 | **CI/CD Integration** | ✅ GitHub Actions | ⚠️ Manual | ✅ CodePipeline | ✅ Cloud Build | ✅ DevOps |
-| **GitOps** | ✅ ArgoCD | ⚠️ Manual | ❌ | ❌ | ⚠️ Partial |
+| **GitOps** | ⚠️ ArgoCD installed, app rollout in progress | ⚠️ Manual | ❌ | ❌ | ⚠️ Partial |
 | **Observability** | ✅ Prometheus/Grafana | ⚠️ Basic | ✅ CloudWatch | ✅ Cloud Monitoring | ✅ Monitor |
 | **Security** | ✅ IRSA/WIF/PSA | ⚠️ Basic | ✅ IAM | ✅ IAM | ✅ Managed Identity |
 | **Vendor Lock-in** | ✅ None | ✅ None | ❌ AWS | ❌ GCP | ❌ Azure |
@@ -545,7 +548,7 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 
 ## Why These Tools?
 
-### MLflow 3.x over alternatives
+### MLflow over alternatives
 - Open source, framework-agnostic
 - Native GenAI/LLM support (prompt versioning, agent tracing)
 - Model aliases replace deprecated staging workflow
