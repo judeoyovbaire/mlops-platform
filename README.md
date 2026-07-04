@@ -32,15 +32,17 @@ Data Scientist                    Platform (Automated)
      └── Monitor in Grafana ◄─────────────┘
 ```
 
-## Key Outcomes
+## Design Targets
 
-| Metric | Before | After | Impact |
-|--------|--------|-------|--------|
-| Model deployment time | 2-3 days | 15 minutes | **95% faster** |
-| Infrastructure setup per project | 40+ hours | 2 hours | **Self-service enablement** |
-| GPU utilization | ~30% (static) | 70-85% (autoscaled) | **60% cost reduction on GPU** |
-| Failed deployment recovery | 30+ min manual | <2 min auto-rollback | **Reduced MTTR** |
-| Experiment reproducibility | Ad-hoc | 100% tracked | **Full audit trail** |
+This is a **reference architecture** — the numbers below are design targets and pricing benchmarks the platform is built to achieve, not measured production outcomes. Measured results will replace these as end-to-end verification lands (see roadmap).
+
+| Metric | Typical industry baseline | Platform design target | Mechanism |
+|--------|--------------------------|------------------------|-----------|
+| Model deployment time | 2-3 days (manual process) | 15 minutes, self-service | CI → MLflow registry → KServe |
+| Infrastructure setup per project | 40+ hours | ~2 hours | Terraform modules + self-service workflows |
+| GPU cost | On-demand pricing | ~60% lower | Spot/preemptible instances + Karpenter consolidation + scale-to-zero |
+| Failed deployment recovery | 30+ min manual | <2 min auto-rollback | Canary analysis + automated rollback |
+| Experiment reproducibility | Ad-hoc | 100% tracked | MLflow autologging + model registry |
 
 ## Multi-Cloud Architecture
 
@@ -582,7 +584,7 @@ MIT License - see LICENSE for details.
 
 ## Author
 
-**Jude Oyovbaire** - Senior Platform & DevOps Engineer
+**Jude Oyovbaire** — Senior DevOps Engineer · Platform architecture for AI infrastructure
 
 - Website: [judaire.io](https://judaire.io)
 - LinkedIn: [linkedin.com/in/judeoyovbaire](https://linkedin.com/in/judeoyovbaire)
