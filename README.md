@@ -48,6 +48,17 @@ This is a **reference architecture** — the numbers below are design targets an
 
 Deploy to **AWS**, **Azure**, or **GCP** — same MLOps capabilities, cloud-native implementations.
 
+### Per-Cloud Verification Status
+
+Verification is deliberately AWS-first (see [ADR-014](docs/adr/014-aws-first-verification.md)) —
+one demonstrated loop beats three theoretical ones:
+
+| Cloud | Status |
+|-------|--------|
+| **AWS (EKS)** | 🔄 End-to-end verification in progress: CI deploy → registry → canary → auto-rollback (evidence will be linked here) |
+| **Azure (AKS)** | ⚙️ Architecture complete; `terraform validate` + plan + Checkov + Infracost in CI; not e2e verified |
+| **GCP (GKE)** | ⚙️ Architecture complete; `terraform validate` + plan + Checkov + Infracost in CI; not e2e verified |
+
 ## Architecture Diagrams
 
 ### High-Level System Architecture
