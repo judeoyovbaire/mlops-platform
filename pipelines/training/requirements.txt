@@ -7,3 +7,9 @@ opentelemetry-api==1.30.0
 opentelemetry-sdk==1.30.0
 opentelemetry-exporter-otlp-proto-grpc==1.30.0
 shap==0.46.0
+# Pin shap's transitive deps explicitly: unpinned, the resolver can backtrack
+# to numba 0.53.x / llvmlite 0.36.x (sdist-only, requires Python <3.10) and
+# break the py3.12 image build. These versions ship py3.12 wheels.
+numba==0.66.0
+llvmlite==0.48.0
+numpy==2.4.6
