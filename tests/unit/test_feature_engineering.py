@@ -25,7 +25,8 @@ class TestFeatureEngineering:
         assert isinstance(result, FeatureEngineeringResult)
         assert result.success is True
         assert result.input_shape == (150, 5)
-        assert result.output_shape == (150, 5)
+        # 4 scaled features + target + is_train split indicator
+        assert result.output_shape == (150, 6)
         assert len(result.scaled_columns) == 4  # 4 numeric columns
 
     def test_numeric_columns_scaled(self, iris_csv_path, temp_dir):
@@ -39,9 +40,13 @@ class TestFeatureEngineering:
         # ColumnTransformer prefixes column names with transformer name
         scaler_cols = [c for c in df.columns if c.startswith("scaler__")]
 
+        # The scaler is fitted on the TRAIN partition only (leakage-free),
+        # so exact zero mean holds on train rows; held-out rows are merely
+        # transformed and their mean will be near - not exactly - zero.
+        train_rows = df[df["is_train"] == 1]
         for col in scaler_cols:
-            # After StandardScaler, mean should be approximately 0
-            assert abs(df[col].mean()) < 1e-10
+            assert abs(train_rows[col].mean()) < 1e-10
+            assert abs(df[col].mean()) < 0.5  # sanity: same distribution family
 
     def test_target_column_preserved(self, iris_csv_path, temp_dir):
         """Test that target column is not modified."""

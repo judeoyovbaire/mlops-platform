@@ -5,31 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from pipelines.shared.exceptions import ModelTrainingError
-from pipelines.training.src.train_model import TrainingConfig, TrainingResult, train_model
-
-
-class TestTrainingConfig:
-    """Tests for TrainingConfig dataclass."""
-
-    def test_default_values(self):
-        """Test default configuration values."""
-        config = TrainingConfig()
-
-        assert config.n_estimators == 100
-        assert config.max_depth == 10
-        assert config.test_size == 0.2
-        assert config.random_state == 42
-        assert config.cv_folds == 5
-        assert config.use_cross_validation is True
-        assert config.use_grid_search is False
-
-    def test_custom_values(self):
-        """Test custom configuration values."""
-        config = TrainingConfig(n_estimators=50, max_depth=5, test_size=0.3)
-
-        assert config.n_estimators == 50
-        assert config.max_depth == 5
-        assert config.test_size == 0.3
+from pipelines.training.src.train_model import TrainingResult, train_model
 
 
 class TestTrainModel:

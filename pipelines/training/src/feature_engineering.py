@@ -13,8 +13,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from pipelines.shared.exceptions import (
@@ -26,6 +28,30 @@ from pipelines.training.src.tracing import get_tracer
 
 logger = get_logger(__name__)
 tracer = get_tracer("feature-engineering")
+
+# Name of the indicator column added to the output CSV: 1 = row was in the
+# partition the preprocessor was fitted on, 0 = held out for evaluation.
+# Downstream steps (train_model, validate_model) consume and drop it.
+SPLIT_COLUMN = "is_train"
+
+
+def _split_indices(
+    y: pd.Series, test_size: float, random_state: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """Deterministic train/test row indices, stratified when possible."""
+    indices = np.arange(len(y))
+    try:
+        train_idx, test_idx = train_test_split(
+            indices, test_size=test_size, random_state=random_state, stratify=y
+        )
+    except ValueError:
+        # Stratification impossible (continuous target or classes with a
+        # single member) — fall back to an unstratified split.
+        logger.warning("Stratified split not possible; using unstratified split")
+        train_idx, test_idx = train_test_split(
+            indices, test_size=test_size, random_state=random_state
+        )
+    return train_idx, test_idx
 
 
 @dataclass
@@ -48,6 +74,8 @@ def feature_engineering(
     target_column: str,
     encode_categorical: bool = True,
     max_categories: int = 10,
+    test_size: float = 0.2,
+    random_state: int = 42,
 ) -> FeatureEngineeringResult:
     """
     Perform feature engineering on input data.
@@ -56,6 +84,12 @@ def feature_engineering(
     builds a sklearn ColumnTransformer that scales numeric features
     and one-hot encodes categorical features, and saves the result.
 
+    To prevent train/test leakage, the data is split BEFORE fitting: the
+    ColumnTransformer is fitted on the training partition only, then applied
+    to all rows. The output CSV carries an ``is_train`` indicator column so
+    downstream steps (training, validation) use the same partition instead
+    of re-splitting data the preprocessor has already seen.
+
     Args:
         input_path: Path to the input CSV file.
         output_path: Path to save the processed CSV file.
@@ -63,6 +97,9 @@ def feature_engineering(
         encode_categorical: Whether to one-hot encode categorical columns (default: True).
         max_categories: Maximum unique values for a column to be encoded (default: 10).
             Columns with more categories are dropped to prevent explosion.
+        test_size: Fraction of rows held out from preprocessor fitting and
+            reserved for evaluation (default: 0.2).
+        random_state: Seed for the deterministic train/test split (default: 42).
 
     Returns:
         FeatureEngineeringResult containing processing statistics and status.
@@ -155,10 +192,19 @@ def feature_engineering(
             encoded_columns = cols_to_encode
             logger.info(f"One-hot encoding categorical columns: {cols_to_encode}")
 
+        # Split BEFORE fitting so the preprocessor never sees held-out rows
+        # (fitting scaler/encoder on the full dataset leaks test statistics
+        # into training features and optimistically biases evaluation).
+        train_idx, test_idx = _split_indices(y, test_size=test_size, random_state=random_state)
+        logger.info(
+            f"Split for leakage-free fitting: {len(train_idx)} train / {len(test_idx)} test rows"
+        )
+
         if transformers:
             preprocessor = ColumnTransformer(transformers=transformers, remainder="drop")
             preprocessor.set_output(transform="pandas")
-            X_transformed = preprocessor.fit_transform(X)
+            preprocessor.fit(X.iloc[train_idx])
+            X_transformed = preprocessor.transform(X)
 
             # Save preprocessor for inference
             preprocessor_path = str(output_file.parent / f"{output_file.stem}_preprocessor.joblib")
@@ -168,9 +214,12 @@ def feature_engineering(
         else:
             X_transformed = X
 
-        # Combine features and target
+        # Combine features, target, and the split indicator
         df_out = X_transformed.copy()
         df_out[target_column] = y.values
+        is_train = np.zeros(len(df_out), dtype=int)
+        is_train[train_idx] = 1
+        df_out[SPLIT_COLUMN] = is_train
 
         output_shape = df_out.shape
         span.set_attribute("output_shape", str(output_shape))
@@ -213,6 +262,18 @@ if __name__ == "__main__":
         default=10,
         help="Max unique values for encoding (columns with more are dropped)",
     )
+    parser.add_argument(
+        "--test-size",
+        type=float,
+        default=0.2,
+        help="Held-out fraction excluded from preprocessor fitting (default: 0.2)",
+    )
+    parser.add_argument(
+        "--random-state",
+        type=int,
+        default=42,
+        help="Seed for the deterministic train/test split (default: 42)",
+    )
 
     args = parser.parse_args()
 
@@ -223,6 +284,8 @@ if __name__ == "__main__":
             args.target,
             encode_categorical=not args.no_encode_categorical,
             max_categories=args.max_categories,
+            test_size=args.test_size,
+            random_state=args.random_state,
         )
         print(f"Feature engineering complete. Output shape: {result.output_shape}")
         if result.scaled_columns:

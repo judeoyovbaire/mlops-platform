@@ -135,18 +135,15 @@ def register_model(
             # Get run metrics
             run = client.get_run(run_id)
             if "accuracy" not in run.data.metrics:
-                logger.warning(
-                    f"No 'accuracy' metric found in run {run_id}. "
-                    "Cannot evaluate against threshold."
-                )
-                return RegistrationResult(
-                    model_name=model_name,
-                    run_id=run_id,
-                    accuracy=0.0,
-                    threshold=threshold,
-                    registered=False,
-                    success=True,
-                    error_message="No accuracy metric found in run",
+                # Fail loudly: a missing gate metric means the pipeline is
+                # broken (training didn't log it), not that registration
+                # "succeeded without registering". A silent success here
+                # would let a green pipeline ship nothing.
+                raise ModelRegistrationError(
+                    f"No 'accuracy' metric found in run {run_id} - cannot evaluate "
+                    f"the registration gate. Check: 1) train_model logged metrics "
+                    f"(mlflow.log_metrics), 2) the run-id parameter points at the "
+                    f"training run, 3) MLflow UI for the run's metric list."
                 )
             accuracy = run.data.metrics["accuracy"]
             span.set_attribute("accuracy", accuracy)

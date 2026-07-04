@@ -170,13 +170,18 @@ spec:
                   value: "{{workflow.parameters.mlflow-tracking-uri}}"
                 - name: run-id
                   value: "{{tasks.train-model.outputs.parameters.run-id}}"
+                - name: target-column
+                  value: "{{workflow.parameters.target-column}}"
               artifacts:
                 - name: model
                   from: "{{tasks.train-model.outputs.artifacts.model}}"
                 - name: preprocessor
                   from: "{{tasks.feature-engineering.outputs.artifacts.preprocessor}}"
+                # RAW validated data, not the feature-engineered CSV: the
+                # serving pyfunc's contract is raw features, and the sample
+                # input drives its logged signature.
                 - name: input-data
-                  from: "{{tasks.feature-engineering.outputs.artifacts.output-data}}"
+                  from: "{{tasks.validate-data.outputs.artifacts.output-data}}"
 
           - name: register-model
             template: register-model
@@ -280,7 +285,10 @@ spec:
         limit: 2
         retryPolicy: "OnError"
       memoize:
-        key: "feature-eng-{{inputs.parameters.target-column}}"
+        # Keyed on dataset URL + target so a dataset change within maxAge
+        # cannot serve a stale features artifact (same convention as
+        # load-data's key).
+        key: "feature-eng-{{workflow.parameters.dataset-url}}-{{inputs.parameters.target-column}}"
         maxAge: "24h"
         cache:
           configMap:
@@ -497,6 +505,8 @@ spec:
         parameters:
           - name: mlflow-tracking-uri
           - name: run-id
+          - name: target-column
+            value: "species"
         artifacts:
           - name: model
             path: /tmp/model.joblib
@@ -519,6 +529,8 @@ spec:
           - "{{inputs.parameters.mlflow-tracking-uri}}"
           - --sample-input
           - /tmp/input.csv
+          - --target-column
+          - "{{inputs.parameters.target-column}}"
         resources:
           requests:
             cpu: 100m

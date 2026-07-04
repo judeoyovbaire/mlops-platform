@@ -78,6 +78,7 @@ def build_serving_model(
     run_id: str,
     mlflow_uri: str,
     sample_input_path: str | None = None,
+    target_column: str | None = None,
 ) -> ServingModelResult:
     """Build and log an MLflow pyfunc serving model.
 
@@ -86,7 +87,10 @@ def build_serving_model(
         preprocessor_path: Path to the fitted ColumnTransformer (.joblib), or None.
         run_id: MLflow run ID to log the pyfunc model to.
         mlflow_uri: MLflow tracking server URI.
-        sample_input_path: Optional path to a CSV for input example.
+        sample_input_path: Optional path to a CSV for input example. Must be
+            RAW (pre-feature-engineering) data - the pyfunc's contract is raw
+            features, and the input example documents that contract.
+        target_column: Optional target column to drop from the sample input.
 
     Returns:
         ServingModelResult with artifact metadata.
@@ -118,6 +122,12 @@ def build_serving_model(
     input_example = None
     if sample_input_path and os.path.exists(sample_input_path):
         sample_df = pd.read_csv(sample_input_path)
+        # The pyfunc's contract is RAW features: drop the target (and any
+        # pipeline bookkeeping columns) so signature inference documents
+        # exactly what callers send.
+        drop_cols = [c for c in (target_column, "is_train") if c and c in sample_df.columns]
+        if drop_cols:
+            sample_df = sample_df.drop(columns=drop_cols)
         input_example = sample_df.head(1)
 
     artifact_path = "serving_model"
@@ -144,6 +154,11 @@ if __name__ == "__main__":
     parser.add_argument("--run-id", required=True, help="MLflow run ID")
     parser.add_argument("--mlflow-uri", required=True, help="MLflow tracking URI")
     parser.add_argument("--sample-input", default=None, help="Path to sample input CSV")
+    parser.add_argument(
+        "--target-column",
+        default=None,
+        help="Target column to drop from the sample input (the pyfunc accepts raw features only)",
+    )
 
     args = parser.parse_args()
 
@@ -154,6 +169,7 @@ if __name__ == "__main__":
             run_id=args.run_id,
             mlflow_uri=args.mlflow_uri,
             sample_input_path=args.sample_input,
+            target_column=args.target_column,
         )
         print(f"Serving model logged to run {result.run_id} at '{result.artifact_path}'")
     except ModelTrainingError as e:

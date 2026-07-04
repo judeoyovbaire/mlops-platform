@@ -25,8 +25,10 @@ tracer = get_tracer("load-data")
 # Default timeout for network requests (seconds)
 DEFAULT_TIMEOUT = 30
 
-# Encodings to try in order of preference
-ENCODING_FALLBACKS = ["utf-8", "latin-1", "cp1252", "iso-8859-1"]
+# Encodings to try in order of preference. latin-1 must come LAST: it maps
+# every byte sequence to some character and never fails, so any encoding
+# after it is unreachable.
+ENCODING_FALLBACKS = ["utf-8", "cp1252", "iso-8859-1", "latin-1"]
 
 
 @dataclass

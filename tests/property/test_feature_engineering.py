@@ -163,6 +163,10 @@ def test_scaled_columns_have_zero_mean(df):
         if result.scaled_columns:
             df_out = pd.read_csv(output_path)
             scaler_cols = [c for c in df_out.columns if c.startswith("scaler__")]
+            # Zero mean is an invariant of the FIT partition only: the scaler
+            # is fitted on is_train==1 rows (leakage-free); held-out rows are
+            # transformed with those statistics.
+            train_out = df_out[df_out["is_train"] == 1]
             for col in scaler_cols:
-                col_mean = df_out[col].dropna().mean()
+                col_mean = train_out[col].dropna().mean()
                 assert abs(col_mean) < 1e-6, f"Column {col} has non-zero mean: {col_mean}"

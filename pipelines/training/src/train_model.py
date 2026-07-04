@@ -34,17 +34,10 @@ DEFAULT_PARAM_GRID = {
 }
 
 
-@dataclass
-class TrainingConfig:
-    """Configuration for model training."""
-
-    n_estimators: int = 100
-    max_depth: int = 10
-    test_size: float = 0.2
-    random_state: int = 42
-    cv_folds: int = 5
-    use_cross_validation: bool = True
-    use_grid_search: bool = False
+# Split indicator column written by feature_engineering (1 = train row).
+# When present, training respects the upstream leakage-free split instead
+# of re-splitting data the preprocessor was fitted on.
+SPLIT_COLUMN = "is_train"
 
 
 @dataclass
@@ -180,14 +173,26 @@ def train_model(
                 f"Target column '{target}' not found. Available: {list(df.columns)}"
             )
 
-        X = df.drop(columns=[target])
-        y = df[target]
-
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=test_size, random_state=random_state, stratify=y
-        )
-        logger.info(f"Train set: {len(X_train)}, Test set: {len(X_test)}")
+        if SPLIT_COLUMN in df.columns:
+            # Respect the leakage-free split from feature_engineering: the
+            # preprocessor was fitted on is_train==1 rows only, so held-out
+            # rows must stay held out here too.
+            train_mask = df[SPLIT_COLUMN] == 1
+            features = df.drop(columns=[target, SPLIT_COLUMN])
+            X_train, X_test = features[train_mask], features[~train_mask]
+            y_train, y_test = df[target][train_mask], df[target][~train_mask]
+            logger.info(
+                f"Using upstream '{SPLIT_COLUMN}' split: "
+                f"{len(X_train)} train / {len(X_test)} test"
+            )
+        else:
+            # Fallback for data without a split indicator (e.g. direct CLI use)
+            X = df.drop(columns=[target])
+            y = df[target]
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=test_size, random_state=random_state, stratify=y
+            )
+            logger.info(f"Internal split - Train set: {len(X_train)}, Test set: {len(X_test)}")
 
         try:
             with mlflow.start_run() as run:
@@ -215,13 +220,18 @@ def train_model(
                     n_jobs=n_jobs,
                 )
 
-                # Perform cross-validation if enabled
+                # Perform cross-validation if enabled.
+                # CV runs on the TRAINING partition only — held-out test rows
+                # must not influence model selection. Note: features were
+                # scaled by a preprocessor fitted on the whole training
+                # partition, so CV folds share those statistics; the clean,
+                # unbiased number is the held-out test accuracy below.
                 cv_mean = None
                 cv_std = None
-                if use_cross_validation and len(X) >= cv_folds:
-                    logger.info(f"Performing {cv_folds}-fold cross-validation")
+                if use_cross_validation and len(X_train) >= cv_folds:
+                    logger.info(f"Performing {cv_folds}-fold cross-validation on train partition")
                     cv_scores = cross_val_score(
-                        model, X, y, cv=cv_folds, scoring="accuracy", n_jobs=n_jobs
+                        model, X_train, y_train, cv=cv_folds, scoring="accuracy", n_jobs=n_jobs
                     )
                     cv_mean = float(np.mean(cv_scores))
                     cv_std = float(np.std(cv_scores))

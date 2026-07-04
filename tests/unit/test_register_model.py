@@ -85,6 +85,42 @@ class TestRegisterModel:
                 run_id="test-run-123",
             )
 
+    def test_missing_accuracy_metric_fails_loudly(self, mock_mlflow_client):
+        """A run without the gate metric must FAIL the step, not return a
+        silent success (regression: success=True/registered=False let a green
+        pipeline ship nothing)."""
+        mock_mlflow_client.get_run.return_value.data.metrics = {"f1_score": 0.9}
+
+        with pytest.raises(ModelRegistrationError, match="No 'accuracy' metric"):
+            register_model(
+                model_name="test-model",
+                mlflow_uri="http://localhost:5000",
+                threshold=0.9,
+                alias="champion",
+                run_id="test-run-123",
+            )
+
+    def test_custom_artifact_path_registered(self, mock_mlflow_client, mocker):
+        """The registered model URI must honor artifact_path (the workflow
+        passes 'serving_model' so the raw-input pyfunc is what ships)."""
+        register_mock = mocker.patch(
+            "pipelines.training.src.register_model.mlflow.register_model"
+        )
+        register_mock.return_value.version = "7"
+
+        result = register_model(
+            model_name="test-model",
+            mlflow_uri="http://localhost:5000",
+            threshold=0.9,
+            alias="champion",
+            run_id="test-run-123",
+            artifact_path="serving_model",
+        )
+
+        register_mock.assert_called_once_with("runs:/test-run-123/serving_model", "test-model")
+        assert result.registered is True
+        assert result.version == 7
+
     def test_result_dataclass_fields_registered(self, mock_mlflow_client):
         """Test that RegistrationResult contains expected fields when registered."""
         result = register_model(

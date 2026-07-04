@@ -103,6 +103,30 @@ def validate_model(
             f"Target column '{target}' not found. Available: {list(df.columns)}"
         )
 
+    # Validate on HELD-OUT rows when the upstream split indicator is present.
+    # Scoring the model on its own training data is a vacuous gate (an
+    # overfit model scores ~1.0); the is_train==0 partition was excluded
+    # from both preprocessor fitting and model training.
+    split_column = "is_train"
+    if split_column in df.columns:
+        held_out = df[df[split_column] == 0].drop(columns=[split_column])
+        if len(held_out) == 0:
+            raise ModelTrainingError(
+                f"'{split_column}' column present but no held-out rows found. "
+                "Check the feature-engineering split configuration."
+            )
+        logger.info(
+            f"Validating on {len(held_out)} held-out rows "
+            f"(of {len(df)} total; '{split_column}' indicator)"
+        )
+        df = held_out
+    else:
+        logger.warning(
+            f"No '{split_column}' column in validation data - metrics are "
+            "computed on data the model may have been trained on and are "
+            "optimistically biased"
+        )
+
     X = df.drop(columns=[target])
     y = df[target]
 

@@ -63,6 +63,8 @@ def fitted_artifacts(tmp_path_factory):
 
     preprocessor = joblib.load(result.preprocessor_path)
     features = pd.read_csv(output_csv)
+    # Train on the leakage-free train partition, as the pipeline does
+    features = features[features["is_train"] == 1].drop(columns=["is_train"])
     X = features.drop(columns=["species"])
     y = features["species"]
     model = RandomForestClassifier(n_estimators=10, random_state=42).fit(X, y)
