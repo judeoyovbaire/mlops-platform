@@ -357,6 +357,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build kserve-transformer image
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
+        with:
+          context: ./components/kserve-transformer
+          file: ./components/kserve-transformer/Dockerfile
+          load: true
+          push: false
+          tags: mlops-platform/kserve-transformer:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Scan training pipeline image
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
@@ -378,6 +389,17 @@ jobs:
           ignore-unfixed: true
           exit-code: "0"
 
+      - name: Scan kserve-transformer image
+        if: ${{ !cancelled() }}
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: "mlops-platform/kserve-transformer:test"
+          format: "sarif"
+          output: "trivy-transformer-image.sarif"
+          severity: "HIGH,CRITICAL"
+          ignore-unfixed: true
+          exit-code: "0"
+
       - name: Upload training image scan results
         uses: github/codeql-action/upload-sarif@e46ed2cbd01164d986452f91f178727624ae40d7 # v4
         if: always()
@@ -391,6 +413,13 @@ jobs:
         with:
           sarif_file: "trivy-pretrained-image.sarif"
           category: "trivy-pretrained-image"
+
+      - name: Upload kserve-transformer image scan results
+        uses: github/codeql-action/upload-sarif@e46ed2cbd01164d986452f91f178727624ae40d7 # v4
+        if: always()
+        with:
+          sarif_file: "trivy-transformer-image.sarif"
+          category: "trivy-transformer-image"
 
       - name: Generate SBOM for training image
         if: ${{ !cancelled() }}
@@ -410,6 +439,15 @@ jobs:
           output: "sbom-pretrained-image.spdx.json"
           exit-code: "0"
 
+      - name: Generate SBOM for kserve-transformer image
+        if: ${{ !cancelled() }}
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: "mlops-platform/kserve-transformer:test"
+          format: "spdx-json"
+          output: "sbom-transformer-image.spdx.json"
+          exit-code: "0"
+
       - name: Upload SBOMs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
@@ -418,6 +456,7 @@ jobs:
           path: |
             sbom-training-image.spdx.json
             sbom-pretrained-image.spdx.json
+            sbom-transformer-image.spdx.json
           retention-days: 30
 
   test-python:

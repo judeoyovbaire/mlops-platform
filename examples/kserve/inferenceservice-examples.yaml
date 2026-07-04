@@ -12,6 +12,11 @@ metadata:
     app.kubernetes.io/component: inference
     app.kubernetes.io/part-of: mlops-platform
     app.kubernetes.io/managed-by: kserve
+    # Required by governance/model-registry-policies.yaml (Kyverno Enforce)
+    mlops.io/model-name: sklearn-iris-demo
+    mlops.io/model-version: "1.0.0"
+    mlops.io/model-owner: platform-team
+    mlops.io/model-stage: staging
   annotations:
     nginx.ingress.kubernetes.io/limit-rps: "50"
     nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"

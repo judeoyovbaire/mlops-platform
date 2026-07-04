@@ -18,7 +18,10 @@ spec:
   transformer:
     containers:
       - name: transformer
-        image: ghcr.io/judeoyovbaire/mlops-platform/kserve-transformer:latest
+        # Tag "main" tracks the latest signed image from build-sign-publish;
+        # the CI deploy path will substitute an immutable digest once the
+        # registry-to-serving deploy wiring lands.
+        image: ghcr.io/judeoyovbaire/mlops-platform/kserve-transformer:main
         env:
           - name: PREPROCESSOR_PATH
             value: /mnt/models/preprocessor.joblib
