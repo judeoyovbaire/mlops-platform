@@ -157,25 +157,13 @@ spec:
                 - name: input-data
                   from: "{{tasks.feature-engineering.outputs.artifacts.output-data}}"
 
-          - name: register-model
-            template: register-model
-            dependencies: [validate-model]
-            arguments:
-              parameters:
-                - name: model-name
-                  value: "{{workflow.parameters.model-name}}"
-                - name: mlflow-tracking-uri
-                  value: "{{workflow.parameters.mlflow-tracking-uri}}"
-                - name: accuracy-threshold
-                  value: "{{workflow.parameters.accuracy-threshold}}"
-                - name: model-alias
-                  value: "{{workflow.parameters.model-alias}}"
-                - name: run-id
-                  value: "{{tasks.train-model.outputs.parameters.run-id}}"
-
+          # Build the raw-input serving pyfunc BEFORE registration so the
+          # registered version is the serving model with bundled
+          # preprocessing, not the bare sklearn model that expects
+          # pre-transformed features.
           - name: build-serving-model
             template: build-serving-model
-            dependencies: [register-model]
+            dependencies: [validate-model]
             arguments:
               parameters:
                 - name: mlflow-tracking-uri
@@ -189,6 +177,24 @@ spec:
                   from: "{{tasks.feature-engineering.outputs.artifacts.preprocessor}}"
                 - name: input-data
                   from: "{{tasks.feature-engineering.outputs.artifacts.output-data}}"
+
+          - name: register-model
+            template: register-model
+            dependencies: [build-serving-model]
+            arguments:
+              parameters:
+                - name: model-name
+                  value: "{{workflow.parameters.model-name}}"
+                - name: mlflow-tracking-uri
+                  value: "{{workflow.parameters.mlflow-tracking-uri}}"
+                - name: accuracy-threshold
+                  value: "{{workflow.parameters.accuracy-threshold}}"
+                - name: model-alias
+                  value: "{{workflow.parameters.model-alias}}"
+                - name: run-id
+                  value: "{{tasks.train-model.outputs.parameters.run-id}}"
+                - name: artifact-path
+                  value: "serving_model"
 
     # Step 1: Load data from URL
     - name: load-data
@@ -440,6 +446,8 @@ spec:
           - name: accuracy-threshold
           - name: model-alias
           - name: run-id
+          - name: artifact-path
+            value: "model"
       outputs:
         parameters:
           - name: model-version
@@ -462,6 +470,8 @@ spec:
           - "{{inputs.parameters.model-alias}}"
           - --run-id
           - "{{inputs.parameters.run-id}}"
+          - --artifact-path
+          - "{{inputs.parameters.artifact-path}}"
           - --version-output
           - /tmp/model_version.txt
           - --alias-output

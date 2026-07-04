@@ -51,13 +51,40 @@ class IrisTransformer(Model):
         return self.ready
 
     def preprocess(self, payload: InferRequest, headers: dict) -> InferRequest:
-        """Apply preprocessing to the input features."""
+        """Apply preprocessing to the input features.
+
+        The fitted ColumnTransformer was trained on *named* columns, so raw
+        payloads must be aligned to the training schema before transform:
+        positional rows (list-of-lists) get the training column names applied;
+        named rows (list-of-dicts) are reordered to the training column order.
+        """
         instances = payload.inputs[0].data
         df = pd.DataFrame(instances)
         if self.preprocessor is not None:
+            expected = getattr(self.preprocessor, "feature_names_in_", None)
+            if expected is not None:
+                expected = list(expected)
+                if df.columns.inferred_type == "integer":
+                    # Positional payload: apply training column names.
+                    if df.shape[1] != len(expected):
+                        raise ValueError(
+                            f"Expected {len(expected)} features {expected}, "
+                            f"got {df.shape[1]} values per instance"
+                        )
+                    df.columns = expected
+                else:
+                    # Named payload: validate and align column order.
+                    missing = [c for c in expected if c not in df.columns]
+                    if missing:
+                        raise ValueError(
+                            f"Missing required features: {missing}. Expected features: {expected}"
+                        )
+                    df = df[expected]
             transformed = self.preprocessor.transform(df)
             if hasattr(transformed, "toarray"):
                 transformed = transformed.toarray()
+            elif hasattr(transformed, "to_numpy"):
+                transformed = transformed.to_numpy()
             payload.inputs[0].data = transformed.tolist()
         return payload
 

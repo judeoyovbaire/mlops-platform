@@ -62,6 +62,7 @@ def register_model(
     alias: str,
     run_id: str,
     mlflow_timeout_seconds: int = MLFLOW_CONNECTION_TIMEOUT,
+    artifact_path: str = "model",
 ) -> RegistrationResult:
     """
     Register a model to MLflow Model Registry if it meets threshold.
@@ -73,6 +74,10 @@ def register_model(
         alias: Alias to assign to the registered model version.
         run_id: MLflow run ID containing the model.
         mlflow_timeout_seconds: Timeout in seconds for MLflow connection (default: 30).
+        artifact_path: Run artifact path to register (default "model"; the
+            training workflow passes "serving_model" so the registered version
+            is the raw-input pyfunc with bundled preprocessing, not the bare
+            sklearn model that expects pre-transformed features).
 
     Returns:
         RegistrationResult containing registration status and details.
@@ -157,7 +162,7 @@ def register_model(
         if accuracy >= threshold:
             try:
                 # Register model
-                model_uri = f"runs:/{run_id}/model"
+                model_uri = f"runs:/{run_id}/{artifact_path}"
                 mv = mlflow.register_model(model_uri, model_name)
                 logger.info(f"Registered {model_name} version {mv.version}")
 
@@ -213,6 +218,14 @@ if __name__ == "__main__":
         help="MLflow connection timeout in seconds (default: 30)",
     )
     parser.add_argument(
+        "--artifact-path",
+        default="model",
+        help=(
+            "Run artifact path to register (default: model). The training "
+            "workflow passes 'serving_model' to register the raw-input pyfunc."
+        ),
+    )
+    parser.add_argument(
         "--version-output",
         default="/tmp/model_version.txt",  # nosec B108 — Argo Workflow artifact path
         help="Path to write registered model version",
@@ -233,6 +246,7 @@ if __name__ == "__main__":
             args.alias,
             args.run_id,
             mlflow_timeout_seconds=args.mlflow_timeout,
+            artifact_path=args.artifact_path,
         )
 
         # Write output parameters for downstream Argo steps

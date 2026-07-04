@@ -68,8 +68,12 @@ class TestPreprocess:
     """Tests for the preprocess() method."""
 
     def test_preprocess_with_preprocessor(self, iris_transformer):
-        """When preprocessor is set, transform should be called on DataFrame."""
+        """When preprocessor is set, transform should be called on a DataFrame
+        carrying the TRAINING column names (regression: positional payloads
+        used to produce integer columns that a fitted transformer rejects)."""
+        feature_names = ["sepal_length", "sepal_width", "petal_length", "petal_width"]
         mock_preprocessor = MagicMock()
+        mock_preprocessor.feature_names_in_ = np.array(feature_names)
         transformed_array = np.array([[1.0, 2.0, 3.0, 4.0]])
         mock_preprocessor.transform.return_value = transformed_array
         iris_transformer.preprocessor = mock_preprocessor
@@ -82,12 +86,15 @@ class TestPreprocess:
         result = iris_transformer.preprocess(mock_payload, headers={})
 
         call_args = mock_preprocessor.transform.call_args
-        assert isinstance(call_args[0][0], pd.DataFrame)
+        sent_df = call_args[0][0]
+        assert isinstance(sent_df, pd.DataFrame)
+        assert list(sent_df.columns) == feature_names
         assert result.inputs[0].data == transformed_array.tolist()
 
     def test_preprocess_with_sparse_output(self, iris_transformer):
         """When preprocessor returns sparse matrix, it should be converted."""
         mock_preprocessor = MagicMock()
+        mock_preprocessor.feature_names_in_ = np.array(["a", "b", "c"])
         mock_sparse = MagicMock()
         mock_sparse.toarray.return_value = np.array([[1.0, 0.0, 1.0]])
         mock_preprocessor.transform.return_value = mock_sparse
@@ -101,6 +108,20 @@ class TestPreprocess:
         result = iris_transformer.preprocess(mock_payload, headers={})
         mock_sparse.toarray.assert_called_once()
         assert result.inputs[0].data == [[1.0, 0.0, 1.0]]
+
+    def test_preprocess_wrong_width_raises(self, iris_transformer):
+        """Payload width mismatch must produce an actionable error."""
+        mock_preprocessor = MagicMock()
+        mock_preprocessor.feature_names_in_ = np.array(["a", "b", "c", "d"])
+        iris_transformer.preprocessor = mock_preprocessor
+
+        mock_input = MagicMock()
+        mock_input.data = [[5.1, 3.5]]
+        mock_payload = MagicMock()
+        mock_payload.inputs = [mock_input]
+
+        with pytest.raises(ValueError, match="Expected 4 features"):
+            iris_transformer.preprocess(mock_payload, headers={})
 
     def test_preprocess_without_preprocessor(self, iris_transformer):
         """When preprocessor is None, data should pass through unchanged."""
