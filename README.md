@@ -254,7 +254,7 @@ flowchart LR
 mlops-platform/
 ├── .github/workflows/          # CI/CD pipeline (multi-cloud)
 ├── components/
-│   └── drift-detection/        # Model drift detection service
+│   └── drift-detection/        # Statistical drift library (showcase; see ADR-013)
 ├── docs/
 │   ├── adr/                    # Architecture Decision Records
 │   ├── runbooks/               # Operations and troubleshooting runbooks
@@ -266,7 +266,6 @@ mlops-platform/
 │   ├── canary-deployment/      # Progressive rollout with traffic splitting
 │   ├── data-versioning/        # DVC integration examples
 │   ├── distributed-training/   # PyTorch DDP with Kubeflow
-│   ├── drift-detection/        # Model monitoring with Evidently
 │   ├── chaos-testing/          # Resilience testing with Chaos Mesh
 │   └── llm-inference/          # LLM serving with vLLM
 ├── infrastructure/
@@ -497,7 +496,6 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 ### In Progress / Future Enhancements
 - [ ] End-to-end verification — deploy → canary → auto-rollback demonstrated on a live cluster
 - [ ] GitOps-driven promotion — ArgoCD ApplicationSets for auto-deploy to dev, PR-based promotion to prod
-- [ ] Drift detection wired end-to-end (components and examples exist; production data capture and event wiring in progress)
 - [ ] LLM inference verified on live GPUs with committed throughput/latency/cost benchmarks
 - [ ] A/B testing framework for model comparison
 - [ ] Feature store integration (Feast)
@@ -513,7 +511,6 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 | [Data Versioning](examples/data-versioning/) | DVC integration for dataset management | Intermediate |
 | [Distributed Training](examples/distributed-training/) | PyTorch DDP with Kubeflow Training Operator | Advanced |
 | [LLM Inference](examples/llm-inference/) | Mistral-7B with vLLM on GPU | Advanced |
-| [Drift Detection](examples/drift-detection/) | Model monitoring with Evidently | Advanced |
 | [HuggingFace Sentiment](examples/kserve/huggingface-sentiment.yaml) | Pretrained HF model via KServe | Intermediate |
 | [Chaos Testing](examples/chaos-testing/) | Resilience testing with Chaos Mesh | Advanced |
 | [Load Testing](examples/load-testing/) | k6 and Locust load testing examples | Intermediate |

@@ -57,6 +57,5 @@ When error budget is exhausted (< 0% remaining):
 ## Notes
 
 - Metrics referenced in `infrastructure/kubernetes/monitoring.yaml` alerts for
-  `model_prediction_latency_seconds` and `model_data_drift_score` are aspirational
-  design targets. The PromQL expressions above use metrics actually emitted by
+  `model_prediction_latency_seconds` are aspirational design targets. The PromQL expressions above use metrics actually emitted by
   KServe revision proxy and Argo Workflows controller.

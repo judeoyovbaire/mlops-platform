@@ -22,6 +22,7 @@ An Architecture Decision Record captures an important architectural decision mad
 | [010](010-terraform-over-opentofu.md) | Terraform Over OpenTofu | Accepted | 2026-05 |
 | [011](011-uv-over-pip.md) | uv Over pip for Python Package Management | Accepted | 2026-05 |
 | [012](012-terragrunt-evaluation.md) | Evaluate Terragrunt for DRY Terraform Configuration | Proposed | 2026-05 |
+| [013](013-descope-drift-triggered-retraining.md) | Descope Drift-Triggered Retraining | Accepted | 2026-07 |
 
 ## Creating a New ADR
 

@@ -211,24 +211,12 @@ spec:
 
         # -------------------------------------------------------------------------
         # Aspirational alerts: The metrics below (model_prediction_latency_seconds,
-        # model_prediction_requests_total, model_data_drift_score) are design
-        # targets that will be emitted once the inference pipeline and drift
-        # detector are deployed with Prometheus instrumentation. Until then,
-        # these alerts serve as documentation of the intended observability
-        # contract.
+        # model_prediction_requests_total) are design targets that will be emitted
+        # once the inference pipeline is deployed with Prometheus instrumentation.
+        # Until then, these alerts serve as documentation of the intended
+        # observability contract. Drift-triggered retraining alerts were removed
+        # per ADR-013 (drift automation descoped).
         # -------------------------------------------------------------------------
-
-        # Data drift detected — triggers automated retraining via Argo Events
-        - alert: DataDriftDetected
-          expr: |
-            model_data_drift_score{namespace="mlops"} > 0.15
-          for: 10m
-          labels:
-            severity: warning
-            automation: retrain
-          annotations:
-            summary: "Data drift detected for {{ $labels.model_name }}"
-            description: "Drift score {{ $value | printf \"%.3f\" }} exceeds threshold 0.15 for model {{ $labels.model_name }}. Automated retraining will be triggered."
 
         # Model performance degradation (accuracy drop)
         - alert: ModelPerformanceDegradation
@@ -237,21 +225,9 @@ spec:
           for: 15m
           labels:
             severity: critical
-            automation: retrain
           annotations:
             summary: "Model performance degradation for {{ $labels.model_name }}"
             description: "Model {{ $labels.model_name }} accuracy dropped by {{ $value | printf \"%.3f\" }} from baseline. Current: {{ $labels.current_accuracy }}, Baseline: {{ $labels.baseline_accuracy }}"
-
-        # Prediction distribution shift
-        - alert: PredictionDistributionShift
-          expr: |
-            model_prediction_distribution_shift{namespace="mlops"} > 0.2
-          for: 15m
-          labels:
-            severity: warning
-          annotations:
-            summary: "Prediction distribution shift for {{ $labels.model_name }}"
-            description: "Prediction distribution has shifted significantly ({{ $value | printf \"%.3f\" }}) for model {{ $labels.model_name }}. This may indicate concept drift."
 
         # Model version comparison (A/B testing)
         - alert: ModelVersionPerformanceGap
@@ -307,17 +283,6 @@ spec:
           annotations:
             summary: "High queue depth for {{ $labels.revision_name }}"
             description: "Prediction queue depth is {{ $value }} for {{ $labels.revision_name }}. Consider scaling up."
-
-        # Model feature importance shift
-        - alert: FeatureImportanceShift
-          expr: |
-            model_feature_importance_shift{namespace="mlops"} > 0.25
-          for: 20m
-          labels:
-            severity: info
-          annotations:
-            summary: "Feature importance shift detected for {{ $labels.model_name }}"
-            description: "Feature importance has shifted by {{ $value | printf \"%.3f\" }} for model {{ $labels.model_name }}. May indicate data drift."
 
         # Model serving cost anomaly
         - alert: ModelServingCostAnomaly

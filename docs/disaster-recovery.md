@@ -164,7 +164,6 @@ State is stored in S3 with:
 **Symptoms:**
 - Model artifacts unavailable
 - Training pipeline failures
-- Drift detection reports missing
 
 **Recovery Steps:**
 

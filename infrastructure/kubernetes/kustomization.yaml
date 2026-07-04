@@ -6,7 +6,6 @@ resources:
   - network-policies.yaml
   - pod-disruption-budgets.yaml
   - resource-quotas.yaml
-  - drift-retrain-trigger.yaml
   - vpa.yaml
   - governance/model-registry-policies.yaml
   - governance/image-signature-policy.yaml
