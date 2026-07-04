@@ -182,8 +182,7 @@ def train_model(
             X_train, X_test = features[train_mask], features[~train_mask]
             y_train, y_test = df[target][train_mask], df[target][~train_mask]
             logger.info(
-                f"Using upstream '{SPLIT_COLUMN}' split: "
-                f"{len(X_train)} train / {len(X_test)} test"
+                f"Using upstream '{SPLIT_COLUMN}' split: {len(X_train)} train / {len(X_test)} test"
             )
         else:
             # Fallback for data without a split indicator (e.g. direct CLI use)

@@ -88,9 +88,7 @@ def loaded_transformer(fitted_artifacts, monkeypatch):
     """IrisTransformer with the REAL preprocessor loaded from disk."""
     import transformer as transformer_module
 
-    monkeypatch.setattr(
-        transformer_module, "PREPROCESSOR_PATH", fitted_artifacts.preprocessor_path
-    )
+    monkeypatch.setattr(transformer_module, "PREPROCESSOR_PATH", fitted_artifacts.preprocessor_path)
     t = IrisTransformer(name="iris", predictor_host="localhost:8080")
     t.preprocessor = joblib.load(fitted_artifacts.preprocessor_path)
     return t

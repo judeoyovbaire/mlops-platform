@@ -103,9 +103,7 @@ class TestRegisterModel:
     def test_custom_artifact_path_registered(self, mock_mlflow_client, mocker):
         """The registered model URI must honor artifact_path (the workflow
         passes 'serving_model' so the raw-input pyfunc is what ships)."""
-        register_mock = mocker.patch(
-            "pipelines.training.src.register_model.mlflow.register_model"
-        )
+        register_mock = mocker.patch("pipelines.training.src.register_model.mlflow.register_model")
         register_mock.return_value.version = "7"
 
         result = register_model(
