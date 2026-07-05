@@ -231,6 +231,29 @@ resource "helm_release" "minio" {
     value = "minio-credentials"
   }
 
+  # The post-install bucket job must satisfy the platform's own Kyverno
+  # require-resource-limits policy (Enforce) - the chart ships it without
+  # resources and the admission webhook denies it otherwise.
+  set {
+    name  = "postJob.resources.requests.cpu"
+    value = "50m"
+  }
+
+  set {
+    name  = "postJob.resources.requests.memory"
+    value = "64Mi"
+  }
+
+  set {
+    name  = "postJob.resources.limits.cpu"
+    value = "200m"
+  }
+
+  set {
+    name  = "postJob.resources.limits.memory"
+    value = "128Mi"
+  }
+
   set {
     name  = "buckets[0].name"
     value = "mlpipeline"
