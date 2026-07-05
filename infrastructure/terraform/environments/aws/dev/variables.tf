@@ -291,7 +291,7 @@ variable "helm_argo_events_version" {
 variable "helm_opencost_version" {
   description = "OpenCost Helm chart version"
   type        = string
-  default     = "1.44.0"
+  default     = "2.5.26"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_opencost_version))

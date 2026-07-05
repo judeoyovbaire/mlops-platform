@@ -233,25 +233,26 @@ resource "helm_release" "minio" {
   }
 
   # The post-install bucket job must satisfy the platform's own Kyverno
-  # require-resource-limits policy (Enforce) - the chart ships it without
-  # resources and the admission webhook denies it otherwise.
+  # require-resource-limits policy (Enforce). NOTE: the chart keys the job
+  # container's resources under makeBucketJob.resources - postJob has no
+  # resources field (a previous fix targeted it and silently did nothing).
   set {
-    name  = "postJob.resources.requests.cpu"
+    name  = "makeBucketJob.resources.requests.cpu"
     value = "50m"
   }
 
   set {
-    name  = "postJob.resources.requests.memory"
+    name  = "makeBucketJob.resources.requests.memory"
     value = "64Mi"
   }
 
   set {
-    name  = "postJob.resources.limits.cpu"
+    name  = "makeBucketJob.resources.limits.cpu"
     value = "200m"
   }
 
   set {
-    name  = "postJob.resources.limits.memory"
+    name  = "makeBucketJob.resources.limits.memory"
     value = "128Mi"
   }
 
