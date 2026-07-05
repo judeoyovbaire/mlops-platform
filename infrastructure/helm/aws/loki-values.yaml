@@ -39,9 +39,13 @@ singleBinary:
     limits:
       cpu: 1000m
       memory: 2Gi
-  # Disable persistence when using S3
+  # S3 stores chunks, but Loki still needs a WRITABLE local volume for the
+  # WAL and compactor workdir - with readOnlyRootFilesystem and no PVC the
+  # process dies on "mkdir /var/loki: read-only file system".
   persistence:
-    enabled: false
+    enabled: true
+    size: 10Gi
+    storageClass: gp3
 
 # Service account for IRSA
 serviceAccount:

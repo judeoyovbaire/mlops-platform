@@ -1,7 +1,9 @@
 # Chart >=0.9x requires an explicit image repository (see the chart's
-# UPGRADING.md); -k8s is the distribution recommended for in-cluster use.
+# UPGRADING.md). The pipeline uses the prometheus exporter, which only
+# ships in the CONTRIB distribution - the minimal -k8s image rejects the
+# config with 'unknown type: "prometheus"'.
 image:
-  repository: otel/opentelemetry-collector-k8s
+  repository: otel/opentelemetry-collector-contrib
 
 # OpenTelemetry Collector Helm Values
 # Chart: open-telemetry/opentelemetry-collector
