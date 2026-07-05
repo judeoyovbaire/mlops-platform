@@ -87,8 +87,8 @@ variable "helm_aws_lb_controller_version" {
   default     = "1.17.1"
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_aws_lb_controller_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_aws_lb_controller_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -97,8 +97,8 @@ variable "helm_cert_manager_version" {
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_cert_manager_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_cert_manager_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -107,8 +107,8 @@ variable "helm_argocd_version" {
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argocd_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argocd_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -117,8 +117,8 @@ variable "helm_kserve_version" {
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_kserve_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_kserve_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -127,8 +127,8 @@ variable "helm_mlflow_version" {
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_mlflow_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_mlflow_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -137,8 +137,8 @@ variable "helm_argo_workflows_version" {
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_workflows_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_workflows_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -147,8 +147,8 @@ variable "helm_minio_version" {
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_minio_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_minio_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -157,8 +157,8 @@ variable "helm_prometheus_stack_version" {
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_prometheus_stack_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_prometheus_stack_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -168,8 +168,8 @@ variable "helm_karpenter_version" {
   default     = "1.8.3"
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_karpenter_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_karpenter_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -178,8 +178,8 @@ variable "helm_tetragon_version" {
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_tetragon_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_tetragon_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -188,8 +188,8 @@ variable "helm_kyverno_version" {
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_kyverno_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_kyverno_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -198,8 +198,8 @@ variable "helm_external_secrets_version" {
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_external_secrets_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_external_secrets_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -208,8 +208,8 @@ variable "helm_loki_version" {
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_loki_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_loki_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -218,8 +218,8 @@ variable "helm_tempo_version" {
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_tempo_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_tempo_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -228,8 +228,8 @@ variable "helm_otel_collector_version" {
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_otel_collector_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_otel_collector_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -238,8 +238,8 @@ variable "helm_alloy_version" {
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_alloy_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_alloy_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -272,8 +272,8 @@ variable "helm_argo_rollouts_version" {
   default     = "2.39.1"
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_rollouts_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_rollouts_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -283,8 +283,8 @@ variable "helm_argo_events_version" {
   default     = "2.4.14"
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_events_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_events_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -294,8 +294,8 @@ variable "helm_opencost_version" {
   default     = "1.44.0"
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_opencost_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_opencost_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
@@ -305,8 +305,8 @@ variable "helm_dcgm_exporter_version" {
   default     = "3.6.1"
 
   validation {
-    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_dcgm_exporter_version))
-    error_message = "Must be a valid semver version (e.g., 1.2.3)."
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_dcgm_exporter_version))
+    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
 
