@@ -205,31 +205,37 @@ class TestKubernetesManifests:
 class TestSecurityConfiguration:
     """Tests for security configuration across all environments."""
 
+    @staticmethod
+    def _cloud_tf_content(cloud: str) -> str:
+        """Concatenate a cloud's dev environment AND its shared platform
+        module (e.g. modules/aws-platform, extracted per ADR-015) - platform
+        resources may live in either."""
+        scan_dirs = [
+            PROJECT_ROOT / "infrastructure" / "terraform" / "environments" / cloud / "dev",
+            PROJECT_ROOT / "infrastructure" / "terraform" / "modules" / f"{cloud}-platform",
+        ]
+        content = ""
+        for d in scan_dirs:
+            if d.exists():
+                for tf_file in d.glob("*.tf"):
+                    content += tf_file.read_text()
+        return content
+
     def test_psa_labels_configured(self):
         """Verify Pod Security Admission labels are set in all environments."""
         for cloud in ["aws", "azure", "gcp"]:
-            namespaces_file = (
-                PROJECT_ROOT
-                / "infrastructure"
-                / "terraform"
-                / "environments"
-                / cloud
-                / "dev"
-                / "namespaces.tf"
+            content = self._cloud_tf_content(cloud)
+            assert content, f"{cloud} terraform sources not found"
+
+            # Check for PSA enforce labels
+            assert "pod-security.kubernetes.io/enforce" in content, (
+                f"{cloud} should have PSA enforce labels"
             )
 
-            if namespaces_file.exists():
-                content = namespaces_file.read_text()
-
-                # Check for PSA enforce labels
-                assert "pod-security.kubernetes.io/enforce" in content, (
-                    f"{cloud} should have PSA enforce labels"
-                )
-
-                # mlops, mlflow, kserve should be restricted
-                assert "restricted" in content, (
-                    f"{cloud} should use restricted PSA for workload namespaces"
-                )
+            # mlops, mlflow, kserve should be restricted
+            assert "restricted" in content, (
+                f"{cloud} should use restricted PSA for workload namespaces"
+            )
 
     def test_irsa_workload_identity_configured(self):
         """Verify cloud identity is configured (IRSA/Workload Identity)."""
@@ -249,17 +255,13 @@ class TestSecurityConfiguration:
         }
 
         for cloud, check in checks.items():
-            tf_dir = PROJECT_ROOT / "infrastructure" / "terraform" / "environments" / cloud / "dev"
+            all_content = self._cloud_tf_content(cloud)
+            assert all_content, f"{cloud} terraform sources not found"
 
-            if tf_dir.exists():
-                all_content = ""
-                for tf_file in tf_dir.glob("*.tf"):
-                    all_content += tf_file.read_text()
-
-                found = check["pattern"] in all_content
-                if "extra" in check:
-                    found = found and check["extra"] in all_content
-                assert found, f"{cloud} should configure {check['description']}"
+            found = check["pattern"] in all_content
+            if "extra" in check:
+                found = found and check["extra"] in all_content
+            assert found, f"{cloud} should configure {check['description']}"
 
 
 class TestExamples:
