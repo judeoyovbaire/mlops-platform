@@ -221,7 +221,7 @@ jobs:
 
       - name: Validate Kubernetes manifests
         run: |
-          find components infrastructure/kubernetes \
+          find components infrastructure/kubernetes infrastructure/argocd \
             \( -name '*.yaml' -o -name '*.yml' \) \
             -not -name 'kustomization.yaml' | \
             xargs -I {} kubeconform -strict -summary \
@@ -1304,123 +1304,62 @@ jobs:
           kubectl get nodes >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Cluster provisioning..."
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
-  # Deploy Model - AWS (manual trigger only)
+  # Deploy Model - AWS (manual trigger only).
+  # Cluster authentication happens INSIDE the reusable workflow: it runs as a
+  # separate job on a fresh runner, so auth configured here would not carry
+  # over (this was previously broken - the deploy job had no cluster access).
   deploy-model-aws:
     name: Deploy Model (AWS)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      id-token: write
     needs: [terraform-plan-aws]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'aws' && github.event.inputs.action == 'deploy-model'
-    environment: ${{ github.event.inputs.environment }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Configure kubectl
-        run: aws eks update-kubeconfig --name mlops-platform-${{ github.event.inputs.environment }} --region ${{ env.AWS_REGION }}
-
-  deploy-model-aws-kserve:
-    needs: [deploy-model-aws]
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/reusable-deploy-model.yaml
+    secrets: inherit
     with:
-      cloud: AWS
+      cloud: aws
       environment: ${{ github.event.inputs.environment }}
+      cluster-name: mlops-platform-${{ github.event.inputs.environment }}
+      # Keep in sync with env.AWS_REGION (env context is unavailable in
+      # reusable-workflow `with` blocks).
+      region: eu-west-1
 
-  # Deploy Model - Azure (manual trigger only)
+  # Deploy Model - Azure (manual trigger only). Auth inside reusable workflow.
   deploy-model-azure:
     name: Deploy Model (Azure)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      id-token: write
     needs: [terraform-plan-azure]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'azure' && github.event.inputs.action == 'deploy-model'
-    environment: ${{ github.event.inputs.environment }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
-      - name: Azure Login (OIDC)
-        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Install kubelogin
-        run: |
-          curl -LO https://github.com/Azure/kubelogin/releases/download/v${{ env.KUBELOGIN_VERSION }}/kubelogin-linux-amd64.zip
-          # Verify download integrity
-          curl -sL https://github.com/Azure/kubelogin/releases/download/v${{ env.KUBELOGIN_VERSION }}/kubelogin-linux-amd64.zip.sha256 -o kubelogin.sha256
-          echo "$(cat kubelogin.sha256)  kubelogin-linux-amd64.zip" | sha256sum -c -
-          unzip kubelogin-linux-amd64.zip -d kubelogin
-          sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
-          kubelogin --version
-
-      - name: Configure kubectl
-        run: |
-          az aks get-credentials \
-            --resource-group mlops-platform-${{ github.event.inputs.environment }}-rg \
-            --name mlops-platform-${{ github.event.inputs.environment }} \
-            --overwrite-existing
-          kubelogin convert-kubeconfig -l azurecli
-
-  deploy-model-azure-kserve:
-    needs: [deploy-model-azure]
-    uses: ./.github/workflows/reusable-deploy-model.yaml
-    with:
-      cloud: Azure
-      environment: ${{ github.event.inputs.environment }}
-
-  # Deploy Model - GCP (manual trigger only)
-  deploy-model-gcp:
-    name: Deploy Model (GCP)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
     permissions:
       contents: read
       id-token: write
+    uses: ./.github/workflows/reusable-deploy-model.yaml
+    secrets: inherit
+    with:
+      cloud: azure
+      environment: ${{ github.event.inputs.environment }}
+      cluster-name: mlops-platform-${{ github.event.inputs.environment }}
+      resource-group: mlops-platform-${{ github.event.inputs.environment }}-rg
+      # Keep in sync with env.KUBELOGIN_VERSION.
+      kubelogin-version: "0.2.10"
+
+  # Deploy Model - GCP (manual trigger only). Auth inside reusable workflow.
+  deploy-model-gcp:
+    name: Deploy Model (GCP)
     needs: [terraform-plan-gcp]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'gcp' && github.event.inputs.action == 'deploy-model'
-    environment: ${{ github.event.inputs.environment }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
-      - name: Authenticate to Google Cloud (OIDC)
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
-
-      - name: Install gke-gcloud-auth-plugin
-        run: gcloud components install gke-gcloud-auth-plugin --quiet
-
-      - name: Configure kubectl
-        run: |
-          gcloud container clusters get-credentials mlops-platform-${{ github.event.inputs.environment }} \
-            --zone ${{ env.GCP_ZONE }} \
-            --project ${{ secrets.GCP_PROJECT_ID }}
-
-  deploy-model-gcp-kserve:
-    needs: [deploy-model-gcp]
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/reusable-deploy-model.yaml
+    secrets: inherit
     with:
-      cloud: GCP
+      cloud: gcp
       environment: ${{ github.event.inputs.environment }}
+      cluster-name: mlops-platform-${{ github.event.inputs.environment }}
+      # Keep in sync with env.GCP_ZONE (env context is unavailable in
+      # reusable-workflow `with` blocks).
+      region: europe-west4-a
 
   # E2E Tests (nightly schedule, manual trigger, or PR label)
   e2e-test:

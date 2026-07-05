@@ -1,29 +1,126 @@
-# Reusable workflow: Deploy model to KServe + smoke test
-# Called by the main ci-cd.yaml for each cloud provider after
-# cloud-specific authentication and kubectl configuration.
+# Reusable workflow: authenticate to the target cluster, deploy model to
+# KServe, and smoke test.
+#
+# Authentication happens INSIDE this workflow: a reusable workflow runs as a
+# separate job on a fresh runner, so credentials or kubeconfig prepared in a
+# caller job do not carry over. Callers pass cloud/cluster identity as inputs
+# and forward secrets with `secrets: inherit`.
 name: Deploy Model (Reusable)
 
 on:
   workflow_call:
     inputs:
       cloud:
-        description: "Cloud provider name (for summary labels)"
+        description: "Cloud provider: aws | azure | gcp"
         required: true
         type: string
       environment:
-        description: "Deployment environment"
+        description: "Deployment environment (GitHub environment gate + cluster suffix)"
         required: true
         type: string
+      cluster-name:
+        description: "Kubernetes cluster name"
+        required: true
+        type: string
+      region:
+        description: "AWS region / GCP zone (unused for Azure)"
+        required: false
+        type: string
+        default: ""
+      resource-group:
+        description: "Azure resource group (Azure only)"
+        required: false
+        type: string
+        default: ""
+      kubelogin-version:
+        description: "kubelogin version for AKS AAD auth (Azure only)"
+        required: false
+        type: string
+        default: "0.2.10"
 
 jobs:
   deploy-and-test:
     name: Deploy & Smoke Test (${{ inputs.cloud }})
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write # OIDC federation to the cloud provider
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
+      # ----------------------------------------------------------------- AWS
+      - name: Configure AWS credentials (OIDC)
+        if: inputs.cloud == 'aws'
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ inputs.region }}
+
+      - name: Configure kubectl (EKS)
+        if: inputs.cloud == 'aws'
+        run: |
+          aws eks update-kubeconfig \
+            --name "${{ inputs.cluster-name }}" \
+            --region "${{ inputs.region }}"
+
+      # --------------------------------------------------------------- Azure
+      - name: Azure Login (OIDC)
+        if: inputs.cloud == 'azure'
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install kubelogin
+        if: inputs.cloud == 'azure'
+        run: |
+          curl -LO "https://github.com/Azure/kubelogin/releases/download/v${{ inputs.kubelogin-version }}/kubelogin-linux-amd64.zip"
+          curl -sL "https://github.com/Azure/kubelogin/releases/download/v${{ inputs.kubelogin-version }}/kubelogin-linux-amd64.zip.sha256" -o kubelogin.sha256
+          echo "$(cat kubelogin.sha256)  kubelogin-linux-amd64.zip" | sha256sum -c -
+          unzip kubelogin-linux-amd64.zip -d kubelogin
+          sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
+          kubelogin --version
+
+      - name: Configure kubectl (AKS)
+        if: inputs.cloud == 'azure'
+        run: |
+          az aks get-credentials \
+            --resource-group "${{ inputs.resource-group }}" \
+            --name "${{ inputs.cluster-name }}" \
+            --overwrite-existing
+          kubelogin convert-kubeconfig -l azurecli
+
+      # ----------------------------------------------------------------- GCP
+      - name: Authenticate to Google Cloud (OIDC)
+        if: inputs.cloud == 'gcp'
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        if: inputs.cloud == 'gcp'
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+
+      - name: Configure kubectl (GKE)
+        if: inputs.cloud == 'gcp'
+        run: |
+          gcloud components install gke-gcloud-auth-plugin --quiet
+          gcloud container clusters get-credentials "${{ inputs.cluster-name }}" \
+            --zone "${{ inputs.region }}" \
+            --project "${{ secrets.GCP_PROJECT_ID }}"
+
+      # -------------------------------------------------------------- Verify
+      - name: Verify cluster access
+        run: |
+          kubectl version
+          kubectl get namespace mlops
+
+      # -------------------------------------------------------------- Deploy
       - name: Deploy to KServe
         run: |
           kubectl apply -f examples/kserve/inferenceservice-examples.yaml
@@ -35,7 +132,7 @@ jobs:
       - name: Wait for deployment
         run: |
           echo "Waiting for InferenceService to be ready..."
-          kubectl wait --for=condition=Ready inferenceservice/sklearn-iris -n mlops --timeout=300s || true
+          kubectl wait --for=condition=Ready inferenceservice/sklearn-iris -n mlops --timeout=300s
 
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## InferenceService Status" >> $GITHUB_STEP_SUMMARY
@@ -55,25 +152,24 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Smoke Test" >> $GITHUB_STEP_SUMMARY
 
-          # Check if InferenceService is actually ready
+          # The smoke test is a HARD gate: a deploy that cannot serve a
+          # prediction is a failed deploy, not a warning.
           IS_READY=$(kubectl get inferenceservice sklearn-iris -n mlops -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
 
           if [ "$IS_READY" != "True" ]; then
-            echo "::warning::InferenceService not ready (status: ${IS_READY}), skipping smoke test"
-            echo "- **Status**: Skipped (InferenceService not ready)" >> $GITHUB_STEP_SUMMARY
-            exit 0
+            echo "- **Status**: FAILED (InferenceService not ready: ${IS_READY})" >> $GITHUB_STEP_SUMMARY
+            echo "::error::InferenceService not ready (status: ${IS_READY})"
+            exit 1
           fi
 
-          # Get the predictor service name for cluster-internal access
           PREDICTOR_SVC=$(kubectl get svc -n mlops -l serving.kserve.io/inferenceservice=sklearn-iris -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
 
           if [ -z "$PREDICTOR_SVC" ]; then
-            echo "::warning::Predictor service not found, skipping smoke test"
-            echo "- **Status**: Skipped (predictor service not found)" >> $GITHUB_STEP_SUMMARY
-            exit 0
+            echo "- **Status**: FAILED (predictor service not found)" >> $GITHUB_STEP_SUMMARY
+            echo "::error::Predictor service not found"
+            exit 1
           fi
 
-          # Run inference via a temporary pod (cluster-internal access)
           RESPONSE=$(kubectl run smoke-test-${GITHUB_RUN_ID} \
             --image=curlimages/curl:8.7.1 \
             --rm -i --restart=Never -n mlops \
@@ -87,6 +183,7 @@ jobs:
             echo "- **Status**: PASSED" >> $GITHUB_STEP_SUMMARY
             echo "- **Response**: \`${RESPONSE}\`" >> $GITHUB_STEP_SUMMARY
           else
-            echo "::warning::Smoke test failed - no response from inference endpoint"
-            echo "- **Status**: FAILED (no response)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Status**: FAILED (no response from inference endpoint)" >> $GITHUB_STEP_SUMMARY
+            echo "::error::Smoke test failed - no response from inference endpoint"
+            exit 1
           fi

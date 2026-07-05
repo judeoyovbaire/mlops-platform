@@ -1,0 +1,46 @@
+# ArgoCD Application: the platform's Kubernetes baseline.
+#
+# Manages everything under infrastructure/kubernetes/ (governance policies,
+# SLOs, PDBs, quotas, VPA, progressive-delivery templates, Argo Events,
+# monitoring rules, dashboards) as a GitOps-synced unit. Terraform installs
+# ArgoCD itself; this Application is the one manual bootstrap step per
+# cluster (see README.md in this directory), after which the platform
+# surface is continuously reconciled from Git.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-baseline
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: mlops-platform
+  # Keep the baseline last on cascade-delete so policies guard workloads
+  # until the end.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/judeoyovbaire/mlops-platform
+    targetRevision: main
+    path: infrastructure/kubernetes
+  destination:
+    server: https://kubernetes.default.svc
+    # Resources in the kustomization carry explicit namespaces; this is the
+    # fallback only.
+    namespace: mlops
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      # Large CRD-backed objects (PrometheusRules, dashboards ConfigMaps)
+      # exceed client-side-apply annotation limits.
+      - ServerSideApply=true
+      # Namespaces are created by Terraform; do not race it.
+      - CreateNamespace=false
+    retry:
+      limit: 5
+      backoff:
+        duration: 20s
+        factor: 2
+        maxDuration: 5m
