@@ -45,8 +45,10 @@ spec:
                     subjectRegExp: "https://github.com/.*/.github/workflows/.*"
                     rekor:
                       url: "https://rekor.sigstore.dev"
-                    # explicit kyverno default (avoids ArgoCD drift)
-                    signatureAlgorithm: sha256
+                    # NOTE: kyverno also defaults signatureAlgorithm=sha256
+                    # here, but the CRD schema does not declare the field -
+                    # declaring it in Git breaks ArgoCD's structured-merge
+                    # diff, so it is handled via ignoreDifferences instead.
           mutateDigest: true
           verifyDigest: true
           required: true

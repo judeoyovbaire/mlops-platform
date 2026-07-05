@@ -45,7 +45,9 @@ spec:
         - .spec.rules[].skipBackgroundRequests
         - .spec.rules[].validate.allowExistingViolations
         - .spec.rules[].verifyImages[].useCache
-        - .spec.rules[].verifyImages[].attestors[].entries[].keys.signatureAlgorithm
+        # (keyless, not keys: the field is server-defaulted but undeclared in
+        # the CRD schema, so it cannot be pinned in Git)
+        - .spec.rules[].verifyImages[].attestors[].entries[].keyless.signatureAlgorithm
   syncPolicy:
     automated:
       prune: true
