@@ -205,6 +205,10 @@ metadata:
     policies.kyverno.io/description: >-
       Automatically creates audit log entries when models are deployed.
 spec:
+  # background must be false: the generate rule uses admission-request
+  # variables (request.userInfo), which have no value in background scans -
+  # Kyverno rejects the policy otherwise.
+  background: false
   rules:
     - name: create-audit-entry
       match:
