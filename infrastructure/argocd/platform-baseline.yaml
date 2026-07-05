@@ -44,6 +44,8 @@ spec:
         - .spec.background
         - .spec.rules[].skipBackgroundRequests
         - .spec.rules[].validate.allowExistingViolations
+        - .spec.rules[].verifyImages[].useCache
+        - .spec.rules[].verifyImages[].attestors[].entries[].keys.signatureAlgorithm
   syncPolicy:
     automated:
       prune: true
