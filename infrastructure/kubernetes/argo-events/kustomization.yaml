@@ -4,4 +4,7 @@ kind: Kustomization
 resources:
   - eventbus.yaml
   - schedule-eventsource.yaml
-  - github-eventsource.yaml
+  # github-eventsource.yaml intentionally excluded: it mounts a
+  # "github-access" secret that nothing provisions yet. The push->pipeline
+  # event wiring is future work (roadmap); shipping a crash-looping
+  # EventSource against a missing secret helps nobody.

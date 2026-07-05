@@ -26,6 +26,8 @@ spec:
             memory: 64Mi
       antiAffinity: true
       persistence:
-        storageClassName: ""
+        # NOTE: an EXPLICIT empty string disables default-StorageClass
+        # fallback entirely (unbindable PVC) - it is not the same as unset.
+        storageClassName: gp3
         accessMode: ReadWriteOnce
         volumeSize: 10Gi
