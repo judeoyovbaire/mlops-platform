@@ -109,7 +109,7 @@ def register_model(
                 mlflow.set_tracking_uri(mlflow_uri)
                 return MlflowClient()
 
-            client = run_with_timeout(
+            client: MlflowClient = run_with_timeout(
                 _connect_mlflow,
                 seconds=mlflow_timeout_seconds,
                 error_message=f"MLflow connection timed out after {mlflow_timeout_seconds}s",

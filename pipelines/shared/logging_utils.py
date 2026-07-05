@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import uuid
+from collections.abc import MutableMapping
 from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any
@@ -117,7 +118,9 @@ class CorrelatedLoggerAdapter(logging.LoggerAdapter):
         logger.info("Processing started", input_file="data.csv", rows=1000)
     """
 
-    def process(self, msg: str, kwargs: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    def process(
+        self, msg: Any, kwargs: MutableMapping[str, Any]
+    ) -> tuple[Any, MutableMapping[str, Any]]:
         """Process the logging call to add extra fields."""
         # Extract extra fields from kwargs
         extra_fields = {}

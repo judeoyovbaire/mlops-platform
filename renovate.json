@@ -6,62 +6,125 @@
     ":automergeMinor",
     "helpers:pinGitHubActionDigests"
   ],
-  "labels": ["dependencies"],
+  "labels": [
+    "dependencies"
+  ],
   "pre-commit": {
     "enabled": true
   },
   "packageRules": [
     {
       "description": "Group Terraform providers together",
-      "matchManagers": ["terraform"],
-      "matchDepTypes": ["provider"],
+      "matchManagers": [
+        "terraform"
+      ],
+      "matchDepTypes": [
+        "provider"
+      ],
       "groupName": "terraform-providers",
       "automerge": true
     },
     {
       "description": "Group Python linting tools (ruff + pre-commit)",
-      "matchPackageNames": ["ruff", "astral-sh/ruff-pre-commit"],
+      "matchPackageNames": [
+        "ruff",
+        "astral-sh/ruff-pre-commit"
+      ],
       "groupName": "python-linting",
       "automerge": true
     },
     {
       "description": "Group GitHub Actions updates",
-      "matchManagers": ["github-actions"],
+      "matchManagers": [
+        "github-actions"
+      ],
       "groupName": "github-actions",
       "automerge": true,
       "automergeType": "pr"
     },
     {
       "description": "Group Argo ecosystem Helm charts",
-      "matchPackagePatterns": ["^argo-"],
-      "matchManagers": ["terraform"],
+      "matchPackagePatterns": [
+        "^argo-"
+      ],
+      "matchManagers": [
+        "terraform"
+      ],
       "groupName": "argo-ecosystem"
     },
     {
       "description": "Group monitoring tools (Prometheus, Grafana, Loki, Tempo)",
-      "matchPackagePatterns": ["prometheus", "grafana", "loki", "tempo", "alloy", "otel"],
-      "matchManagers": ["terraform"],
+      "matchPackagePatterns": [
+        "prometheus",
+        "grafana",
+        "loki",
+        "tempo",
+        "alloy",
+        "otel"
+      ],
+      "matchManagers": [
+        "terraform"
+      ],
       "groupName": "observability-stack"
     },
     {
       "description": "Auto-merge patch updates for all packages",
-      "matchUpdateTypes": ["patch"],
+      "matchUpdateTypes": [
+        "patch"
+      ],
       "automerge": true,
       "automergeType": "pr"
     },
     {
       "description": "Pin Docker digests for reproducibility",
-      "matchManagers": ["dockerfile"],
+      "matchManagers": [
+        "dockerfile"
+      ],
       "pinDigests": true
     },
     {
       "description": "Group Python test dependencies",
-      "matchPackageNames": ["pytest", "pytest-cov", "pytest-mock", "pytest-xdist", "hypothesis"],
+      "matchPackageNames": [
+        "pytest",
+        "pytest-cov",
+        "pytest-mock",
+        "pytest-xdist",
+        "hypothesis"
+      ],
       "groupName": "python-testing"
+    },
+    {
+      "description": "Compiled lockfiles: bump requirements.in and regenerate requirements.txt atomically (uv pip compile with hashes)",
+      "matchManagers": [
+        "pip_requirements"
+      ],
+      "matchFileNames": [
+        "**/requirements.in"
+      ],
+      "groupName": "python-image-deps"
     }
   ],
-  "schedule": ["before 8am on Monday"],
+  "schedule": [
+    "before 8am on Monday"
+  ],
   "timezone": "Europe/London",
   "prConcurrentLimit": 5,
-  "prHourlyLimit": 2
+  "prHourlyLimit": 2,
+  "pip_requirements": {
+    "managerFilePatterns": [
+      "/(^|/)requirements\\.in$/",
+      "/(^|/)requirements\\.txt$/"
+    ]
+  },
+  "postUpgradeTasks": {
+    "commands": [
+      "uv pip compile pipelines/training/requirements.in --python-version 3.12 --python-platform x86_64-unknown-linux-gnu --generate-hashes --emit-index-url -o pipelines/training/requirements.txt",
+      "uv pip compile pipelines/pretrained/requirements.in --python-version 3.12 --python-platform x86_64-unknown-linux-gnu --generate-hashes --emit-index-url -o pipelines/pretrained/requirements.txt",
+      "uv pip compile components/kserve-transformer/requirements.in --python-version 3.12 --python-platform x86_64-unknown-linux-gnu --generate-hashes --emit-index-url -o components/kserve-transformer/requirements.txt"
+    ],
+    "fileFilters": [
+      "**/requirements.txt"
+    ],
+    "executionMode": "branch"
+  }
 }

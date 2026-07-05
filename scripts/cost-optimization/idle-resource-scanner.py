@@ -26,7 +26,7 @@ except ImportError:
 class IdleResourceScanner:
     """Scans for idle and underutilized resources."""
 
-    def __init__(self, namespace: str = None, idle_threshold_hours: int = 24):
+    def __init__(self, namespace: str | None = None, idle_threshold_hours: int = 24):
         """
         Initialize the scanner.
 
@@ -273,7 +273,7 @@ class IdleResourceScanner:
         return round(savings, 2)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Scan for idle MLOps resources")
     parser.add_argument("-n", "--namespace", help="Namespace to scan")
     parser.add_argument(

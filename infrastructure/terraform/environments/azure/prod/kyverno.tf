@@ -36,7 +36,7 @@ resource "kubectl_manifest" "policy_require_resource_limits" {
         policies.kyverno.io/category: Best Practices
         policies.kyverno.io/severity: medium
     spec:
-      validationFailureAction: Audit
+      validationFailureAction: Enforce
       background: true
       rules:
         - name: require-cpu-memory-limits
@@ -78,7 +78,7 @@ resource "kubectl_manifest" "policy_disallow_latest_tag" {
         policies.kyverno.io/category: Best Practices
         policies.kyverno.io/severity: medium
     spec:
-      validationFailureAction: Audit
+      validationFailureAction: Enforce
       background: true
       rules:
         - name: disallow-latest-tag
@@ -152,7 +152,7 @@ resource "kubectl_manifest" "policy_restrict_registries" {
         policies.kyverno.io/category: Security
         policies.kyverno.io/severity: high
     spec:
-      validationFailureAction: Audit
+      validationFailureAction: Enforce
       background: true
       rules:
         - name: validate-registries
@@ -173,7 +173,7 @@ resource "kubectl_manifest" "policy_restrict_registries" {
               spec:
                 containers:
                   - image: >-
-                      ghcr.io/* | docker.io/* | gcr.io/* |
+                      ghcr.io/* | docker.io/kserve/* | docker.io/curlimages/* | docker.io/seldonio/* | gcr.io/* |
                       quay.io/* | mcr.microsoft.com/* |
                       *.azurecr.io/* | registry.k8s.io/*
   YAML

@@ -98,7 +98,7 @@ resource "kubectl_manifest" "kyverno_require_limits" {
           Pods must specify resource limits to prevent resource exhaustion.
           Critical for ML workloads that can consume unbounded resources.
     spec:
-      validationFailureAction: Audit  # Start with Audit, change to Enforce after validation
+      validationFailureAction: Enforce
       background: true
       rules:
         - name: validate-resources
@@ -141,7 +141,7 @@ resource "kubectl_manifest" "kyverno_disallow_latest_tag" {
           Container images must use explicit version tags, not 'latest'.
           Ensures reproducibility of ML model deployments.
     spec:
-      validationFailureAction: Audit
+      validationFailureAction: Enforce
       background: true
       rules:
         - name: validate-image-tag
@@ -216,7 +216,7 @@ resource "kubectl_manifest" "kyverno_restrict_registries" {
           Only allow container images from trusted registries.
           Prevents supply chain attacks in ML pipelines.
     spec:
-      validationFailureAction: Audit
+      validationFailureAction: Enforce
       background: true
       rules:
         - name: validate-registries
@@ -229,11 +229,11 @@ resource "kubectl_manifest" "kyverno_restrict_registries" {
                     - mlops
                     - kserve
           validate:
-            message: "Images must come from approved registries: ECR, gcr.io, ghcr.io, docker.io, quay.io"
+            message: "Images must come from approved registries (ECR/ACR/gcr/ghcr/quay + allow-listed docker.io orgs)"
             pattern:
               spec:
                 containers:
-                  - image: "*.amazonaws.com/* | gcr.io/* | ghcr.io/* | docker.io/* | quay.io/* | kserve/* | seldonio/* | tensorflow/* | pytorch/* | huggingface/*"
+                  - image: "*.amazonaws.com/* | *.azurecr.io/* | gcr.io/* | ghcr.io/* | quay.io/* | docker.io/kserve/* | kserve/* | docker.io/curlimages/* | curlimages/* | docker.io/seldonio/* | seldonio/* | docker.io/tensorflow/* | tensorflow/* | docker.io/pytorch/* | pytorch/* | docker.io/huggingface/* | huggingface/*"
   YAML
 
   depends_on = [helm_release.kyverno]

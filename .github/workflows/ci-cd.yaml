@@ -78,10 +78,15 @@ jobs:
         run: uv sync --frozen
 
       - name: Run Ruff linter
-        run: uv run ruff check pipelines/ examples/ --output-format=github
+        run: uv run ruff check pipelines/ components/ scripts/ tests/ examples/ --output-format=github
 
       - name: Run Ruff formatter check
-        run: uv run ruff format --check pipelines/ examples/
+        run: uv run ruff format --check pipelines/ components/ scripts/ tests/ examples/
+
+      - name: Run mypy type check
+        # pyproject configures strict settings (disallow_untyped_defs etc.);
+        # enforcing them in CI keeps the config honest.
+        run: uv run mypy pipelines/ components/ scripts/
 
       - name: Run Bandit security scan
         run: |
@@ -1053,7 +1058,11 @@ jobs:
         working-directory: infrastructure/terraform/environments/aws/${{ github.event.inputs.environment }}
         run: |
           echo "Stage 2: Deploying Helm releases and Kubernetes resources..."
-          terraform apply -auto-approve
+          # Plan to a file and apply exactly that plan: applying a fresh
+          # auto-approved plan would act on whatever state exists at apply
+          # time rather than what was just reviewed (TOCTOU).
+          terraform plan -input=false -out=tfplan
+          terraform apply -input=false tfplan
 
       - name: Get Outputs
         working-directory: infrastructure/terraform/environments/aws/${{ github.event.inputs.environment }}
@@ -1173,7 +1182,11 @@ jobs:
           ARM_USE_OIDC: true
         run: |
           echo "Stage 2: Deploying Helm releases and Kubernetes resources..."
-          terraform apply -auto-approve
+          # Plan to a file and apply exactly that plan: applying a fresh
+          # auto-approved plan would act on whatever state exists at apply
+          # time rather than what was just reviewed (TOCTOU).
+          terraform plan -input=false -out=tfplan
+          terraform apply -input=false tfplan
 
       - name: Get Outputs
         working-directory: infrastructure/terraform/environments/azure/${{ github.event.inputs.environment }}
@@ -1279,7 +1292,11 @@ jobs:
         working-directory: infrastructure/terraform/environments/gcp/${{ github.event.inputs.environment }}
         run: |
           echo "Stage 2: Deploying Helm releases and Kubernetes resources..."
-          terraform apply -auto-approve
+          # Plan to a file and apply exactly that plan: applying a fresh
+          # auto-approved plan would act on whatever state exists at apply
+          # time rather than what was just reviewed (TOCTOU).
+          terraform plan -input=false -out=tfplan
+          terraform apply -input=false tfplan
 
       - name: Get Outputs
         working-directory: infrastructure/terraform/environments/gcp/${{ github.event.inputs.environment }}

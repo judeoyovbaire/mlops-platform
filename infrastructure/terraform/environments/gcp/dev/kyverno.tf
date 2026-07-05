@@ -197,11 +197,11 @@ resource "kubectl_manifest" "restrict_image_registries" {
                     - mlops
                     - kserve
           validate:
-            message: "Images must come from approved registries: GCR, Artifact Registry, ghcr.io, docker.io, quay.io"
+            message: "Images must come from approved registries (GCR/Artifact Registry/ghcr/quay + allow-listed docker.io orgs)"
             pattern:
               spec:
                 containers:
-                  - image: "gcr.io/* | *.gcr.io/* | *-docker.pkg.dev/* | ghcr.io/* | docker.io/* | quay.io/* | kserve/* | tensorflow/* | pytorch/* | huggingface/*"
+                  - image: "gcr.io/* | *.gcr.io/* | *-docker.pkg.dev/* | ghcr.io/* | quay.io/* | docker.io/kserve/* | kserve/* | docker.io/curlimages/* | curlimages/* | docker.io/tensorflow/* | tensorflow/* | docker.io/pytorch/* | pytorch/* | docker.io/huggingface/* | huggingface/*"
   YAML
 
   depends_on = [time_sleep.wait_for_kyverno]

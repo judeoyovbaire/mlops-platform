@@ -173,7 +173,7 @@ resource "kubectl_manifest" "policy_restrict_registries" {
               spec:
                 containers:
                   - image: >-
-                      ghcr.io/* | docker.io/* | gcr.io/* |
+                      ghcr.io/* | docker.io/kserve/* | docker.io/curlimages/* | docker.io/seldonio/* | gcr.io/* |
                       quay.io/* | mcr.microsoft.com/* |
                       *.azurecr.io/* | registry.k8s.io/*
   YAML

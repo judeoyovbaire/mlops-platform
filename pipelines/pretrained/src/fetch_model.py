@@ -97,7 +97,7 @@ def fetch_model(
     # Build the pipeline (downloads model + tokenizer)
     logger.info(f"Downloading model and tokenizer for '{model_id}'...")
     try:
-        pipe = pipeline(
+        pipe = pipeline(  # type: ignore[call-overload]  # task is a runtime str, overloads expect Literal
             task=task,
             model=model_id,
             revision=revision,

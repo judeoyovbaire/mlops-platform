@@ -16,6 +16,7 @@ import argparse
 import os
 import sys
 from dataclasses import dataclass
+from typing import Any
 
 import joblib
 import mlflow
@@ -29,7 +30,7 @@ from pipelines.shared.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
-class PreprocessingModel(mlflow.pyfunc.PythonModel):
+class PreprocessingModel(mlflow.pyfunc.PythonModel):  # type: ignore[name-defined]  # mlflow stubs omit PythonModel
     """MLflow pyfunc model that applies preprocessing before prediction.
 
     Attributes:
@@ -37,11 +38,13 @@ class PreprocessingModel(mlflow.pyfunc.PythonModel):
         preprocessor: Optional ColumnTransformer for feature preprocessing.
     """
 
-    def __init__(self, model, preprocessor=None):
+    def __init__(self, model: Any, preprocessor: Any | None = None) -> None:
         self.model = model
         self.preprocessor = preprocessor
 
-    def predict(self, context, model_input: pd.DataFrame, params=None) -> np.ndarray:
+    def predict(
+        self, context: Any, model_input: pd.DataFrame, params: dict[str, Any] | None = None
+    ) -> np.ndarray:
         """Apply preprocessing then predict.
 
         Args:
@@ -58,7 +61,7 @@ class PreprocessingModel(mlflow.pyfunc.PythonModel):
             self.preprocessor.set_output(transform="pandas")
             df = self.preprocessor.transform(df)
 
-        return self.model.predict(df)
+        return np.asarray(self.model.predict(df))
 
 
 @dataclass

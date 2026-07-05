@@ -298,7 +298,7 @@ resource "kubectl_manifest" "karpenter_gpu_nodeclass" {
             deleteOnTermination: true
             encrypted: true
       tags:
-        Environment: dev
+        Environment: prod
         Project: mlops-platform
         NodeType: gpu
   YAML
@@ -331,7 +331,7 @@ resource "kubectl_manifest" "karpenter_default_nodeclass" {
             deleteOnTermination: true
             encrypted: true
       tags:
-        Environment: dev
+        Environment: prod
         Project: mlops-platform
         NodeType: training
   YAML

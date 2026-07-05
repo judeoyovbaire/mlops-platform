@@ -21,7 +21,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def _get_or_create_metric(metric_cls, name, documentation, labelnames):
+def _get_or_create_metric(
+    metric_cls: Any, name: str, documentation: str, labelnames: list[str]
+) -> Any:
     """Return existing metric or create a new one, avoiding ValueError on re-registration."""
     try:
         return metric_cls(name, documentation, labelnames)
@@ -144,6 +146,8 @@ class DriftDetector:
 
     def _compute_reference_statistics(self) -> None:
         """Pre-compute statistics for reference data."""
+        if self.reference_data is None:
+            return
         for col in self.reference_data.columns:
             col_data = self.reference_data[col].dropna()
 
@@ -167,7 +171,7 @@ class DriftDetector:
 
     def _is_numeric(self, series: pd.Series) -> bool:
         """Check if a series is numeric."""
-        return pd.api.types.is_numeric_dtype(series)
+        return bool(pd.api.types.is_numeric_dtype(series))
 
     def compute_ks_test(self, reference: np.ndarray, current: np.ndarray) -> tuple[float, float]:
         """
@@ -375,7 +379,7 @@ class DriftDetector:
             # Combine metrics for overall drift score
             drift_score = (ks_stat + js_distance) / 2
 
-            details = {
+            details: dict[str, Any] = {
                 "reference_mean": float(ref_stats.get("mean", 0)),
                 "current_mean": float(current.mean()),
                 "reference_std": float(ref_stats.get("std", 0)),
@@ -456,7 +460,7 @@ class DriftDetector:
             )
 
 
-def main():
+def main() -> None:
     """Main entry point for drift detection service.
 
     Exceptions propagate as non-zero exit codes so that Kubernetes

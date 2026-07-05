@@ -230,8 +230,18 @@ resource "aws_iam_role" "github_actions" {
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
+          # Constrain the trust: a bare "repo:org/repo:*" would let ANY ref
+          # assume the infrastructure role. Allowed subjects:
+          #   - main-branch runs (push / schedule / workflow_dispatch)
+          #   - pull_request plan jobs (fork PRs cannot mint OIDC tokens on
+          #     pull_request events, so this admits same-repo branches only)
+          #   - environment-gated deploy jobs
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.github_repo}:*"
+            "token.actions.githubusercontent.com:sub" = [
+              "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/main",
+              "repo:${var.github_org}/${var.github_repo}:pull_request",
+              "repo:${var.github_org}/${var.github_repo}:environment:*",
+            ]
           }
         }
       }
