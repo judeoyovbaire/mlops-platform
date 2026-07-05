@@ -28,14 +28,22 @@ spec:
     # Resources in the kustomization carry explicit namespaces; this is the
     # fallback only.
     namespace: mlops
-  # Kyverno injects autogen-* rules into ClusterPolicy spec.rules for pod
-  # controllers (the live object legitimately differs from Git) - without
-  # this, every policy shows perpetually OutOfSync.
+  # Kyverno mutates ClusterPolicies server-side: it injects autogen-* rules
+  # for pod controllers and defaults several spec fields (admission,
+  # emitWarning, per-rule skipBackgroundRequests/allowExistingViolations).
+  # The live object legitimately differs from Git - verified by diffing
+  # live vs kustomize output; without these ignores every policy reports
+  # perpetual OutOfSync.
   ignoreDifferences:
     - group: kyverno.io
       kind: ClusterPolicy
       jqPathExpressions:
         - .spec.rules[] | select(.name | test("^autogen-"))
+        - .spec.admission
+        - .spec.emitWarning
+        - .spec.background
+        - .spec.rules[].skipBackgroundRequests
+        - .spec.rules[].validate.allowExistingViolations
   syncPolicy:
     automated:
       prune: true
