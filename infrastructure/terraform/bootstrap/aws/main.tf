@@ -481,6 +481,52 @@ resource "aws_iam_role_policy" "terraform_storage" {
 }
 
 # Policy 4: Other services (KMS, CloudWatch, Backup, SSM)
+# Secrets Manager: RDS manage_master_user_password creates/rotates a secret
+# under the rds! prefix AS THE CALLER, and the platform layer manages its own
+# secrets under the project prefix. Discovered on first real deploy - the
+# scoped role's initial policy set predated RDS-managed master passwords.
+resource "aws_iam_role_policy" "secretsmanager_rds_managed" {
+  name = "secretsmanager-rds-managed"
+  role = aws_iam_role.github_actions.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "RDSManagedMasterSecrets"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:CreateSecret",
+          "secretsmanager:DeleteSecret",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:PutSecretValue",
+          "secretsmanager:TagResource",
+          "secretsmanager:UntagResource",
+          "secretsmanager:UpdateSecret",
+          "secretsmanager:RotateSecret"
+        ]
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:rds!*"
+      },
+      {
+        Sid    = "PlatformSecrets"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:CreateSecret",
+          "secretsmanager:DeleteSecret",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:PutSecretValue",
+          "secretsmanager:TagResource",
+          "secretsmanager:UntagResource",
+          "secretsmanager:UpdateSecret"
+        ]
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.project_name}-*"
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role_policy" "terraform_services" {
   name = "terraform-services"
   role = aws_iam_role.github_actions.id

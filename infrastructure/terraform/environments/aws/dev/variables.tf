@@ -256,10 +256,12 @@ variable "cluster_endpoint_public_access" {
 variable "cluster_endpoint_public_access_cidrs" {
   description = "CIDR blocks allowed to access the EKS API public endpoint. Restrict to your organization's IP ranges for production-grade security."
   type        = list(string)
-  # Default: RFC 1918 private range. For production deployments, replace with
-  # your organization's VPN/office CIDRs + GitHub Actions runner IPs:
-  #   curl -s https://api.github.com/meta | jq '.actions'
-  default = ["10.0.0.0/8"]
+  # Dev default is open: the API server still requires IAM auth + RBAC, and
+  # CI (kubectl from GitHub-hosted runners) needs endpoint access from
+  # ever-changing runner IPs. Note AWS rejects RFC 1918 ranges in
+  # publicAccessCidrs, so "restrict to the VPC" is not expressible here -
+  # production uses a private endpoint instead (see prod/variables.tf).
+  default = ["0.0.0.0/0"]
 }
 
 # Slack Notifications
