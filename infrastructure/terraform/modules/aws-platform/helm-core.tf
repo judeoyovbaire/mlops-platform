@@ -184,6 +184,12 @@ resource "helm_release" "minio" {
   version    = var.helm_minio_version
   namespace  = kubernetes_namespace.argo.metadata[0].name
 
+  # The chart DEFAULTS to creating a consoleAdmin user with the hardcoded
+  # password "console123" - remove it. Credentials are ExternalSecret-managed
+  # (existingSecret below); dropping users also removes the extra post-job
+  # container that tripped the resource-limits policy.
+  values = [yamlencode({ users = [] })]
+
   set {
     name  = "mode"
     value = var.minio.mode
@@ -253,6 +259,28 @@ resource "helm_release" "minio" {
 
   set {
     name  = "makeBucketJob.resources.limits.memory"
+    value = "128Mi"
+  }
+
+  # Same treatment for the user-provisioning container, should users ever
+  # be configured again.
+  set {
+    name  = "makeUserJob.resources.requests.cpu"
+    value = "50m"
+  }
+
+  set {
+    name  = "makeUserJob.resources.requests.memory"
+    value = "64Mi"
+  }
+
+  set {
+    name  = "makeUserJob.resources.limits.cpu"
+    value = "200m"
+  }
+
+  set {
+    name  = "makeUserJob.resources.limits.memory"
     value = "128Mi"
   }
 
