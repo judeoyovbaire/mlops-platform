@@ -144,14 +144,14 @@ jobs:
           PF_PID=$!
           trap "kill $PF_PID" EXIT
           for i in $(seq 1 15); do
-            curl -sf http://127.0.0.1:5000/health > /dev/null && break
+            curl -sf http://localhost:5000/health > /dev/null && break
             sleep 2
           done
 
           PYTHONPATH=. python pipelines/training/src/resolve_serving_uri.py \
             --model-name "${{ inputs.model-name }}" \
             --alias "${{ inputs.model-alias }}" \
-            --mlflow-uri http://127.0.0.1:5000 \
+            --mlflow-uri http://localhost:5000 \
             --github-env "$GITHUB_ENV"
 
       - name: Deploy champion InferenceService

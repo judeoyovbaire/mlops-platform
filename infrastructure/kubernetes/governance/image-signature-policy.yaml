@@ -18,9 +18,15 @@ metadata:
 spec:
   validationFailureAction: Enforce
   background: true
+  # The following fields match Kyverno's server-side defaults explicitly -
+  # otherwise the live object diffs from Git and ArgoCD reports perpetual
+  # OutOfSync for this policy.
+  admission: true
+  emitWarning: false
   webhookTimeoutSeconds: 30
   rules:
     - name: verify-cosign-signature
+      skipBackgroundRequests: true
       match:
         any:
           - resources:
@@ -39,9 +45,13 @@ spec:
                     subjectRegExp: "https://github.com/.*/.github/workflows/.*"
                     rekor:
                       url: "https://rekor.sigstore.dev"
+                    # explicit kyverno default (avoids ArgoCD drift)
+                    signatureAlgorithm: sha256
           mutateDigest: true
           verifyDigest: true
           required: true
+          # explicit kyverno default (avoids ArgoCD drift)
+          useCache: true
 
 ---
 # Audit policy for non-GHCR images (don't block but log)
