@@ -6,7 +6,9 @@ resources:
   - network-policies.yaml
   - pod-disruption-budgets.yaml
   - resource-quotas.yaml
-  - vpa.yaml
+  # vpa.yaml intentionally excluded: no VPA controller/CRD is installed by
+  # Terraform on any cloud - a CR without its operator is unappliable.
+  # Reinstated (or cut) with the observability rewiring work.
   - governance/model-registry-policies.yaml
   - governance/image-signature-policy.yaml
   - dashboards/mlops-overview-dashboard.yaml
@@ -16,7 +18,10 @@ resources:
   - dashboards/ml-pipeline-dashboard.yaml
   - progressive-delivery/
   - argo-events/
-  - slo/
+  # slo/ intentionally excluded: the Sloth operator (PrometheusServiceLevel
+  # CRD) is not installed yet, and these SLOs query Knative metrics that
+  # RawDeployment mode never emits - both are addressed together in the
+  # observability rewiring (Sloth install + RawDeployment-native SLOs).
   # gateway/ intentionally excluded: the manifests target
   # gatewayClassName: nginx, but no Gateway API controller is installed on
   # any cloud (AWS uses the ALB controller; ADR-007 skipped a mesh). The
