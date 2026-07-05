@@ -10,7 +10,7 @@ resource "helm_release" "aws_load_balancer_controller" {
 
   set {
     name  = "clusterName"
-    value = module.eks.cluster_name
+    value = var.eks.cluster_name
   }
 
   set {
@@ -25,7 +25,7 @@ resource "helm_release" "aws_load_balancer_controller" {
 
   set {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = module.eks.aws_lb_controller_irsa_role_arn
+    value = var.eks.aws_lb_controller_irsa_role_arn
   }
 
   set {
@@ -35,10 +35,8 @@ resource "helm_release" "aws_load_balancer_controller" {
 
   set {
     name  = "vpcId"
-    value = module.eks.vpc_id
+    value = var.eks.vpc_id
   }
-
-  depends_on = [module.eks]
 }
 
 # Wait for ALB Controller webhook to be ready
@@ -66,7 +64,7 @@ resource "helm_release" "cert_manager" {
   depends_on = [time_sleep.alb_controller_ready]
 }
 
-# ArgoCD - Production HA Configuration
+# ArgoCD
 resource "helm_release" "argocd" {
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
@@ -75,11 +73,10 @@ resource "helm_release" "argocd" {
   namespace        = "argocd"
   create_namespace = true
 
-  # Layer HA values on top of base values for production
-  values = [
-    file("${path.module}/../../../../helm/aws/argocd-values.yaml"),
-    file("${path.module}/../../../../helm/aws/argocd-values-prod.yaml"),
-  ]
+  values = concat(
+    [file("${path.module}/../../../helm/aws/argocd-values.yaml")],
+    [for f in var.argocd_extra_values_files : file(f)],
+  )
 
   depends_on = [time_sleep.alb_controller_ready]
 }
@@ -147,10 +144,10 @@ resource "helm_release" "mlflow" {
   namespace  = kubernetes_namespace.mlflow.metadata[0].name
 
   values = [
-    templatefile("${path.module}/../../../../helm/aws/mlflow-values.yaml", {
-      db_host             = split(":", module.eks.mlflow_db_endpoint)[0]
-      db_name             = module.eks.mlflow_db_name
-      s3_bucket           = module.eks.mlflow_s3_bucket
+    templatefile("${path.module}/../../../helm/aws/mlflow-values.yaml", {
+      db_host             = split(":", var.eks.mlflow_db_endpoint)[0]
+      db_name             = var.eks.mlflow_db_name
+      s3_bucket           = var.eks.mlflow_s3_bucket
       aws_region          = var.aws_region
       acm_certificate_arn = var.acm_certificate_arn
     })
@@ -164,7 +161,6 @@ resource "helm_release" "mlflow" {
 }
 
 # Argo Workflows - ML Pipeline Orchestration
-# Argo Workflows for ML pipeline orchestration
 resource "helm_release" "argo_workflows" {
   name       = "argo-workflows"
   repository = "https://argoproj.github.io/argo-helm"
@@ -175,12 +171,12 @@ resource "helm_release" "argo_workflows" {
   # Increase timeout for CRD installation
   timeout = 600
 
-  values = [file("${path.module}/../../../../helm/aws/argo-workflows-values.yaml")]
+  values = [file("${path.module}/../../../helm/aws/argo-workflows-values.yaml")]
 
   depends_on = [time_sleep.alb_controller_ready]
 }
 
-# MinIO for pipeline artifact storage (Production: distributed mode for HA)
+# MinIO for pipeline artifact storage (lightweight S3-compatible storage)
 resource "helm_release" "minio" {
   name       = "minio"
   repository = "https://charts.min.io/"
@@ -188,20 +184,19 @@ resource "helm_release" "minio" {
   version    = var.helm_minio_version
   namespace  = kubernetes_namespace.argo.metadata[0].name
 
-  # Production: Distributed mode for high availability
   set {
     name  = "mode"
-    value = "distributed"
+    value = var.minio.mode
   }
 
   set {
     name  = "replicas"
-    value = "4" # Minimum for distributed mode
+    value = tostring(var.minio.replicas)
   }
 
   set {
     name  = "persistence.size"
-    value = "100Gi" # Larger storage for production
+    value = var.minio.storage_size
   }
 
   set {
@@ -211,17 +206,23 @@ resource "helm_release" "minio" {
 
   set {
     name  = "resources.requests.memory"
-    value = "1Gi"
+    value = var.minio.memory_request
   }
 
-  set {
-    name  = "resources.requests.cpu"
-    value = "500m"
+  dynamic "set" {
+    for_each = var.minio.cpu_request != null ? [var.minio.cpu_request] : []
+    content {
+      name  = "resources.requests.cpu"
+      value = set.value
+    }
   }
 
-  set {
-    name  = "resources.limits.memory"
-    value = "2Gi"
+  dynamic "set" {
+    for_each = var.minio.memory_limit != null ? [var.minio.memory_limit] : []
+    content {
+      name  = "resources.limits.memory"
+      value = set.value
+    }
   }
 
   # Use ExternalSecret-managed credentials (avoids secrets in Helm release metadata)

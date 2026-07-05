@@ -10,7 +10,7 @@ resource "helm_release" "dcgm_exporter" {
   version          = var.helm_dcgm_exporter_version
 
   values = [
-    file("${path.module}/../../../../helm/common/dcgm-exporter-values.yaml")
+    file("${path.module}/../../../helm/common/dcgm-exporter-values.yaml")
   ]
 
   depends_on = [helm_release.prometheus_stack]

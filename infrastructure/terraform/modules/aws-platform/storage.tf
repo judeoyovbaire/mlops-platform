@@ -20,8 +20,6 @@ resource "kubernetes_storage_class" "gp3" {
   }
 
   allow_volume_expansion = true
-
-  depends_on = [module.eks]
 }
 
 # Remove default annotation from gp2 if it exists
@@ -37,6 +35,4 @@ resource "kubernetes_annotations" "gp2_not_default" {
   }
 
   force = true
-
-  depends_on = [module.eks]
 }

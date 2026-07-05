@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Superseded by [ADR-015](015-shared-aws-platform-module.md)
 
 ## Context
 

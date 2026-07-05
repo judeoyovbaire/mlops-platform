@@ -15,8 +15,6 @@ resource "kubernetes_namespace" "tetragon" {
       "pod-security.kubernetes.io/enforce-version" = "latest"
     }
   }
-
-  depends_on = [module.eks]
 }
 
 # Tetragon Helm release

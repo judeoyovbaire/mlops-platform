@@ -10,7 +10,7 @@ resource "helm_release" "opencost" {
   version          = var.helm_opencost_version
 
   values = [
-    file("${path.module}/../../../../helm/common/opencost-values.yaml")
+    file("${path.module}/../../../helm/common/opencost-values.yaml")
   ]
 
   depends_on = [helm_release.prometheus_stack]

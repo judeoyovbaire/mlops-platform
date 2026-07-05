@@ -16,8 +16,6 @@ resource "kubernetes_namespace" "monitoring" {
       "pod-security.kubernetes.io/audit-version"   = "latest"
     }
   }
-
-  depends_on = [module.eks]
 }
 
 # kube-prometheus-stack (Prometheus + Grafana + Alertmanager)
@@ -29,7 +27,7 @@ resource "helm_release" "prometheus_stack" {
   namespace  = kubernetes_namespace.monitoring.metadata[0].name
 
   values = [
-    templatefile("${path.module}/../../../../helm/aws/prometheus-stack-values.yaml", {
+    templatefile("${path.module}/../../../helm/aws/prometheus-stack-values.yaml", {
       slack_notifications_enabled = var.slack_notifications_enabled
       slack_channel               = var.slack_channel
       acm_certificate_arn         = var.acm_certificate_arn
@@ -42,7 +40,7 @@ resource "helm_release" "prometheus_stack" {
 
   set {
     name  = "grafana.adminPassword"
-    value = random_password.grafana_admin.result
+    value = var.grafana_admin_password
   }
 
   depends_on = [
@@ -61,9 +59,9 @@ resource "helm_release" "loki" {
 
   # Use AWS-specific values with S3 storage
   values = [
-    templatefile("${path.module}/../../../../helm/aws/loki-values.yaml", {
-      loki_s3_bucket     = module.eks.loki_s3_bucket
-      loki_irsa_role_arn = module.eks.loki_irsa_role_arn
+    templatefile("${path.module}/../../../helm/aws/loki-values.yaml", {
+      loki_s3_bucket     = var.eks.loki_s3_bucket
+      loki_irsa_role_arn = var.eks.loki_irsa_role_arn
       aws_region         = var.aws_region
     })
   ]
@@ -73,7 +71,6 @@ resource "helm_release" "loki" {
   depends_on = [
     kubernetes_namespace.monitoring,
     helm_release.prometheus_stack,
-    module.eks
   ]
 }
 
@@ -87,9 +84,9 @@ resource "helm_release" "tempo" {
 
   # Use AWS-specific values with S3 storage
   values = [
-    templatefile("${path.module}/../../../../helm/aws/tempo-values.yaml", {
-      tempo_s3_bucket     = module.eks.tempo_s3_bucket
-      tempo_irsa_role_arn = module.eks.tempo_irsa_role_arn
+    templatefile("${path.module}/../../../helm/aws/tempo-values.yaml", {
+      tempo_s3_bucket     = var.eks.tempo_s3_bucket
+      tempo_irsa_role_arn = var.eks.tempo_irsa_role_arn
       aws_region          = var.aws_region
     })
   ]
@@ -99,7 +96,6 @@ resource "helm_release" "tempo" {
   depends_on = [
     kubernetes_namespace.monitoring,
     helm_release.prometheus_stack,
-    module.eks
   ]
 }
 
@@ -111,7 +107,7 @@ resource "helm_release" "otel_collector" {
   version    = var.helm_otel_collector_version
   namespace  = kubernetes_namespace.monitoring.metadata[0].name
 
-  values = [file("${path.module}/../../../../helm/common/otel-collector-values.yaml")]
+  values = [file("${path.module}/../../../helm/common/otel-collector-values.yaml")]
 
   timeout = 600
 
@@ -129,7 +125,7 @@ resource "helm_release" "alloy" {
   version    = var.helm_alloy_version
   namespace  = kubernetes_namespace.monitoring.metadata[0].name
 
-  values = [file("${path.module}/../../../../helm/common/alloy-values.yaml")]
+  values = [file("${path.module}/../../../helm/common/alloy-values.yaml")]
 
   timeout = 300
 
@@ -141,13 +137,13 @@ resource "helm_release" "alloy" {
 
 # Grafana Dashboards - ConfigMaps for sidecar auto-discovery
 resource "kubectl_manifest" "grafana_mlops_overview_dashboard" {
-  yaml_body = file("${path.module}/../../../../kubernetes/dashboards/mlops-overview-dashboard.yaml")
+  yaml_body = file("${path.module}/../../../kubernetes/dashboards/mlops-overview-dashboard.yaml")
 
   depends_on = [helm_release.prometheus_stack]
 }
 
 resource "kubectl_manifest" "grafana_cloud_cost_dashboard" {
-  yaml_body = file("${path.module}/../../../../kubernetes/dashboards/cloud-cost-dashboard.yaml")
+  yaml_body = file("${path.module}/../../../kubernetes/dashboards/cloud-cost-dashboard.yaml")
 
   depends_on = [helm_release.prometheus_stack]
 }
@@ -157,7 +153,7 @@ resource "aws_ssm_parameter" "grafana_admin_password" {
   name        = "/${var.cluster_name}/grafana/admin-password"
   description = "Grafana admin password"
   type        = "SecureString"
-  value       = random_password.grafana_admin.result
+  value       = var.grafana_admin_password
   key_id      = "alias/aws/ssm"
 
   tags = var.tags
@@ -165,12 +161,10 @@ resource "aws_ssm_parameter" "grafana_admin_password" {
 
 # Network Policies - Managed via Terraform for lifecycle tracking
 data "kubectl_file_documents" "network_policies" {
-  content = file("${path.module}/../../../../kubernetes/network-policies.yaml")
+  content = file("${path.module}/../../../kubernetes/network-policies.yaml")
 }
 
 resource "kubectl_manifest" "network_policies" {
   for_each  = data.kubectl_file_documents.network_policies.manifests
   yaml_body = each.value
-
-  depends_on = [module.eks]
 }

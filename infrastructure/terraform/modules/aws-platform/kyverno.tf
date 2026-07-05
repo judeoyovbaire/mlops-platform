@@ -15,8 +15,6 @@ resource "kubernetes_namespace" "kyverno" {
       "pod-security.kubernetes.io/enforce-version" = "latest"
     }
   }
-
-  depends_on = [module.eks]
 }
 
 # Kyverno Helm release

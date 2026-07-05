@@ -21,9 +21,10 @@ An Architecture Decision Record captures an important architectural decision mad
 | [009](009-progressive-delivery.md) | Argo Rollouts for Progressive Delivery | Accepted | 2026-05 |
 | [010](010-terraform-over-opentofu.md) | Terraform Over OpenTofu | Accepted | 2026-05 |
 | [011](011-uv-over-pip.md) | uv Over pip for Python Package Management | Accepted | 2026-05 |
-| [012](012-terragrunt-evaluation.md) | Evaluate Terragrunt for DRY Terraform Configuration | Proposed | 2026-05 |
+| [012](012-terragrunt-evaluation.md) | Evaluate Terragrunt for DRY Terraform Configuration | Superseded by 015 | 2026-05 |
 | [013](013-descope-drift-triggered-retraining.md) | Descope Drift-Triggered Retraining | Accepted | 2026-07 |
 | [014](014-aws-first-verification.md) | AWS-First Verification Strategy | Accepted | 2026-07 |
+| [015](015-shared-aws-platform-module.md) | Shared aws-platform Module for the K8s Platform Layer | Accepted | 2026-07 |
 
 ## Creating a New ADR
 

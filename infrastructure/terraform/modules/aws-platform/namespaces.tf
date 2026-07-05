@@ -26,8 +26,6 @@ resource "kubernetes_namespace" "mlops" {
       "pod-security.kubernetes.io/audit-version"   = "latest"
     }
   }
-
-  depends_on = [module.eks]
 }
 
 resource "kubernetes_namespace" "mlflow" {
@@ -45,8 +43,6 @@ resource "kubernetes_namespace" "mlflow" {
       "pod-security.kubernetes.io/audit-version"   = "latest"
     }
   }
-
-  depends_on = [module.eks]
 }
 
 resource "kubernetes_namespace" "argo" {
@@ -64,8 +60,6 @@ resource "kubernetes_namespace" "argo" {
       "pod-security.kubernetes.io/audit-version"   = "latest"
     }
   }
-
-  depends_on = [module.eks]
 }
 
 resource "kubernetes_namespace" "kserve" {
@@ -82,8 +76,6 @@ resource "kubernetes_namespace" "kserve" {
       "pod-security.kubernetes.io/audit-version"   = "latest"
     }
   }
-
-  depends_on = [module.eks]
 }
 
 # Kubernetes Secrets and Service Accounts
@@ -91,7 +83,7 @@ resource "kubernetes_namespace" "kserve" {
 # Retrieve RDS-managed master password from Secrets Manager
 # (RDS auto-rotates this via manage_master_user_password = true)
 data "aws_secretsmanager_secret_version" "mlflow_db_master" {
-  secret_id = module.eks.mlflow_db_secret_arn
+  secret_id = var.eks.mlflow_db_secret_arn
 }
 
 # MLflow secrets (using RDS-managed password from Secrets Manager)
@@ -118,7 +110,7 @@ resource "kubernetes_service_account" "mlflow" {
     name      = "mlflow"
     namespace = kubernetes_namespace.mlflow.metadata[0].name
     annotations = {
-      "eks.amazonaws.com/role-arn" = module.eks.mlflow_irsa_role_arn
+      "eks.amazonaws.com/role-arn" = var.eks.mlflow_irsa_role_arn
     }
   }
 

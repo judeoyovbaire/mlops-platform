@@ -16,15 +16,13 @@ resource "kubernetes_namespace" "karpenter" {
       "pod-security.kubernetes.io/audit-version"   = "latest"
     }
   }
-
-  depends_on = [module.eks]
 }
 
 # Cleanup Karpenter-managed nodes before destroying Karpenter
 # This prevents orphaned EC2 instances when running terraform destroy
 resource "null_resource" "karpenter_cleanup" {
   triggers = {
-    cluster_name = module.eks.cluster_name
+    cluster_name = var.eks.cluster_name
     region       = var.aws_region
   }
 
@@ -57,8 +55,6 @@ resource "null_resource" "karpenter_cleanup" {
       echo "Karpenter cleanup complete"
     EOT
   }
-
-  depends_on = [module.eks]
 }
 
 # Karpenter Helm release
@@ -74,12 +70,12 @@ resource "helm_release" "karpenter" {
 
   set {
     name  = "settings.clusterName"
-    value = module.eks.cluster_name
+    value = var.eks.cluster_name
   }
 
   set {
     name  = "settings.clusterEndpoint"
-    value = module.eks.cluster_endpoint
+    value = var.eks.cluster_endpoint
   }
 
   # Fix feature gates - all must be explicitly set for Karpenter 1.8+
@@ -101,7 +97,7 @@ resource "helm_release" "karpenter" {
 
   set {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = module.eks.karpenter_irsa_role_arn
+    value = var.eks.karpenter_irsa_role_arn
   }
 
   # Resource requests
@@ -283,13 +279,13 @@ resource "kubectl_manifest" "karpenter_gpu_nodeclass" {
     spec:
       amiSelectorTerms:
         - alias: al2023@latest
-      role: ${module.eks.karpenter_node_role_name}
+      role: ${var.eks.karpenter_node_role_name}
       subnetSelectorTerms:
         - tags:
-            karpenter.sh/discovery: ${module.eks.cluster_name}
+            karpenter.sh/discovery: ${var.eks.cluster_name}
       securityGroupSelectorTerms:
         - tags:
-            karpenter.sh/discovery: ${module.eks.cluster_name}
+            karpenter.sh/discovery: ${var.eks.cluster_name}
       blockDeviceMappings:
         - deviceName: /dev/xvda
           ebs:
@@ -298,7 +294,7 @@ resource "kubectl_manifest" "karpenter_gpu_nodeclass" {
             deleteOnTermination: true
             encrypted: true
       tags:
-        Environment: dev
+        Environment: ${var.environment}
         Project: mlops-platform
         NodeType: gpu
   YAML
@@ -316,13 +312,13 @@ resource "kubectl_manifest" "karpenter_default_nodeclass" {
     spec:
       amiSelectorTerms:
         - alias: al2023@latest
-      role: ${module.eks.karpenter_node_role_name}
+      role: ${var.eks.karpenter_node_role_name}
       subnetSelectorTerms:
         - tags:
-            karpenter.sh/discovery: ${module.eks.cluster_name}
+            karpenter.sh/discovery: ${var.eks.cluster_name}
       securityGroupSelectorTerms:
         - tags:
-            karpenter.sh/discovery: ${module.eks.cluster_name}
+            karpenter.sh/discovery: ${var.eks.cluster_name}
       blockDeviceMappings:
         - deviceName: /dev/xvda
           ebs:
@@ -331,7 +327,7 @@ resource "kubectl_manifest" "karpenter_default_nodeclass" {
             deleteOnTermination: true
             encrypted: true
       tags:
-        Environment: dev
+        Environment: ${var.environment}
         Project: mlops-platform
         NodeType: training
   YAML
