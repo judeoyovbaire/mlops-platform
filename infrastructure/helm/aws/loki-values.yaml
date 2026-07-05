@@ -11,7 +11,10 @@ loki:
     replication_factor: 1
   storage:
     type: s3
-    bucketNames: "${loki_s3_bucket}"
+    bucketNames:
+      chunks: "${loki_s3_bucket}"
+      ruler: "${loki_s3_bucket}"
+      admin: "${loki_s3_bucket}"
     s3:
       endpoint: s3.${aws_region}.amazonaws.com
       region: ${aws_region}

@@ -1,3 +1,8 @@
+# Chart >=0.9x requires an explicit image repository (see the chart's
+# UPGRADING.md); -k8s is the distribution recommended for in-cluster use.
+image:
+  repository: otel/opentelemetry-collector-k8s
+
 # OpenTelemetry Collector Helm Values
 # Chart: open-telemetry/opentelemetry-collector
 # Role: Unified telemetry collection pipeline (CNCF Graduated)

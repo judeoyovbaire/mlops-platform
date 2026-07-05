@@ -78,21 +78,22 @@ variable "argocd_extra_values_files" {
 }
 
 variable "minio" {
-  description = "MinIO sizing: dev = standalone/small, prod = distributed/HA"
+  description = <<-EOT
+    MinIO sizing: dev = standalone/small (defaults), prod = distributed/HA.
+    Limits are always rendered - the platform's own Kyverno
+    require-resource-limits policy (Enforce, argo namespace in scope)
+    admission-blocks limit-less pods.
+  EOT
   type = object({
-    mode           = string
-    replicas       = number
-    storage_size   = string
-    memory_request = string
-    cpu_request    = optional(string)
-    memory_limit   = optional(string)
+    mode           = optional(string, "standalone")
+    replicas       = optional(number, 1)
+    storage_size   = optional(string, "10Gi")
+    memory_request = optional(string, "512Mi")
+    cpu_request    = optional(string, "250m")
+    memory_limit   = optional(string, "1Gi")
+    cpu_limit      = optional(string, "500m")
   })
-  default = {
-    mode           = "standalone"
-    replicas       = 1
-    storage_size   = "10Gi"
-    memory_request = "512Mi"
-  }
+  default = {}
 }
 
 # --- Helm chart versions (single source: helm-versions.auto.tfvars at root,

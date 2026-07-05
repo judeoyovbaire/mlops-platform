@@ -209,20 +209,21 @@ resource "helm_release" "minio" {
     value = var.minio.memory_request
   }
 
-  dynamic "set" {
-    for_each = var.minio.cpu_request != null ? [var.minio.cpu_request] : []
-    content {
-      name  = "resources.requests.cpu"
-      value = set.value
-    }
+  set {
+    name  = "resources.requests.cpu"
+    value = var.minio.cpu_request
   }
 
-  dynamic "set" {
-    for_each = var.minio.memory_limit != null ? [var.minio.memory_limit] : []
-    content {
-      name  = "resources.limits.memory"
-      value = set.value
-    }
+  # Limits are mandatory: the platform's Kyverno require-resource-limits
+  # policy admission-blocks limit-less pods in the argo namespace.
+  set {
+    name  = "resources.limits.memory"
+    value = var.minio.memory_limit
+  }
+
+  set {
+    name  = "resources.limits.cpu"
+    value = var.minio.cpu_limit
   }
 
   # Use ExternalSecret-managed credentials (avoids secrets in Helm release metadata)

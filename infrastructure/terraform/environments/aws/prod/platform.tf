@@ -27,6 +27,7 @@ module "platform" {
     memory_request = "1Gi"
     cpu_request    = "500m"
     memory_limit   = "2Gi"
+    cpu_limit      = "1"
   }
 
   helm_alloy_version             = var.helm_alloy_version
