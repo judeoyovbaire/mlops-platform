@@ -1,0 +1,46 @@
+# Champion InferenceService template - THE registry->serving link.
+#
+# Rendered by the CI deploy workflow (envsubst) after resolve_serving_uri.py
+# resolves the registry alias to a concrete artifact URI. Every placeholder
+# is traceable: the deployed service carries the exact model version and
+# MLflow run it serves.
+#
+# The artifact at MODEL_STORAGE_URI is the "serving_model" pyfunc logged by
+# build_serving_model.py: it bundles the fitted preprocessor with the trained
+# model and accepts RAW features. modelFormat: mlflow serves it via MLServer
+# (KServe v2 inference protocol).
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: ${MODEL_NAME}
+  namespace: mlops
+  labels:
+    app.kubernetes.io/name: ${MODEL_NAME}
+    app.kubernetes.io/component: inference
+    app.kubernetes.io/part-of: mlops-platform
+    app.kubernetes.io/managed-by: ci-deploy
+    # Required by governance/model-registry-policies.yaml (Kyverno Enforce)
+    mlops.io/model-name: ${MODEL_NAME}
+    mlops.io/model-version: "${MODEL_VERSION}"
+    mlops.io/model-owner: platform-team
+    mlops.io/model-stage: staging
+  annotations:
+    mlops.io/mlflow-run-id: "${MODEL_RUN_ID}"
+    mlops.io/registry-alias: "champion"
+spec:
+  predictor:
+    serviceAccountName: kserve-inference
+    minReplicas: 1
+    maxReplicas: 3
+    model:
+      modelFormat:
+        name: mlflow
+      protocolVersion: v2
+      storageUri: "${MODEL_STORAGE_URI}"
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi

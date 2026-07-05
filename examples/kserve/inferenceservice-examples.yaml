@@ -1,5 +1,7 @@
-# KServe InferenceService Examples
-# These use public pre-trained models to validate KServe functionality
+# KServe InferenceService Examples - MANUAL DEMOS ONLY.
+# These use public pre-trained models to validate KServe functionality.
+# CI deploys the real thing: the registry champion, rendered from
+# champion-inferenceservice.template.yaml by the deploy workflow.
 
 # Basic sklearn model deployment with production-ready configuration
 apiVersion: serving.kserve.io/v1beta1

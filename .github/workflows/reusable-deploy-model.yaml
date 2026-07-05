@@ -37,6 +37,16 @@ on:
         required: false
         type: string
         default: "0.2.10"
+      model-name:
+        description: "Registered model to deploy from the MLflow registry"
+        required: false
+        type: string
+        default: "iris-classifier"
+      model-alias:
+        description: "Registry alias to resolve (the version that serves)"
+        required: false
+        type: string
+        default: "champion"
 
 jobs:
   deploy-and-test:
@@ -121,18 +131,48 @@ jobs:
           kubectl get namespace mlops
 
       # -------------------------------------------------------------- Deploy
-      - name: Deploy to KServe
+      # The registry is the source of truth: resolve the alias to the exact
+      # artifact URI + version + run id, render the champion InferenceService,
+      # and apply it. Promoting a different version in MLflow changes what the
+      # next deploy serves - with full traceability in labels/annotations.
+      - name: Resolve champion model from MLflow registry
         run: |
-          kubectl apply -f examples/kserve/inferenceservice-examples.yaml
+          pip install --quiet mlflow-skinny==2.21.3
+
+          # MLflow is cluster-internal; reach it via port-forward.
+          kubectl port-forward -n mlflow svc/mlflow 5000:5000 &
+          PF_PID=$!
+          trap "kill $PF_PID" EXIT
+          for i in $(seq 1 15); do
+            curl -sf http://127.0.0.1:5000/health > /dev/null && break
+            sleep 2
+          done
+
+          PYTHONPATH=. python pipelines/training/src/resolve_serving_uri.py \
+            --model-name "${{ inputs.model-name }}" \
+            --alias "${{ inputs.model-alias }}" \
+            --mlflow-uri http://127.0.0.1:5000 \
+            --github-env "$GITHUB_ENV"
+
+      - name: Deploy champion InferenceService
+        run: |
+          envsubst '$MODEL_NAME $MODEL_STORAGE_URI $MODEL_VERSION $MODEL_RUN_ID' \
+            < examples/kserve/champion-inferenceservice.template.yaml \
+            | kubectl apply -f -
 
           echo "## Model Deployment (${{ inputs.cloud }} - ${{ inputs.environment }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Deployed KServe InferenceService examples" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Model | ${MODEL_NAME} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Registry version | ${MODEL_VERSION} (@${{ inputs.model-alias }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| MLflow run | ${MODEL_RUN_ID} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact | ${MODEL_STORAGE_URI} |" >> $GITHUB_STEP_SUMMARY
 
       - name: Wait for deployment
         run: |
           echo "Waiting for InferenceService to be ready..."
-          kubectl wait --for=condition=Ready inferenceservice/sklearn-iris -n mlops --timeout=300s
+          kubectl wait --for=condition=Ready "inferenceservice/${MODEL_NAME}" -n mlops --timeout=300s
 
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## InferenceService Status" >> $GITHUB_STEP_SUMMARY
@@ -140,29 +180,16 @@ jobs:
           kubectl get inferenceservice -n mlops >> $GITHUB_STEP_SUMMARY 2>&1
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
-      - name: Get service URL
-        run: |
-          SERVICE_URL=$(kubectl get inferenceservice sklearn-iris -n mlops -o jsonpath='{.status.url}' 2>/dev/null || echo "pending")
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Service URL" >> $GITHUB_STEP_SUMMARY
-          echo "- **URL**: ${SERVICE_URL}" >> $GITHUB_STEP_SUMMARY
-
       - name: Smoke test inference endpoint
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Smoke Test" >> $GITHUB_STEP_SUMMARY
 
-          # The smoke test is a HARD gate: a deploy that cannot serve a
-          # prediction is a failed deploy, not a warning.
-          IS_READY=$(kubectl get inferenceservice sklearn-iris -n mlops -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "Unknown")
-
-          if [ "$IS_READY" != "True" ]; then
-            echo "- **Status**: FAILED (InferenceService not ready: ${IS_READY})" >> $GITHUB_STEP_SUMMARY
-            echo "::error::InferenceService not ready (status: ${IS_READY})"
-            exit 1
-          fi
-
-          PREDICTOR_SVC=$(kubectl get svc -n mlops -l serving.kserve.io/inferenceservice=sklearn-iris -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+          # HARD gate: a deploy that cannot serve a prediction is a failed
+          # deploy, not a warning.
+          PREDICTOR_SVC=$(kubectl get svc -n mlops \
+            -l "serving.kserve.io/inferenceservice=${MODEL_NAME}" \
+            -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
 
           if [ -z "$PREDICTOR_SVC" ]; then
             echo "- **Status**: FAILED (predictor service not found)" >> $GITHUB_STEP_SUMMARY
@@ -170,14 +197,22 @@ jobs:
             exit 1
           fi
 
+          # The serving pyfunc accepts RAW features; MLServer v2 protocol with
+          # the pandas codec - one named input per feature column.
+          PAYLOAD='{"parameters":{"content_type":"pd"},"inputs":[
+            {"name":"sepal_length","shape":[1],"datatype":"FP64","data":[5.1]},
+            {"name":"sepal_width","shape":[1],"datatype":"FP64","data":[3.5]},
+            {"name":"petal_length","shape":[1],"datatype":"FP64","data":[1.4]},
+            {"name":"petal_width","shape":[1],"datatype":"FP64","data":[0.2]}]}'
+
           RESPONSE=$(kubectl run smoke-test-${GITHUB_RUN_ID} \
             --image=curlimages/curl:8.7.1 \
             --rm -i --restart=Never -n mlops \
             --timeout=60s \
             -- curl -sf --max-time 30 \
               -H "Content-Type: application/json" \
-              -d '{"instances": [[5.1, 3.5, 1.4, 0.2]]}' \
-              "http://${PREDICTOR_SVC}/v1/models/sklearn-iris:predict" 2>/dev/null) || RESPONSE=""
+              -d "${PAYLOAD}" \
+              "http://${PREDICTOR_SVC}/v2/models/${MODEL_NAME}/infer" 2>/dev/null) || RESPONSE=""
 
           if [ -n "$RESPONSE" ]; then
             echo "- **Status**: PASSED" >> $GITHUB_STEP_SUMMARY
