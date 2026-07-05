@@ -2,7 +2,7 @@
 # Human-edited. The installable lockfile (requirements.txt) is GENERATED:
 #   uv pip compile components/kserve-transformer/requirements.in \
 #     --python-version 3.12 --python-platform x86_64-unknown-linux-gnu \
-#     --generate-hashes -o components/kserve-transformer/requirements.txt
+#     --generate-hashes --emit-index-url -o components/kserve-transformer/requirements.txt
 # CI fails if requirements.txt is stale relative to this file.
 kserve==0.14.1
 joblib==1.4.2

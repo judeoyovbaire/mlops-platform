@@ -2,7 +2,7 @@
 # Human-edited. The installable lockfile (requirements.txt) is GENERATED:
 #   uv pip compile pipelines/training/requirements.in \
 #     --python-version 3.12 --python-platform x86_64-unknown-linux-gnu \
-#     --generate-hashes -o pipelines/training/requirements.txt
+#     --generate-hashes --emit-index-url -o pipelines/training/requirements.txt
 # CI fails if requirements.txt is stale relative to this file.
 pandas==2.2.3
 scikit-learn==1.6.1
