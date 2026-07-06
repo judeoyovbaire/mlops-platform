@@ -614,7 +614,7 @@ markdown==3.10.2 \
     --hash=sha256:e91464b71ae3ee7afd3017d9f358ef0baf158fd9a298db92f1d4761133824c36
     # via mlflow
 markupsafe==3.0.3 \
-    --hash=sha256:d6dd0be5b5b189d31db7cda48b91d7e0a9795f31430b7f271219ab30f1d3ac9d
+    --hash=sha256:f42d0984e947b8adf7dd6dde396e720934d12c506ce84eea8476409563607591
     # via
     #   flask
     #   jinja2
@@ -1671,9 +1671,9 @@ urllib3==1.26.13 \
     #   databricks-sdk
     #   docker
     #   requests
-uvicorn==0.50.0 \
-    --hash=sha256:05f0eb19edf38208f79f43df8a63081b48df31b0cd1e5997be957a4dc97d1b19 \
-    --hash=sha256:0c92e1bc2259cb7faa4fcef774a5966588f2e88542744550b66799fba10b76f1
+uvicorn==0.50.2 \
+    --hash=sha256:4ae72a385630bcc17a0adb8290f26c993865e0b43a2114c2aab96420172c056a \
+    --hash=sha256:b92bf03509b82bcb9d49e7335b4fd364518ad021c2dc18b4e6a2fec8c955a0bb
     # via mlflow-skinny
 werkzeug==3.1.8 \
     --hash=sha256:63a77fb8892bf28ebc3178683445222aa500e48ebad5ec77b0ad80f8726b1f50 \
