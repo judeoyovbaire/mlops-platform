@@ -16,3 +16,7 @@ shap==0.46.0
 # Resolver floor: without it, backtracking can select numba<=0.53
 # (sdist-only, Python <3.10) and break the py3.12 image build.
 numba>=0.61
+# MLflow S3 artifact uploads happen CLIENT-side - every image that logs
+# artifacts needs boto3 (discovered live: training succeeded, artifact
+# upload died).
+boto3==1.40.16

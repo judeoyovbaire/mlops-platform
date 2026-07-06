@@ -9,3 +9,7 @@ transformers==4.51.3
 huggingface_hub==0.30.2
 mlflow==2.21.3
 torch==2.6.0
+# MLflow S3 artifact uploads happen CLIENT-side - every image that logs
+# artifacts needs boto3 (discovered live: training succeeded, artifact
+# upload died).
+boto3==1.40.16

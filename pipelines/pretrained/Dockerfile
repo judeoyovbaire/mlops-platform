@@ -9,6 +9,8 @@ LABEL maintainer="mlops-platform" \
 
 WORKDIR /app
 ENV PYTHONPATH=/app
+# Writable matplotlib cache for the non-root user (silences startup warning)
+ENV MPLCONFIGDIR=/tmp/matplotlib
 
 # Patch OS-level vulnerabilities
 RUN apt-get update && apt-get upgrade -y --no-install-recommends \
