@@ -26,6 +26,7 @@ metadata:
     mlops.io/model-stage: staging
   annotations:
     mlops.io/mlflow-run-id: "${MODEL_RUN_ID}"
+    mlops.io/mlflow-experiment-id: "${MODEL_EXPERIMENT_ID}"
     mlops.io/registry-alias: "champion"
 spec:
   predictor:

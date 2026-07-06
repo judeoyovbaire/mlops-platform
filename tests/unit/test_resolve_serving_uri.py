@@ -32,19 +32,38 @@ def _model_version(
     return mv
 
 
+def _run(experiment_id="1"):
+    run = MagicMock()
+    run.info.experiment_id = experiment_id
+    return run
+
+
 class TestResolveServingUri:
     def test_resolves_alias_to_s3_uri(self, mock_client):
         mock_client.get_model_version_by_alias.return_value = _model_version()
+        mock_client.get_run.return_value = _run(experiment_id="7")
 
         result = resolve_serving_uri("iris-classifier", "champion", "http://mlflow:5000")
 
         assert isinstance(result, ResolvedServingModel)
         assert result.version == 3
         assert result.run_id == "run-abc"
+        assert result.experiment_id == "7"
         assert result.storage_uri.startswith("s3://")
         mock_client.get_model_version_by_alias.assert_called_once_with(
             "iris-classifier", "champion"
         )
+
+    def test_experiment_lookup_failure_does_not_block_resolution(self, mock_client):
+        """Lineage lookup is best-effort - a registry alias that resolves must
+        still deploy even if the run record is unavailable."""
+        from mlflow.exceptions import MlflowException
+
+        mock_client.get_model_version_by_alias.return_value = _model_version()
+        mock_client.get_run.side_effect = MlflowException("run not found")
+
+        result = resolve_serving_uri("iris-classifier", "champion", "http://mlflow:5000")
+        assert result.experiment_id == ""
 
     def test_missing_alias_raises_actionable_error(self, mock_client):
         from mlflow.exceptions import MlflowException

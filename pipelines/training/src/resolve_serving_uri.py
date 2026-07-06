@@ -35,6 +35,7 @@ class ResolvedServingModel:
     alias: str
     version: int
     run_id: str
+    experiment_id: str
     storage_uri: str
 
 
@@ -93,11 +94,21 @@ def resolve_serving_uri(
             f"s3:// artifactRoot - check mlflow-values.yaml."
         )
 
+    # Lineage: governance policy requires the experiment id on the deployed
+    # service; the model version only carries the run id, so look it up.
+    experiment_id = ""
+    if mv.run_id:
+        try:
+            experiment_id = client.get_run(mv.run_id).info.experiment_id or ""
+        except (RestException, MlflowException) as e:
+            logger.warning(f"Could not fetch run {mv.run_id} for experiment id: {e}")
+
     resolved = ResolvedServingModel(
         model_name=model_name,
         alias=alias,
         version=int(mv.version),
         run_id=mv.run_id or "",
+        experiment_id=experiment_id,
         storage_uri=source,
     )
     logger.info(
@@ -146,3 +157,4 @@ if __name__ == "__main__":
             f.write(f"MODEL_STORAGE_URI={result.storage_uri}\n")
             f.write(f"MODEL_VERSION={result.version}\n")
             f.write(f"MODEL_RUN_ID={result.run_id}\n")
+            f.write(f"MODEL_EXPERIMENT_ID={result.experiment_id}\n")

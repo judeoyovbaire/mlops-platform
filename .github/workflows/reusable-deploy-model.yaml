@@ -156,7 +156,7 @@ jobs:
 
       - name: Deploy champion InferenceService
         run: |
-          envsubst '$MODEL_NAME $MODEL_STORAGE_URI $MODEL_VERSION $MODEL_RUN_ID' \
+          envsubst '$MODEL_NAME $MODEL_STORAGE_URI $MODEL_VERSION $MODEL_RUN_ID $MODEL_EXPERIMENT_ID' \
             < examples/kserve/champion-inferenceservice.template.yaml \
             | kubectl apply -f -
 
