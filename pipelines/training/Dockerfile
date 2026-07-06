@@ -21,11 +21,12 @@ COPY --from=ghcr.io/astral-sh/uv:0.7.2@sha256:3b898ca84fbe7628c5adcd836c1de78a0f
 COPY training/requirements.txt .
 RUN uv pip install --system --no-cache -r requirements.txt
 
-# Copy shared utilities
-COPY shared/ /app/shared/
+# Copy code in the repo's package layout - modules import
+# pipelines.shared.* / pipelines.training.src.*, so the image must provide
+# the same package structure (PYTHONPATH=/app makes /app the root).
+COPY shared/ /app/pipelines/shared/
 
-# Copy pipeline source code
-COPY training/src/ /app/src/
+COPY training/src/ /app/pipelines/training/src/
 
 # Non-root user for security
 USER 1000

@@ -223,7 +223,7 @@ spec:
             path: /tmp/data.csv
       container:
         image: "{{workflow.parameters.pipeline-image}}"
-        command: [python, /app/src/load_data.py]
+        command: [python, /app/pipelines/training/src/load_data.py]
         args:
           - --url
           - "{{inputs.parameters.dataset-url}}"
@@ -259,7 +259,7 @@ spec:
             path: /tmp/validated.csv
       container:
         image: "{{workflow.parameters.pipeline-image}}"
-        command: [python, /app/src/validate_data.py]
+        command: [python, /app/pipelines/training/src/validate_data.py]
         args:
           - --input
           - /tmp/input.csv
@@ -310,7 +310,7 @@ spec:
             optional: true
       container:
         image: "{{workflow.parameters.pipeline-image}}"
-        command: [python, /app/src/feature_engineering.py]
+        command: [python, /app/pipelines/training/src/feature_engineering.py]
         args:
           - --input
           - /tmp/input.csv
@@ -373,7 +373,7 @@ spec:
             if [ "{{inputs.parameters.use-cross-validation}}" = "false" ]; then CV_FLAG="--no-cv"; fi && \
             GS_FLAG="" && \
             if [ "{{inputs.parameters.use-grid-search}}" = "true" ]; then GS_FLAG="--grid-search"; fi && \
-            python /app/src/train_model.py \
+            python /app/pipelines/training/src/train_model.py \
               --input /tmp/input.csv \
               --model-output /tmp/model.joblib \
               --run-id-output /tmp/run_id.txt \
@@ -420,7 +420,7 @@ spec:
               path: /tmp/validation_result.txt
       container:
         image: "{{workflow.parameters.pipeline-image}}"
-        command: [python, /app/src/validate_model.py]
+        command: [python, /app/pipelines/training/src/validate_model.py]
         args:
           - --model
           - /tmp/model.joblib
@@ -468,7 +468,7 @@ spec:
               path: /tmp/model_alias.txt
       container:
         image: "{{workflow.parameters.pipeline-image}}"
-        command: [python, /app/src/register_model.py]
+        command: [python, /app/pipelines/training/src/register_model.py]
         args:
           - --model-name
           - "{{inputs.parameters.model-name}}"
@@ -519,7 +519,7 @@ spec:
             path: /tmp/input.csv
       container:
         image: "{{workflow.parameters.pipeline-image}}"
-        command: [python, /app/src/build_serving_model.py]
+        command: [python, /app/pipelines/training/src/build_serving_model.py]
         args:
           - --model
           - /tmp/model.joblib

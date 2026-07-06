@@ -92,7 +92,7 @@ spec:
             path: /tmp/hf-model
       container:
         image: "{{workflow.parameters.pipeline-image}}"
-        command: [python, /app/src/fetch_model.py]
+        command: [python, /app/pipelines/pretrained/src/fetch_model.py]
         args:
           - --model-id
           - "{{inputs.parameters.model-id}}"
@@ -127,7 +127,7 @@ spec:
             path: /tmp/hf-model
       container:
         image: "{{workflow.parameters.pipeline-image}}"
-        command: [python, /app/src/validate_model.py]
+        command: [python, /app/pipelines/pretrained/src/validate_model.py]
         args:
           - --metadata
           - /tmp/hf-model/metadata.json
@@ -160,7 +160,7 @@ spec:
             path: /tmp/hf-model
       container:
         image: "{{workflow.parameters.pipeline-image}}"
-        command: [python, /app/src/register_model.py]
+        command: [python, /app/pipelines/pretrained/src/register_model.py]
         args:
           - --metadata
           - /tmp/hf-model/metadata.json
