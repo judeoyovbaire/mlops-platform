@@ -82,3 +82,4 @@ ml_training_pipeline.yaml
 
 # AI assistant config (local only)
 CLAUDE.md
+.coverage
