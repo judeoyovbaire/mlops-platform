@@ -37,6 +37,11 @@ spec:
       modelFormat:
         name: mlflow
       protocolVersion: v2
+      # Pin the MLServer version the training image is aligned to (Python
+      # 3.10, scikit-learn 1.7.0, cloudpickle 3.1.1 - see
+      # pipelines/training/requirements.in). The cluster default runtime
+      # (1.5.0) ships older libs that cannot unpickle the serving model.
+      runtimeVersion: "1.7.1"
       storageUri: "${MODEL_STORAGE_URI}"
       resources:
         requests:

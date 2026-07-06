@@ -574,7 +574,7 @@ jobs:
           set -euo pipefail
           for dir in pipelines/training pipelines/pretrained components/kserve-transformer; do
             uv pip compile "$dir/requirements.in" \
-              --python-version 3.12 \
+              --python-version 3.10 \
               --python-platform x86_64-unknown-linux-gnu \
               --generate-hashes \
               --emit-index-url \
