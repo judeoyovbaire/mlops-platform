@@ -102,10 +102,14 @@ spec:
       defaultRequest:
         cpu: 100m
         memory: 256Mi
+      # No nvidia.com/gpu here: for a resource with max set but no default,
+      # the LimitRanger populates default FROM max - i.e. max gpu "1" would
+      # inject a 1-GPU request into every container in the namespace that
+      # doesn't declare one. Namespace GPU consumption is capped by the
+      # ResourceQuota above instead.
       max:
         cpu: "8"
         memory: 32Gi
-        nvidia.com/gpu: "1"
       min:
         cpu: 50m
         memory: 64Mi
