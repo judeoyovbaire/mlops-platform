@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - monitoring.yaml
+  - argo-artifact-repository.yaml
   - network-policies.yaml
   - pod-disruption-budgets.yaml
   - resource-quotas.yaml

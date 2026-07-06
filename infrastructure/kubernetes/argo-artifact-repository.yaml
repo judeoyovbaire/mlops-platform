@@ -1,0 +1,29 @@
+# Artifact repository for Argo Workflows pipelines.
+#
+# Both pipeline WorkflowTemplates reference
+# artifactRepositoryRef "artifact-repositories#default-artifact-repository";
+# this ConfigMap is that reference. It was missing from the repo entirely -
+# the first live pipeline submission failed with "failed to resolve artifact
+# repository". Artifacts land in the platform MinIO (mlpipeline bucket,
+# created by the chart's bucket job; credentials are ExternalSecret-managed).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: artifact-repositories
+  namespace: argo
+  labels:
+    app.kubernetes.io/part-of: mlops-platform
+  annotations:
+    workflows.argoproj.io/default-artifact-repository: default-artifact-repository
+data:
+  default-artifact-repository: |
+    s3:
+      endpoint: minio.argo.svc.cluster.local:9000
+      bucket: mlpipeline
+      insecure: true
+      accessKeySecret:
+        name: minio-credentials
+        key: rootUser
+      secretKeySecret:
+        name: minio-credentials
+        key: rootPassword
