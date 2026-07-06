@@ -207,7 +207,9 @@ spec:
         limit: 2
         retryPolicy: "OnError"
       memoize:
-        key: "load-data-{{inputs.parameters.dataset-url}}"
+        # Memoize keys become ConfigMap keys ([-._a-zA-Z0-9] only) - a raw
+        # URL is invalid and errored the whole DAG. Hash it.
+        key: "load-data-{{=sprig.sha256sum(inputs.parameters['dataset-url'])}}"
         maxAge: "24h"
         cache:
           configMap:
@@ -285,10 +287,10 @@ spec:
         limit: 2
         retryPolicy: "OnError"
       memoize:
-        # Keyed on dataset URL + target so a dataset change within maxAge
-        # cannot serve a stale features artifact (same convention as
-        # load-data's key).
-        key: "feature-eng-{{workflow.parameters.dataset-url}}-{{inputs.parameters.target-column}}"
+        # Keyed on dataset URL (hashed - raw URLs are invalid ConfigMap keys)
+        # + target column, so a dataset change within maxAge cannot serve a
+        # stale features artifact.
+        key: "feature-eng-{{=sprig.sha256sum(workflow.parameters['dataset-url'])}}-{{inputs.parameters.target-column}}"
         maxAge: "24h"
         cache:
           configMap:
