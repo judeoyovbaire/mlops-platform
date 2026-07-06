@@ -51,6 +51,22 @@ resource "aws_iam_policy" "argo_workflow_mlflow_s3" {
           "s3:ListMultipartUploadParts"
         ]
         Resource = "arn:aws:s3:::${var.eks.mlflow_s3_bucket}/*"
+      },
+      {
+        # The artifact bucket is SSE-KMS encrypted and its key policy
+        # delegates to IAM, so PutObject/GetObject also need the data-key
+        # operations. ViaService keeps this usable only through S3.
+        Effect = "Allow"
+        Action = [
+          "kms:GenerateDataKey",
+          "kms:Decrypt"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "s3.${var.aws_region}.amazonaws.com"
+          }
+        }
       }
     ]
   })
