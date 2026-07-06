@@ -173,6 +173,13 @@ resource "helm_release" "argo_workflows" {
 
   values = [file("${path.module}/../../../helm/aws/argo-workflows-values.yaml")]
 
+  # IRSA for workflow pods - MLflow artifact uploads go straight to S3 from
+  # the pipeline containers, so the argo-workflow SA needs the role annotation.
+  set {
+    name  = "workflow.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = module.argo_workflow_irsa.arn
+  }
+
   depends_on = [time_sleep.alb_controller_ready]
 }
 
