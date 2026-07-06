@@ -190,12 +190,17 @@ spec:
                 - mlops
       validate:
         message: "Model version must be an MLflow registry version (e.g., 3) or semver (e.g., 1.0.0)"
-        pattern:
-          metadata:
-            labels:
-              # '{{@}}' (quoted) binds the label value; a bare @ would bind
-              # the whole admission request and fail substitution.
-              mlops.io/model-version: "{{ regex_match('^[0-9]+(\\.[0-9]+\\.[0-9]+)?$', '{{@}}') }}"
+        # An explicit deny condition instead of a pattern with '{{@}}':
+        # Kyverno rebuilds the JMESPath from the pattern location, and label
+        # keys containing dots ("mlops.io/...") break that reconstruction.
+        # Label presence is enforced by require-model-metadata; the || ''
+        # fallback keeps this rule focused on format only.
+        deny:
+          conditions:
+            all:
+              - key: "{{ regex_match('^[0-9]+(\\.[0-9]+\\.[0-9]+)?$', request.object.metadata.labels.\"mlops.io/model-version\" || '0') }}"
+                operator: Equals
+                value: false
 
 ---
 # Generate model audit log ConfigMap
