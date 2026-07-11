@@ -160,7 +160,9 @@ ephemeral end-to-end verification.
 4. **IRSA by design, not discovery.** A table in the repo mapping every SA →
    AWS-touching workload → role → policy, plus the standing rule that S3
    access on this platform always means S3 grants **and** `kms:ViaService`
-   grants.
+   grants. *(Done: [docs/irsa-access-matrix.md](../irsa-access-matrix.md) —
+   and compiling it surfaced the same missing-KMS defect in three more
+   roles: Loki, Tempo, and the MLflow server read path, all fixed with it.)*
 5. **Decouple deploy-model from unrelated validation.** Path-scope the
    validate stage so a model rollout does not recompile torch lockfiles or
    rebuild the pretrained image. Also removes the PyTorch-CDN single point of

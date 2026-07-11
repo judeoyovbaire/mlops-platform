@@ -78,6 +78,23 @@ resource "aws_iam_policy" "mlflow_s3" {
           aws_s3_bucket.mlflow_artifacts.arn,
           "${aws_s3_bucket.mlflow_artifacts.arn}/*"
         ]
+      },
+      {
+        # Buckets are SSE-KMS encrypted and the key policy delegates to
+        # IAM, so S3 reads/writes also need the data-key operations.
+        # ViaService keeps the grant usable only through S3. Standing rule:
+        # docs/irsa-access-matrix.md - S3 access always ships with this.
+        Effect = "Allow"
+        Action = [
+          "kms:GenerateDataKey",
+          "kms:Decrypt"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "s3.${data.aws_region.current.region}.amazonaws.com"
+          }
+        }
       }
     ]
   })
@@ -124,6 +141,23 @@ resource "aws_iam_policy" "loki_s3" {
           aws_s3_bucket.loki_logs.arn,
           "${aws_s3_bucket.loki_logs.arn}/*"
         ]
+      },
+      {
+        # Buckets are SSE-KMS encrypted and the key policy delegates to
+        # IAM, so S3 reads/writes also need the data-key operations.
+        # ViaService keeps the grant usable only through S3. Standing rule:
+        # docs/irsa-access-matrix.md - S3 access always ships with this.
+        Effect = "Allow"
+        Action = [
+          "kms:GenerateDataKey",
+          "kms:Decrypt"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "s3.${data.aws_region.current.region}.amazonaws.com"
+          }
+        }
       }
     ]
   })
@@ -170,6 +204,23 @@ resource "aws_iam_policy" "tempo_s3" {
           aws_s3_bucket.tempo_traces.arn,
           "${aws_s3_bucket.tempo_traces.arn}/*"
         ]
+      },
+      {
+        # Buckets are SSE-KMS encrypted and the key policy delegates to
+        # IAM, so S3 reads/writes also need the data-key operations.
+        # ViaService keeps the grant usable only through S3. Standing rule:
+        # docs/irsa-access-matrix.md - S3 access always ships with this.
+        Effect = "Allow"
+        Action = [
+          "kms:GenerateDataKey",
+          "kms:Decrypt"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "s3.${data.aws_region.current.region}.amazonaws.com"
+          }
+        }
       }
     ]
   })

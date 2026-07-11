@@ -333,7 +333,7 @@ infrastructure/terraform/
 - EKS cluster with managed node groups
 - S3 bucket for MLflow artifacts
 - RDS PostgreSQL for MLflow metadata
-- IAM roles with IRSA for secure pod authentication
+- IAM roles with IRSA for secure pod authentication (full SA-to-role mapping: [IRSA access matrix](irsa-access-matrix.md))
 - AWS Load Balancer Controller for ALB Ingress
 - VPC Flow Logs with CloudWatch integration
 - AWS Backup vault with daily/weekly backup plans
