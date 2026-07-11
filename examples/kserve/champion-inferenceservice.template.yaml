@@ -37,11 +37,14 @@ spec:
       modelFormat:
         name: mlflow
       protocolVersion: v2
-      # Pin the MLServer version the training image is aligned to. Source
+      # Pin the MLServer image tag the training image is aligned to. Source
       # of truth: pipelines/serving-runtime-contract.yaml (drift fails CI).
-      # The cluster default runtime (1.5.0) ships older libs that cannot
-      # unpickle the serving model.
-      runtimeVersion: "1.7.1"
+      # runtimeVersion replaces only the TAG on the ClusterServingRuntime's
+      # image repo - it MUST carry the -mlflow variant suffix: the plain
+      # 1.7.1 image ships numpy 1.x and cannot unpickle numpy-2 models
+      # (found live: "No module named 'numpy._core.numeric'"), while the
+      # serving-load-test gate validates against the -mlflow variant.
+      runtimeVersion: "1.7.1-mlflow"
       storageUri: "${MODEL_STORAGE_URI}"
       resources:
         requests:

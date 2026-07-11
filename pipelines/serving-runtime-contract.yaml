@@ -18,10 +18,14 @@
 #   3. Update those surfaces, recompile lockfiles (fresh, no preferences:
 #      delete requirements.txt first - see retro finding on stale hashes)
 
-# MLServer release KServe serves the model with. Surfaces:
+# MLServer image TAG KServe serves the model with. KServe's runtimeVersion
+# substitutes only the tag on the ClusterServingRuntime's image repo, so
+# this must include the -mlflow variant suffix - the plain release tag is a
+# different image with numpy 1.x that cannot unpickle numpy-2 models.
+# Surfaces:
 # - examples/kserve/champion-inferenceservice.template.yaml (runtimeVersion)
 # - pipelines/training/ml-training-workflow.yaml (serving-load-test image)
-mlserver_version: "1.7.1"
+mlserver_version: "1.7.1-mlflow"
 mlserver_image: "docker.io/seldonio/mlserver:1.7.1-mlflow"
 
 # Interpreter of the mlserver image. Surface:
