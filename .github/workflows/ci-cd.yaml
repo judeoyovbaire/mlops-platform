@@ -378,6 +378,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Import every pipeline module inside the image's ACTUAL interpreter.
+      # The dev venv runs 3.12 while the images run 3.10 (serving runtime
+      # contract), so 3.11+/3.12-only code passes tests and lint yet dies at
+      # runtime - a datetime.UTC import and PEP 695 generics both shipped
+      # broken this way (the July py3.10 image never ran a single step).
+      - name: Import-smoke the training image
+        run: |
+          docker run --rm mlops-platform/ml-training:test python -c "
+          import importlib, pathlib
+          mods = sorted(p.stem for p in pathlib.Path('/app/pipelines/training/src').glob('*.py') if p.stem != '__init__')
+          for m in mods:
+              importlib.import_module(f'pipelines.training.src.{m}')
+          print(f'{len(mods)} pipeline modules import cleanly')"
+
       # The pretrained image resolves torch from the PyTorch CPU index. A
       # deploy-model dispatch neither builds nor ships this image, and two
       # July deploys were blocked for hours by PyTorch CDN TLS failures in

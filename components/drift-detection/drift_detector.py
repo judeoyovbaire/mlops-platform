@@ -8,7 +8,7 @@ Exposes metrics for Prometheus scraping.
 import logging
 import os
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
@@ -353,7 +353,7 @@ class DriftDetector:
 
         return DriftReport(
             model_name=self.model_name,
-            timestamp=datetime.now(UTC),
+            timestamp=datetime.now(timezone.utc),
             features_analyzed=n_features,
             features_drifted=n_drifted,
             overall_drift_score=overall_score,

@@ -8,6 +8,7 @@ indefinite hangs when the tracking server is unreachable.
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeoutError
+from typing import TypeVar
 
 try:
     from pipelines.shared.exceptions import MLflowTimeoutError
@@ -18,7 +19,10 @@ except ImportError:
 MLFLOW_CONNECTION_TIMEOUT = 30
 
 
-def run_with_timeout[T](
+T = TypeVar("T")
+
+
+def run_with_timeout(
     fn: Callable[[], T],
     *,
     seconds: int = MLFLOW_CONNECTION_TIMEOUT,

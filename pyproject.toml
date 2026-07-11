@@ -99,11 +99,21 @@ show_missing = true
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+
 # Exclude files with special import requirements
 exclude = [
   "pipelines/training/example-pipeline.py",  # KFP has nested component imports
   "examples/*/test_*.py",                     # Test scripts
 ]
+
+# Pipeline images run Python 3.10 (pipelines/serving-runtime-contract.yaml).
+# Without this, pyupgrade suggests 3.11+ idioms (UP017 datetime.UTC) that
+# import-error at runtime in the images - which is exactly how the July
+# py3.10 image shipped broken: the dev venv is 3.12, so tests passed while
+# every pipeline step died on ImportError.
+[tool.ruff.per-file-target-version]
+"pipelines/**" = "py310"
+"components/**" = "py310"
 
 [tool.ruff.lint]
 select = [
