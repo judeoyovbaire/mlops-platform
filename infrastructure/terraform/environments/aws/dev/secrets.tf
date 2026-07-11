@@ -6,6 +6,10 @@ resource "aws_secretsmanager_secret" "mlflow_db_password" {
   description = "MLflow PostgreSQL database password"
   # Uses AWS managed key if kms_key_arn is not provided
   kms_key_id = var.kms_key_arn
+  # Dev secrets guard infrastructure that terraform destroy removes with
+  # them - skip the 30-day recovery window that left soft-deleted entries
+  # behind after the July teardown.
+  recovery_window_in_days = 0
 
   tags = var.tags
 }
@@ -27,6 +31,8 @@ resource "aws_secretsmanager_secret" "minio_root_password" {
   name        = "${var.cluster_name}/minio/root-password"
   description = "MinIO root password"
   kms_key_id  = var.kms_key_arn
+  # See recovery-window note above.
+  recovery_window_in_days = 0
 
   tags = var.tags
 }
@@ -48,6 +54,8 @@ resource "aws_secretsmanager_secret" "argocd_admin_password" {
   name        = "${var.cluster_name}/argocd/admin-password"
   description = "ArgoCD admin password"
   kms_key_id  = var.kms_key_arn
+  # See recovery-window note above.
+  recovery_window_in_days = 0
 
   tags = var.tags
 }
@@ -96,6 +104,8 @@ resource "aws_secretsmanager_secret" "slack_webhook_url" {
   name        = "${var.cluster_name}/alertmanager/slack-webhook-url"
   description = "Slack webhook URL for AlertManager notifications"
   kms_key_id  = var.kms_key_arn
+  # See recovery-window note above.
+  recovery_window_in_days = 0
 
   tags = var.tags
 }

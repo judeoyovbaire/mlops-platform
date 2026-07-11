@@ -8,6 +8,7 @@ This directory contains runbooks for common operational scenarios in the MLOps p
 |---------|-------------|----------|
 | [Karpenter Node Not Provisioning](karpenter-node-not-provisioning.md) | Troubleshoot when GPU/training nodes don't spin up | High |
 | [MLflow Connection Issues](mlflow-connection-issues.md) | Debug MLflow tracking server connectivity | Medium |
+| [AWS Environment Teardown](teardown.md) | Destroy the AWS platform cleanly (destroy-aws.sh procedure) | High |
 
 ## Using These Runbooks
 

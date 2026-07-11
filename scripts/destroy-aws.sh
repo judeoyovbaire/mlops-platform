@@ -67,12 +67,19 @@ pre_destroy_cleanup() {
         kubectl patch namespace kyverno -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
     fi
 
-    # 4. Remove KServe InferenceService finalizers (controller is destroyed before namespace)
-    print_info "Removing KServe InferenceService finalizers..."
-    for ns in $(kubectl get inferenceservices -A --no-headers 2>/dev/null | awk '{print $1}'); do
+    # 4. Delete KServe InferenceServices outright (finalizers first). Only
+    # patching finalizers is not enough: a CI deploy dispatched after this
+    # phase recreated the InferenceService, its controller was uninstalled
+    # mid-destroy, and the orphaned finalizer wedged the mlops namespace
+    # for the whole terraform run (July teardown). Deleting now, while the
+    # controller still exists, lets finalizer processing complete cleanly -
+    # and the runbook requires CI dispatches to be halted before starting.
+    print_info "Removing KServe InferenceServices..."
+    for ns in $(kubectl get inferenceservices -A --no-headers 2>/dev/null | awk '{print $1}' | sort -u); do
         for isvc in $(kubectl get inferenceservices -n "$ns" --no-headers 2>/dev/null | awk '{print $1}'); do
             kubectl patch inferenceservice "$isvc" -n "$ns" --type=json \
                 -p='[{"op":"remove","path":"/metadata/finalizers"}]' 2>/dev/null || true
+            kubectl delete inferenceservice "$isvc" -n "$ns" --wait=false --ignore-not-found 2>/dev/null || true
         done
     done
 
@@ -91,6 +98,58 @@ pre_destroy_cleanup() {
     sleep 10
 
     print_status "Kubernetes cleanup complete"
+}
+
+# Purge AWS Backup recovery points - vault deletion fails while any exist
+# (July teardown: terraform destroy errored with InvalidRequestException
+# "Backup vault cannot be deleted because it contains recovery points").
+purge_backup_recovery_points() {
+    echo ""
+    echo -e "${CYAN}Phase 1.5: Backup Recovery Point Purge${NC}"
+    echo "========================================"
+
+    VAULTS=$(aws backup list-backup-vaults --region "${AWS_REGION}" \
+        --query "BackupVaultList[?contains(BackupVaultName, '${CLUSTER_NAME}')].BackupVaultName" \
+        --output text 2>/dev/null)
+
+    for vault in $VAULTS; do
+        [[ -z "$vault" || "$vault" == "None" ]] && continue
+        print_info "Purging recovery points in vault: $vault"
+        for rp in $(aws backup list-recovery-points-by-backup-vault \
+            --backup-vault-name "$vault" --region "${AWS_REGION}" \
+            --query 'RecoveryPoints[].RecoveryPointArn' --output text 2>/dev/null); do
+            [[ -z "$rp" || "$rp" == "None" ]] && continue
+            aws backup delete-recovery-point --backup-vault-name "$vault" \
+                --recovery-point-arn "$rp" --region "${AWS_REGION}" 2>/dev/null || true
+        done
+        # Deletion is async - give the vault a moment to empty
+        for _ in $(seq 1 12); do
+            REMAINING=$(aws backup list-recovery-points-by-backup-vault \
+                --backup-vault-name "$vault" --region "${AWS_REGION}" \
+                --query 'length(RecoveryPoints)' --output text 2>/dev/null || echo 0)
+            [[ "$REMAINING" == "0" ]] && break
+            sleep 5
+        done
+        print_status "  Vault $vault emptied"
+    done
+
+    [[ -z "$VAULTS" ]] && print_info "No backup vaults found"
+    print_status "Backup recovery point purge complete"
+}
+
+# Unwedge namespaces stuck Terminating on orphaned finalizers before a
+# terraform retry - by then controllers are gone and nothing else will.
+clear_stuck_namespaces() {
+    kubectl cluster-info &>/dev/null || return 0
+
+    STUCK=$(kubectl get namespaces --no-headers 2>/dev/null | awk '$2=="Terminating"{print $1}')
+    for ns in $STUCK; do
+        print_info "Namespace $ns stuck Terminating - clearing resource finalizers"
+        for isvc in $(kubectl get inferenceservices -n "$ns" --no-headers 2>/dev/null | awk '{print $1}'); do
+            kubectl patch inferenceservice "$isvc" -n "$ns" --type=json \
+                -p='[{"op":"remove","path":"/metadata/finalizers"}]' 2>/dev/null || true
+        done
+    done
 }
 
 # Run terraform destroy
@@ -194,6 +253,50 @@ post_destroy_cleanup() {
         fi
     done
 
+    # 5. Delete orphaned EBS volumes from PVCs (the CSI driver's volumes
+    # survive cluster deletion when the cluster goes before the PVCs -
+    # July left three eventbus volumes billing quietly)
+    print_info "Checking for orphaned EBS volumes..."
+    VOLUMES=$(aws ec2 describe-volumes \
+        --filters "Name=status,Values=available" \
+                  "Name=tag:KubernetesCluster,Values=${CLUSTER_NAME}" \
+        --query 'Volumes[*].VolumeId' \
+        --output text \
+        --region "${AWS_REGION}" 2>/dev/null)
+    VOLUMES="$VOLUMES $(aws ec2 describe-volumes \
+        --filters "Name=status,Values=available" \
+                  "Name=tag-key,Values=kubernetes.io/cluster/${CLUSTER_NAME}" \
+        --query 'Volumes[*].VolumeId' \
+        --output text \
+        --region "${AWS_REGION}" 2>/dev/null)"
+
+    for vol in $(echo "$VOLUMES" | tr ' ' '\n' | sort -u); do
+        if [[ -n "$vol" && "$vol" != "None" ]]; then
+            print_info "  Deleting volume: $vol"
+            aws ec2 delete-volume --volume-id "$vol" \
+                --region "${AWS_REGION}" 2>/dev/null || true
+        fi
+    done
+
+    # 6. Force-delete cluster secrets still in their recovery window.
+    # recovery_window_in_days=0 in dev Terraform handles the common case;
+    # this sweeps stragglers (e.g. stacks created before that change).
+    print_info "Checking for soft-deleted Secrets Manager entries..."
+    SECRETS=$(aws secretsmanager list-secrets \
+        --include-planned-deletion \
+        --region "${AWS_REGION}" \
+        --query "SecretList[?starts_with(Name, '${CLUSTER_NAME}/')].Name" \
+        --output text 2>/dev/null)
+
+    for secret in $SECRETS; do
+        if [[ -n "$secret" && "$secret" != "None" ]]; then
+            print_info "  Force-deleting secret: $secret"
+            aws secretsmanager delete-secret --secret-id "$secret" \
+                --force-delete-without-recovery \
+                --region "${AWS_REGION}" 2>/dev/null || true
+        fi
+    done
+
     print_status "AWS cleanup complete"
 }
 
@@ -253,6 +356,55 @@ verify_cleanup() {
         print_status "CloudWatch log group deleted"
     fi
 
+    # Check for cluster S3 buckets (force_destroy should have emptied them)
+    REMAINING_BUCKETS=$(aws s3api list-buckets \
+        --query "Buckets[?starts_with(Name, '${CLUSTER_NAME}-')].Name" \
+        --output text 2>/dev/null)
+    if [[ -n "$REMAINING_BUCKETS" && "$REMAINING_BUCKETS" != "None" ]]; then
+        print_warning "Remaining S3 buckets: $REMAINING_BUCKETS"
+        issues=$((issues + 1))
+    else
+        print_status "No cluster S3 buckets remain"
+    fi
+
+    # Check for backup vaults with recovery points
+    REMAINING_VAULTS=$(aws backup list-backup-vaults --region "${AWS_REGION}" \
+        --query "BackupVaultList[?contains(BackupVaultName, '${CLUSTER_NAME}')].BackupVaultName" \
+        --output text 2>/dev/null)
+    if [[ -n "$REMAINING_VAULTS" && "$REMAINING_VAULTS" != "None" ]]; then
+        print_warning "Remaining backup vaults: $REMAINING_VAULTS"
+        issues=$((issues + 1))
+    else
+        print_status "No backup vaults remain"
+    fi
+
+    # Check for orphaned EBS volumes
+    REMAINING_VOLUMES=$(aws ec2 describe-volumes \
+        --filters "Name=status,Values=available" \
+                  "Name=tag:KubernetesCluster,Values=${CLUSTER_NAME}" \
+        --query 'Volumes[*].VolumeId' \
+        --output text \
+        --region "${AWS_REGION}" 2>/dev/null)
+    if [[ -n "$REMAINING_VOLUMES" && "$REMAINING_VOLUMES" != "None" ]]; then
+        print_warning "Remaining EBS volumes: $REMAINING_VOLUMES"
+        issues=$((issues + 1))
+    else
+        print_status "No orphaned EBS volumes"
+    fi
+
+    # Check for cluster secrets (including soft-deleted)
+    REMAINING_SECRETS=$(aws secretsmanager list-secrets \
+        --include-planned-deletion \
+        --region "${AWS_REGION}" \
+        --query "SecretList[?starts_with(Name, '${CLUSTER_NAME}/')].Name" \
+        --output text 2>/dev/null)
+    if [[ -n "$REMAINING_SECRETS" && "$REMAINING_SECRETS" != "None" ]]; then
+        print_warning "Remaining secrets: $REMAINING_SECRETS"
+        issues=$((issues + 1))
+    else
+        print_status "No cluster secrets remain"
+    fi
+
     echo ""
     if [[ $issues -eq 0 ]]; then
         print_status "All resources cleaned up successfully!"
@@ -284,6 +436,26 @@ main() {
     echo "  - VPC and networking"
     echo "  - CloudWatch log groups"
     echo ""
+    print_warning "BEFORE destroying: cancel in-flight CI dispatches (deploy-infra /"
+    print_warning "deploy-model). A deploy racing the teardown recreates resources"
+    print_warning "mid-destroy - a July run recreated an InferenceService whose"
+    print_warning "orphaned finalizer wedged its namespace for the whole destroy."
+    echo ""
+
+    # Best-effort check for racing CI runs (needs gh CLI + repo auth)
+    if command -v gh &>/dev/null; then
+        ACTIVE_RUNS=$(gh run list --workflow=ci-cd.yaml \
+            --status in_progress --json databaseId --jq 'length' 2>/dev/null || echo 0)
+        if [[ "${ACTIVE_RUNS:-0}" != "0" ]]; then
+            print_warning "${ACTIVE_RUNS} ci-cd run(s) currently in progress!"
+            print_warning "Cancel them first: gh run list --workflow=ci-cd.yaml --status in_progress"
+            if [[ "$FORCE" != true ]]; then
+                read -p "Continue anyway? (yes/no): " -r
+                echo
+                [[ $REPLY == "yes" ]] || { print_info "Destroy cancelled"; exit 0; }
+            fi
+        fi
+    fi
 
     if [[ "$FORCE" != true ]]; then
         read -p "Are you sure you want to destroy? (yes/no): " -r
@@ -302,10 +474,12 @@ main() {
 
     # Run all cleanup phases
     pre_destroy_cleanup
+    purge_backup_recovery_points
 
     # Run terraform destroy (retry once if it fails)
     if ! terraform_destroy; then
         print_warning "First terraform destroy failed, running additional cleanup..."
+        clear_stuck_namespaces
         post_destroy_cleanup
         print_info "Retrying terraform destroy..."
         terraform_destroy || true
@@ -333,7 +507,12 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
     echo "  - Kyverno webhooks blocking deletion"
     echo "  - Karpenter orphaned instance profiles"
     echo "  - CloudWatch log groups (cause reinstall errors)"
-    echo "  - Orphaned EC2 instances and ENIs"
+    echo "  - Orphaned EC2 instances, ENIs, and PVC-created EBS volumes"
+    echo "  - Backup vault recovery points (block vault deletion)"
+    echo "  - KServe finalizers wedging namespace deletion"
+    echo "  - Soft-deleted Secrets Manager entries"
+    echo ""
+    echo "See docs/runbooks/teardown.md for the full procedure."
     exit 0
 fi
 

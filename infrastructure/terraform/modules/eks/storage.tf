@@ -5,6 +5,11 @@
 resource "aws_s3_bucket" "mlflow_artifacts" {
   bucket = "${var.cluster_name}-mlflow-artifacts-${data.aws_caller_identity.current.account_id}"
 
+  # Non-prod teardown empties versioned buckets automatically - the July
+  # destroy stalled on BucketNotEmpty until object versions were purged by
+  # hand (docs/retros/aws-deploy-retro-2026-07.md, finding group 7).
+  force_destroy = var.environment != "prod"
+
   tags = var.tags
 }
 
@@ -40,6 +45,11 @@ resource "aws_s3_bucket_public_access_block" "mlflow_artifacts" {
 # S3 bucket for Loki logs storage
 resource "aws_s3_bucket" "loki_logs" {
   bucket = "${var.cluster_name}-loki-logs-${data.aws_caller_identity.current.account_id}"
+
+  # Non-prod teardown empties versioned buckets automatically - the July
+  # destroy stalled on BucketNotEmpty until object versions were purged by
+  # hand (docs/retros/aws-deploy-retro-2026-07.md, finding group 7).
+  force_destroy = var.environment != "prod"
 
   tags = var.tags
 }
@@ -94,6 +104,11 @@ resource "aws_s3_bucket_lifecycle_configuration" "loki_logs" {
 # S3 bucket for Tempo traces storage
 resource "aws_s3_bucket" "tempo_traces" {
   bucket = "${var.cluster_name}-tempo-traces-${data.aws_caller_identity.current.account_id}"
+
+  # Non-prod teardown empties versioned buckets automatically - the July
+  # destroy stalled on BucketNotEmpty until object versions were purged by
+  # hand (docs/retros/aws-deploy-retro-2026-07.md, finding group 7).
+  force_destroy = var.environment != "prod"
 
   tags = var.tags
 }
