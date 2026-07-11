@@ -578,9 +578,8 @@ spec:
           - name: serving-model
             path: /tmp/serving_model
       script:
-        # Must track the runtimeVersion in
-        # examples/kserve/champion-inferenceservice.template.yaml and the
-        # version pins in pipelines/training/requirements.in.
+        # Must be the image KServe serves with. Source of truth:
+        # pipelines/serving-runtime-contract.yaml (drift fails CI).
         image: docker.io/seldonio/mlserver:1.7.1-mlflow
         command: [python]
         source: |

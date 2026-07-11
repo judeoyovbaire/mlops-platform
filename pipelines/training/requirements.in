@@ -4,11 +4,11 @@
 #     --python-version 3.10 --python-platform x86_64-unknown-linux-gnu \
 #     --generate-hashes --emit-index-url -o pipelines/training/requirements.txt
 # CI fails if requirements.txt is stale relative to this file.
-# pandas/scikit-learn/cloudpickle track seldonio/mlserver:1.7.1-mlflow (the
-# KServe serving runtime, Python 3.10). The serving pyfunc is cloudpickled at
-# training time and unpickled by MLServer - Python and pickle-critical
-# library versions must match or the model fails to load (live failure:
-# "code expected at most 16 arguments, got 18" = 3.12 pickle on 3.10).
+# pandas/scikit-learn/cloudpickle track the KServe serving runtime image.
+# Source of truth: pipelines/serving-runtime-contract.yaml (drift fails CI).
+# The serving pyfunc is cloudpickled at training time and unpickled by
+# MLServer - Python and pickle-critical library versions must match or the
+# model fails to load ("code expected at most 16 arguments, got 18").
 pandas==2.2.3
 scikit-learn==1.7.0
 cloudpickle==3.1.1

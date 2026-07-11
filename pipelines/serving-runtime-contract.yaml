@@ -1,0 +1,37 @@
+# Serving runtime contract - THE single source of truth for the versions
+# that must agree across the train->serve pickle boundary.
+#
+# The serving pyfunc is cloudpickled by the training image and unpickled by
+# MLServer. Interpreter or pickle-critical library drift between the two
+# breaks model loading at serving time (July 2026: a Python 3.12 pickle on
+# the 3.10 runtime failed with "code expected at most 16 arguments, got 18"
+# - see docs/retros/aws-deploy-retro-2026-07.md, finding group 4).
+#
+# Enforced by tests/unit/test_serving_runtime_contract.py, which fails CI
+# if any surface drifts from this file.
+#
+# To bump the runtime:
+#   1. Edit this file (verify Python/library versions of the new image:
+#      docker run --rm seldonio/mlserver:<tag>-mlflow python --version
+#      docker run --rm seldonio/mlserver:<tag>-mlflow pip list)
+#   2. Run the contract test - it lists every surface that must follow
+#   3. Update those surfaces, recompile lockfiles (fresh, no preferences:
+#      delete requirements.txt first - see retro finding on stale hashes)
+
+# MLServer release KServe serves the model with. Surfaces:
+# - examples/kserve/champion-inferenceservice.template.yaml (runtimeVersion)
+# - pipelines/training/ml-training-workflow.yaml (serving-load-test image)
+mlserver_version: "1.7.1"
+mlserver_image: "docker.io/seldonio/mlserver:1.7.1-mlflow"
+
+# Interpreter of the mlserver image. Surface:
+# - pipelines/training/Dockerfile (base image)
+python_version: "3.10"
+
+# Pickle-critical libraries, pinned to the exact versions inside
+# mlserver_image. Surface:
+# - pipelines/training/requirements.in
+pinned_libraries:
+  scikit-learn: "1.7.0"
+  cloudpickle: "3.1.1"
+  pandas: "2.2.3"
