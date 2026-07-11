@@ -106,7 +106,8 @@ spec:
       # the LimitRanger populates default FROM max - i.e. max gpu "1" would
       # inject a 1-GPU request into every container in the namespace that
       # doesn't declare one. Namespace GPU consumption is capped by the
-      # ResourceQuota above instead.
+      # ResourceQuota above instead. Full write-up:
+      # https://judaire.io/blog/kubernetes-limitrange-gpu-injection
       max:
         cpu: "8"
         memory: 32Gi

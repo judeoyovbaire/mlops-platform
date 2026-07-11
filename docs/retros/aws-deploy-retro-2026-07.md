@@ -172,6 +172,7 @@ ephemeral end-to-end verification.
 7. **LimitRange hygiene.** Never set `max` for an extended resource without an
    explicit `default`. (Documented in the manifest; worth a standalone
    write-up — the failure mode is invisible in Git and brutal to diagnose.)
+   *(Done: [judaire.io/blog/kubernetes-limitrange-gpu-injection](https://judaire.io/blog/kubernetes-limitrange-gpu-injection).)*
 8. **Harden the destroy path.** `force_destroy` on dev buckets, delete backup
    recovery points, clear InferenceService finalizers after halting deploy
    dispatches, sweep PVC-created EBS volumes, force-delete dev secrets.
