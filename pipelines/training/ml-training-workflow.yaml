@@ -33,10 +33,14 @@ spec:
   arguments:
     parameters:
       - name: pipeline-image
-        # Default tag for local/manual runs. In CI/CD, override with Git SHA:
+        # Pinned Git-SHA tag from build-sign-publish. Mutable tags (:main,
+        # :latest) are rejected at admission (governance/
+        # immutable-image-tags-policy.yaml) - with IfNotPresent caching they
+        # hide which build a pod actually runs. Submissions should still
+        # pass the current SHA explicitly:
         #   argo submit --from workflowtemplate/ml-training-pipeline \
-        #     -p pipeline-image=<ECR_URL>/ml-training:$(git rev-parse --short HEAD)
-        value: "mlops-platform/ml-training:v1.0.0"
+        #     -p pipeline-image=ghcr.io/judeoyovbaire/mlops-platform/ml-training:$(git rev-parse --short HEAD)
+        value: "ghcr.io/judeoyovbaire/mlops-platform/ml-training:78aaa28"
       - name: dataset-url
         value: "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv"
       - name: target-column

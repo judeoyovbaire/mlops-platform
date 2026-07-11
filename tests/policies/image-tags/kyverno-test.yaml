@@ -1,0 +1,39 @@
+# Kyverno CLI tests for require-immutable-image-tags.
+#
+# Run via scripts/test-policies.sh. Mutable tags hid which build a failing
+# training pod was running during the July deployment (retro finding
+# group 6) - SHA/digest/release tags admit, :main and :latest deny.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: immutable-image-tags
+policies:
+  - ../../../infrastructure/kubernetes/governance/immutable-image-tags-policy.yaml
+resources:
+  - resources/pods.yaml
+results:
+  - policy: require-immutable-image-tags
+    rule: reject-mutable-tags
+    kind: Pod
+    resources: [sha-tagged-pod]
+    result: pass
+  - policy: require-immutable-image-tags
+    rule: reject-mutable-tags
+    kind: Pod
+    resources: [release-tagged-pod]
+    result: pass
+  - policy: require-immutable-image-tags
+    rule: reject-mutable-tags
+    kind: Pod
+    resources: [main-tagged-pod]
+    result: fail
+  - policy: require-immutable-image-tags
+    rule: reject-mutable-tags
+    kind: Pod
+    resources: [latest-tagged-pod]
+    result: fail
+  - policy: require-immutable-image-tags
+    rule: reject-mutable-tags-init-containers
+    kind: Pod
+    resources: [mutable-init-container-pod]
+    result: fail

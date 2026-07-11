@@ -53,5 +53,6 @@ EOF
 
 kyverno test "${POLICY_TESTS}/model-registry"
 kyverno test "${POLICY_TESTS}/image-audit"
+kyverno test "${POLICY_TESTS}/image-tags"
 
 echo "All policy tests passed"

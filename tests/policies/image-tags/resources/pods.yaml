@@ -1,0 +1,57 @@
+# Pod fixtures for the require-immutable-image-tags policy tests.
+---
+# Git-SHA tag from build-sign-publish: the platform standard.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sha-tagged-pod
+  namespace: argo
+spec:
+  containers:
+    - name: main
+      image: ghcr.io/judeoyovbaire/mlops-platform/ml-training:78aaa28
+---
+# Release-version tags (third-party runtimes) are acceptable.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: release-tagged-pod
+  namespace: mlops
+spec:
+  containers:
+    - name: mlserver
+      image: docker.io/seldonio/mlserver:1.7.1-mlflow
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: main-tagged-pod
+  namespace: argo
+spec:
+  containers:
+    - name: main
+      image: ghcr.io/judeoyovbaire/mlops-platform/ml-training:main
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: latest-tagged-pod
+  namespace: mlops
+spec:
+  containers:
+    - name: main
+      image: ghcr.io/judeoyovbaire/mlops-platform/kserve-transformer:latest
+---
+# Main containers clean, init container mutable: still denied.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mutable-init-container-pod
+  namespace: mlops
+spec:
+  initContainers:
+    - name: init
+      image: ghcr.io/judeoyovbaire/mlops-platform/kserve-transformer:main
+  containers:
+    - name: main
+      image: docker.io/seldonio/mlserver:1.7.1-mlflow

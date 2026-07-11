@@ -1,0 +1,85 @@
+# Kyverno ClusterPolicy: reject mutable image tags in ML namespaces.
+#
+# Mutable tags (:main, :latest) + IfNotPresent pull policy meant a node
+# could silently run a stale cached build - during the July deployment it
+# was impossible to know which image a failing training pod actually ran
+# (docs/retros/aws-deploy-retro-2026-07.md, finding group 6). Pipeline and
+# serving pods must reference an immutable tag: the Git-SHA tag published
+# by build-sign-publish (type=sha,prefix=), a digest, or a release version.
+#
+# Tested by tests/policies/image-tags (admit: SHA tag; deny: :main/:latest).
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-immutable-image-tags
+  annotations:
+    policies.kyverno.io/title: Require Immutable Image Tags
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Rejects container images that use mutable tags (:main, :latest) in the
+      mlops and argo namespaces. Mutable tags combined with IfNotPresent
+      caching make it impossible to know which build a pod runs; use the
+      Git-SHA tags published by build-sign-publish, a digest, or a release
+      version.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: reject-mutable-tags
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - mlops
+                - argo
+      validate:
+        message: >-
+          Image {{ request.object.spec.containers[].image }} uses a mutable
+          tag (:main or :latest). Use the Git-SHA tag from build-sign-publish
+          (e.g. ghcr.io/.../ml-training:78aaa28), a digest, or a release
+          version so the running build is always identifiable.
+        foreach:
+          - list: "request.object.spec.containers[]"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ element.image }}"
+                    operator: Equals
+                    value: "*:latest"
+                  - key: "{{ element.image }}"
+                    operator: Equals
+                    value: "*:main"
+    - name: reject-mutable-tags-init-containers
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - mlops
+                - argo
+      preconditions:
+        all:
+          - key: "{{ request.object.spec.initContainers[] || `[]` | length(@) }}"
+            operator: GreaterThan
+            value: 0
+      validate:
+        message: >-
+          Init container image uses a mutable tag (:main or :latest). Use an
+          immutable Git-SHA tag, digest, or release version.
+        foreach:
+          - list: "request.object.spec.initContainers[]"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ element.image }}"
+                    operator: Equals
+                    value: "*:latest"
+                  - key: "{{ element.image }}"
+                    operator: Equals
+                    value: "*:main"

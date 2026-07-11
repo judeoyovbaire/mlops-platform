@@ -13,6 +13,7 @@ resources:
   # Reinstated (or cut) with the observability rewiring work.
   - governance/model-registry-policies.yaml
   - governance/image-signature-policy.yaml
+  - governance/immutable-image-tags-policy.yaml
   - dashboards/mlops-overview-dashboard.yaml
   - dashboards/cloud-cost-dashboard.yaml
   - dashboards/progressive-delivery-dashboard.yaml
