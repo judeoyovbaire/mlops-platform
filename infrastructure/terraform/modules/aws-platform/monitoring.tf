@@ -167,4 +167,14 @@ data "kubectl_file_documents" "network_policies" {
 resource "kubectl_manifest" "network_policies" {
   for_each  = data.kubectl_file_documents.network_policies.manifests
   yaml_body = each.value
+
+  # The policies target these namespaces. On incremental applies the
+  # namespaces always pre-existed; the first from-scratch rebuild raced
+  # them and failed with "namespaces not found".
+  depends_on = [
+    kubernetes_namespace.mlops,
+    kubernetes_namespace.mlflow,
+    kubernetes_namespace.argo,
+    kubernetes_namespace.monitoring,
+  ]
 }
