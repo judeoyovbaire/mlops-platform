@@ -103,3 +103,80 @@ class TestBuildServingModelErrors:
                 run_id="fake-run",
                 mlflow_uri="http://localhost:5000",
             )
+
+
+class TestLocalServingCopy:
+    """The local pyfunc copy feeds the serving-load-test workflow gate."""
+
+    def test_local_copy_is_loadable_pyfunc(
+        self, tmp_path, trained_rf, fitted_preprocessor, iris_features, mocker
+    ):
+        """The saved copy must load via pyfunc and score the input example -
+        the same operations the serving-load-test step runs in the MLServer
+        image (there it additionally proves interpreter compatibility)."""
+        import joblib
+        import mlflow
+
+        from pipelines.training.src.build_serving_model import build_serving_model
+
+        model_file = tmp_path / "model.joblib"
+        joblib.dump(trained_rf, model_file)
+        preproc_file = tmp_path / "preprocessor.joblib"
+        joblib.dump(fitted_preprocessor, preproc_file)
+        sample_csv = tmp_path / "input.csv"
+        sample = iris_features.head(3).copy()
+        sample["species"] = "setosa"
+        sample.to_csv(sample_csv, index=False)
+
+        # Keep the test hermetic: no tracking server, only the local save.
+        mocker.patch("mlflow.set_tracking_uri")
+        mocker.patch("mlflow.start_run")
+        mocker.patch("mlflow.pyfunc.log_model")
+
+        local_copy = tmp_path / "serving_model"
+        result = build_serving_model(
+            model_path=str(model_file),
+            preprocessor_path=str(preproc_file),
+            run_id="fake-run",
+            mlflow_uri="http://localhost:5000",
+            sample_input_path=str(sample_csv),
+            target_column="species",
+            local_copy_path=str(local_copy),
+        )
+
+        assert result.success
+        loaded = mlflow.pyfunc.load_model(str(local_copy))
+        preds = loaded.predict(iris_features.head(2))
+        assert len(preds) == 2
+
+    def test_local_copy_carries_input_example(
+        self, tmp_path, trained_rf, fitted_preprocessor, iris_features, mocker
+    ):
+        """load_serving_example in the gate step needs the example files."""
+        import joblib
+
+        from pipelines.training.src.build_serving_model import build_serving_model
+
+        model_file = tmp_path / "model.joblib"
+        joblib.dump(trained_rf, model_file)
+        preproc_file = tmp_path / "preprocessor.joblib"
+        joblib.dump(fitted_preprocessor, preproc_file)
+        sample_csv = tmp_path / "input.csv"
+        iris_features.head(3).to_csv(sample_csv, index=False)
+
+        mocker.patch("mlflow.set_tracking_uri")
+        mocker.patch("mlflow.start_run")
+        mocker.patch("mlflow.pyfunc.log_model")
+
+        local_copy = tmp_path / "serving_model"
+        build_serving_model(
+            model_path=str(model_file),
+            preprocessor_path=str(preproc_file),
+            run_id="fake-run",
+            mlflow_uri="http://localhost:5000",
+            sample_input_path=str(sample_csv),
+            local_copy_path=str(local_copy),
+        )
+
+        assert (local_copy / "input_example.json").exists()
+        assert (local_copy / "serving_input_example.json").exists()

@@ -183,9 +183,21 @@ spec:
                 - name: input-data
                   from: "{{tasks.validate-data.outputs.artifacts.output-data}}"
 
+          # Load-test the serving artifact IN THE SERVING RUNTIME IMAGE
+          # before registration. Catches interpreter/pickle/library
+          # mismatches between the training image and MLServer at pipeline
+          # time - an unloadable model must never earn the champion alias.
+          - name: serving-load-test
+            template: serving-load-test
+            dependencies: [build-serving-model]
+            arguments:
+              artifacts:
+                - name: serving-model
+                  from: "{{tasks.build-serving-model.outputs.artifacts.serving-model}}"
+
           - name: register-model
             template: register-model
-            dependencies: [build-serving-model]
+            dependencies: [serving-load-test]
             arguments:
               parameters:
                 - name: model-name
@@ -517,6 +529,10 @@ spec:
             optional: true
           - name: input-data
             path: /tmp/input.csv
+      outputs:
+        artifacts:
+          - name: serving-model
+            path: /tmp/serving_model
       container:
         image: "{{workflow.parameters.pipeline-image}}"
         command: [python, /app/pipelines/training/src/build_serving_model.py]
@@ -533,6 +549,8 @@ spec:
           - /tmp/input.csv
           - --target-column
           - "{{inputs.parameters.target-column}}"
+          - --local-copy
+          - /tmp/serving_model
         resources:
           requests:
             cpu: 100m
@@ -540,6 +558,53 @@ spec:
           limits:
             cpu: 500m
             memory: 512Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+
+    # Gate: unpickle and score the serving model inside the SAME image
+    # KServe will serve it with (examples/kserve template pins
+    # runtimeVersion 1.7.1). The artifact arrives as a local directory -
+    # exactly what the storage-initializer hands MLServer - so this
+    # exercises the real load path with no network or cloud credentials.
+    # Failure here blocks register-model: no champion for unloadable models.
+    - name: serving-load-test
+      retryStrategy:
+        limit: 1
+        retryPolicy: "OnError"
+      inputs:
+        artifacts:
+          - name: serving-model
+            path: /tmp/serving_model
+      script:
+        # Must track the runtimeVersion in
+        # examples/kserve/champion-inferenceservice.template.yaml and the
+        # version pins in pipelines/training/requirements.in.
+        image: docker.io/seldonio/mlserver:1.7.1-mlflow
+        command: [python]
+        source: |
+          import sys
+
+          from mlflow.models import validate_serving_input
+          from mlflow.models.utils import load_serving_example
+
+          MODEL_DIR = "/tmp/serving_model"
+
+          print(f"Python {sys.version.split()[0]} - loading serving example")
+          serving_example = load_serving_example(MODEL_DIR)
+
+          # Loads the pyfunc (unpickle happens HERE, in the serving
+          # runtime's interpreter) and scores the logged input example.
+          prediction = validate_serving_input(MODEL_DIR, serving_example)
+          print(f"Serving load test OK - prediction: {prediction}")
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: "1"
+            memory: 1Gi
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

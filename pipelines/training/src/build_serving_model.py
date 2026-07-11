@@ -82,6 +82,7 @@ def build_serving_model(
     mlflow_uri: str,
     sample_input_path: str | None = None,
     target_column: str | None = None,
+    local_copy_path: str | None = None,
 ) -> ServingModelResult:
     """Build and log an MLflow pyfunc serving model.
 
@@ -94,6 +95,9 @@ def build_serving_model(
             RAW (pre-feature-engineering) data - the pyfunc's contract is raw
             features, and the input example documents that contract.
         target_column: Optional target column to drop from the sample input.
+        local_copy_path: Optional directory to also save the pyfunc model to.
+            The serving-load-test workflow step validates this copy inside the
+            MLServer runtime image before the model can be registered.
 
     Returns:
         ServingModelResult with artifact metadata.
@@ -142,6 +146,20 @@ def build_serving_model(
         )
     logger.info(f"Logged serving model to run {run_id} at '{artifact_path}'")
 
+    if local_copy_path:
+        # Same pyfunc, saved to a local directory - the shape KServe's
+        # storage-initializer hands to MLServer. The next pipeline step
+        # load-tests this copy in the actual serving runtime image, which
+        # catches interpreter/pickle mismatches before champion promotion
+        # (a py3.12 pickle on the py3.10 runtime failed only at serving
+        # time - see docs/retros/aws-deploy-retro-2026-07.md).
+        mlflow.pyfunc.save_model(
+            path=local_copy_path,
+            python_model=pyfunc_model,
+            input_example=input_example,
+        )
+        logger.info(f"Saved local serving copy for load test at {local_copy_path}")
+
     return ServingModelResult(
         artifact_path=artifact_path,
         run_id=run_id,
@@ -162,6 +180,11 @@ if __name__ == "__main__":
         default=None,
         help="Target column to drop from the sample input (the pyfunc accepts raw features only)",
     )
+    parser.add_argument(
+        "--local-copy",
+        default=None,
+        help="Directory to also save the pyfunc to, for the serving load test step",
+    )
 
     args = parser.parse_args()
 
@@ -173,6 +196,7 @@ if __name__ == "__main__":
             mlflow_uri=args.mlflow_uri,
             sample_input_path=args.sample_input,
             target_column=args.target_column,
+            local_copy_path=args.local_copy,
         )
         print(f"Serving model logged to run {result.run_id} at '{result.artifact_path}'")
     except ModelTrainingError as e:
