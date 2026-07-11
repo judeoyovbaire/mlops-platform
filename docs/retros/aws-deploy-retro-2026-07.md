@@ -21,11 +21,34 @@ The training pipeline produced real, leakage-free metrics (held-out accuracy
 `iris-classifier@champion`. Admission enforcement, artifact encryption,
 memoization, and log recovery through Loki were all exercised for real.
 
-**Not captured:** a green end-to-end smoke test against the served model. The
-final blocker (Python pickle mismatch, see finding group 4) was fixed and a
-compatible model retrained, but the environment was torn down before the
-verifying deploy ran. The fix chain is complete in Git; the last verification
-run is owed to the next deployment.
+**Not captured at the time:** a green end-to-end smoke test against the served
+model — the environment was torn down before the verifying deploy ran.
+
+**Closed 2026-07-12.** The platform was rebuilt from scratch with one
+`deploy-infra` dispatch, and the full chain went green:
+[run 29171584315](https://github.com/judeoyovbaire/mlops-platform/actions/runs/29171584315)
+— champion resolved (v1, run `91ce3983`), Kyverno admitted, predictor Ready in
+15 s, v2 pandas-codec smoke test passed. Live verification:
+`POST /v2/models/iris-classifier/infer` with raw features
+`[5.1, 3.5, 1.4, 0.2]` returned `"setosa"`.
+
+The rebuild itself surfaced four more findings, each caught by (or turned
+into) one of the guards this retro recommended:
+
+- **#35** — network policies raced their target namespaces on the first
+  from-scratch apply; incremental applies had always masked the missing
+  `depends_on`.
+- **#36/#37** — the py3.10 pipeline images had never actually run: ruff's
+  `target-version=py312` (UP017) had rewritten code to 3.11+ idioms
+  (`datetime.UTC`, PEP 695 generics) while the 3.12 dev venv kept tests
+  green. Fixed in code, in lint config (`per-file-target-version = py310`
+  for pipeline code), and with a CI step that import-smokes every pipeline
+  module inside the built image.
+- **#38** — KServe's `runtimeVersion` substitutes only the image *tag*, so
+  pinning `"1.7.1"` served the full multi-runtime image (numpy 1.x) instead
+  of the `-mlflow` variant the serving-load-test gate validates (numpy 2.x).
+  The gate passed and serving crashed — exactly the gap the runtime
+  contract exists to close; the contract now pins the full variant tag.
 
 ---
 

@@ -54,7 +54,7 @@ spec:
       containers:
         - name: model-server
           # CI/CD pipeline replaces this tag with an image digest at deploy time
-          image: ghcr.io/judeoyovbaire/mlops-platform/ml-training:v1.0.0
+          image: ghcr.io/judeoyovbaire/mlops-platform/ml-training:bf516e8
           ports:
             - containerPort: 8080
               name: http
