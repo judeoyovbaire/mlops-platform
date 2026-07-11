@@ -378,7 +378,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # The pretrained image resolves torch from the PyTorch CPU index. A
+      # deploy-model dispatch neither builds nor ships this image, and two
+      # July deploys were blocked for hours by PyTorch CDN TLS failures in
+      # exactly this step (docs/retros/aws-deploy-retro-2026-07.md, finding
+      # group 5) - so model rollouts skip the pretrained/torch stack.
       - name: Build pretrained pipeline image
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.action == 'deploy-model') }}
         uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         with:
           context: ./pipelines
@@ -411,7 +417,7 @@ jobs:
           exit-code: "0"
 
       - name: Scan pretrained pipeline image
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && !(github.event_name == 'workflow_dispatch' && inputs.action == 'deploy-model') }}
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
           image-ref: "mlops-platform/hf-pretrained:test"
@@ -441,7 +447,7 @@ jobs:
 
       - name: Upload pretrained image scan results
         uses: github/codeql-action/upload-sarif@e46ed2cbd01164d986452f91f178727624ae40d7 # v4
-        if: always()
+        if: ${{ always() && !(github.event_name == 'workflow_dispatch' && inputs.action == 'deploy-model') }}
         with:
           sarif_file: "trivy-pretrained-image.sarif"
           category: "trivy-pretrained-image"
@@ -463,7 +469,7 @@ jobs:
           exit-code: "0"
 
       - name: Generate SBOM for pretrained image
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && !(github.event_name == 'workflow_dispatch' && inputs.action == 'deploy-model') }}
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
           image-ref: "mlops-platform/hf-pretrained:test"
@@ -485,11 +491,14 @@ jobs:
         if: always()
         with:
           name: container-sboms
+          # The pretrained SBOM is absent on deploy-model dispatches (its
+          # image is skipped above); upload-artifact tolerates missing paths.
           path: |
             sbom-training-image.spdx.json
             sbom-pretrained-image.spdx.json
             sbom-transformer-image.spdx.json
           retention-days: 30
+          if-no-files-found: warn
 
   test-python:
     name: Test Python
@@ -597,9 +606,21 @@ jobs:
         # requirements.in (all transitive deps pinned + hashed). Recompiling
         # preserves existing pins (uv uses the output file as preferences),
         # so this fails only when .in changed without regenerating .txt.
+        #
+        # deploy-model dispatches skip the pretrained lockfile: recompiling
+        # it fetches torch metadata from the PyTorch CDN, whose TLS flakes
+        # blocked two July model rollouts that never touch that image
+        # (docs/retros/aws-deploy-retro-2026-07.md, finding group 5).
+        env:
+          DEPLOY_MODEL_DISPATCH: ${{ github.event_name == 'workflow_dispatch' && inputs.action == 'deploy-model' }}
         run: |
           set -euo pipefail
-          for dir in pipelines/training pipelines/pretrained components/kserve-transformer; do
+          dirs="pipelines/training pipelines/pretrained components/kserve-transformer"
+          if [ "$DEPLOY_MODEL_DISPATCH" = "true" ]; then
+            dirs="pipelines/training components/kserve-transformer"
+            echo "deploy-model dispatch: skipping pipelines/pretrained (torch CDN)"
+          fi
+          for dir in $dirs; do
             uv pip compile "$dir/requirements.in" \
               --python-version 3.10 \
               --python-platform x86_64-unknown-linux-gnu \
