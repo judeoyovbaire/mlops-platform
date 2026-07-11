@@ -1,0 +1,88 @@
+# Static InferenceService fixtures for the model-registry policy tests.
+# The valid-staging case is NOT here - it is the champion template itself,
+# rendered by scripts/test-policies.sh into rendered/champion-rendered.yaml.
+---
+# Production model with full approval, lineage, and metrics annotations:
+# every governance rule must admit this.
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: prod-approved
+  namespace: mlops
+  labels:
+    mlops.io/model-name: iris-classifier
+    mlops.io/model-version: "2.1.3"
+    mlops.io/model-owner: platform-team
+    mlops.io/model-stage: production
+  annotations:
+    mlops.io/mlflow-run-id: run-abc123
+    mlops.io/mlflow-experiment-id: "1"
+    mlops.io/approved-by: jude@example.com
+    mlops.io/approval-date: "2026-07-11"
+    mlops.io/approval-ticket: JDH-388
+    mlops.io/accuracy: "0.90"
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: mlflow
+      storageUri: s3://example-bucket/1/run-abc123/artifacts/serving_model
+---
+# No governance labels or annotations at all: metadata and lineage rules
+# must deny. (Version format passes via its explicit '0' fallback - label
+# PRESENCE is require-model-metadata's job, not the format rule's.)
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: missing-labels
+  namespace: mlops
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: mlflow
+      storageUri: s3://example-bucket/1/run-x/artifacts/serving_model
+---
+# Well-labelled but with a version that is neither an MLflow registry
+# version (integer) nor semver: only the format rule must deny.
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: bad-version
+  namespace: mlops
+  labels:
+    mlops.io/model-name: iris-classifier
+    mlops.io/model-version: abc
+    mlops.io/model-owner: platform-team
+    mlops.io/model-stage: staging
+  annotations:
+    mlops.io/mlflow-run-id: run-def456
+    mlops.io/mlflow-experiment-id: "1"
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: mlflow
+      storageUri: s3://example-bucket/1/run-def456/artifacts/serving_model
+---
+# Production stage without approval or metrics annotations: both
+# production-gated rules must deny.
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: prod-unapproved
+  namespace: mlops
+  labels:
+    mlops.io/model-name: iris-classifier
+    mlops.io/model-version: "3"
+    mlops.io/model-owner: platform-team
+    mlops.io/model-stage: production
+  annotations:
+    mlops.io/mlflow-run-id: run-ghi789
+    mlops.io/mlflow-experiment-id: "1"
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: mlflow
+      storageUri: s3://example-bucket/1/run-ghi789/artifacts/serving_model

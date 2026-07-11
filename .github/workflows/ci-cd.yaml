@@ -238,6 +238,33 @@ jobs:
       - name: Validate Kustomize build
         run: kustomize build infrastructure/kubernetes/ > /dev/null
 
+  # Admission policies get admit+deny fixture tests: enforce-semantic-
+  # versioning shipped with a substitution bug that blocked every deploy
+  # and was undetectable until a real InferenceService hit the webhook
+  # (docs/retros/aws-deploy-retro-2026-07.md, finding group 2).
+  test-policies:
+    name: Test Kyverno Policies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Install Kyverno CLI
+        uses: kyverno/action-install-cli@fcee92fca5c883169ef9927acf543e0b5fc58289 # v0.2.0
+        with:
+          # Matches the locally-verified CLI. The cluster runs the chart-
+          # pinned Kyverno; the validate-rule semantics tested here are
+          # stable across these releases.
+          release: v1.18.2
+
+      - name: Run policy tests
+        run: |
+          pip install --quiet pyyaml
+          ./scripts/test-policies.sh
+
   validate-helm:
     name: Validate Helm
     runs-on: ubuntu-latest
@@ -603,6 +630,7 @@ jobs:
         validate-terraform,
         validate-kubernetes,
         validate-helm,
+        test-policies,
         security-scan,
         test-python,
       ]
@@ -758,6 +786,7 @@ jobs:
         validate-terraform,
         validate-kubernetes,
         validate-helm,
+        test-policies,
         security-scan,
         test-python,
       ]
@@ -880,6 +909,7 @@ jobs:
         validate-terraform,
         validate-kubernetes,
         validate-helm,
+        test-policies,
         security-scan,
         test-python,
       ]

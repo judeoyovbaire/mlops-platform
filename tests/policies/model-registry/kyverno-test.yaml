@@ -1,0 +1,109 @@
+# Kyverno CLI tests for the model-registry governance policies.
+#
+# Run via scripts/test-policies.sh (renders the champion template fixture
+# first). Every VALIDATE rule gets at least one admit and one deny case -
+# enforce-semantic-versioning shipped broken (regex_match on a bare @
+# failed substitution on every admission) and blocked all deploys because
+# no test ever applied a manifest against it. See
+# docs/retros/aws-deploy-retro-2026-07.md, finding group 2.
+#
+# Deliberately NOT covered here (documented, not silent):
+# - generate-model-audit-log: generate rule keyed on admission-time
+#   request.userInfo with a uid-derived resource name - not assertable
+#   hermetically with `kyverno test`.
+# - protect-production-models: matches DELETE operations (request.oldObject);
+#   the CLI only simulates CREATE/UPDATE admission.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: model-registry-policies
+policies:
+  - ../../../infrastructure/kubernetes/governance/model-registry-policies.yaml
+resources:
+  # Rendered by scripts/test-policies.sh from the REAL champion template -
+  # if the template and the policies drift apart, this suite fails.
+  - rendered/champion-rendered.yaml
+  - resources/inferenceservices.yaml
+results:
+  # --- the envsubst-rendered champion template must be admitted ---
+  - policy: require-model-metadata
+    rule: require-model-labels
+    kind: InferenceService
+    resources: [iris-classifier]
+    result: pass
+  - policy: require-model-lineage
+    rule: require-mlflow-lineage
+    kind: InferenceService
+    resources: [iris-classifier]
+    result: pass
+  - policy: enforce-semantic-versioning
+    rule: validate-version-format
+    kind: InferenceService
+    resources: [iris-classifier]
+    result: pass
+
+  # --- fully-annotated production model: every rule admits ---
+  - policy: require-model-metadata
+    rule: require-model-labels
+    kind: InferenceService
+    resources: [prod-approved]
+    result: pass
+  - policy: require-production-approval
+    rule: require-approval-for-production
+    kind: InferenceService
+    resources: [prod-approved]
+    result: pass
+  - policy: require-model-lineage
+    rule: require-mlflow-lineage
+    kind: InferenceService
+    resources: [prod-approved]
+    result: pass
+  - policy: require-model-metrics
+    rule: require-performance-metrics
+    kind: InferenceService
+    resources: [prod-approved]
+    result: pass
+  - policy: enforce-semantic-versioning
+    rule: validate-version-format
+    kind: InferenceService
+    resources: [prod-approved]
+    result: pass
+
+  # --- deny cases, one per rule ---
+  - policy: require-model-metadata
+    rule: require-model-labels
+    kind: InferenceService
+    resources: [missing-labels]
+    result: fail
+  - policy: require-model-lineage
+    rule: require-mlflow-lineage
+    kind: InferenceService
+    resources: [missing-labels]
+    result: fail
+  - policy: enforce-semantic-versioning
+    rule: validate-version-format
+    kind: InferenceService
+    resources: [bad-version]
+    result: fail
+  - policy: require-production-approval
+    rule: require-approval-for-production
+    kind: InferenceService
+    resources: [prod-unapproved]
+    result: fail
+  - policy: require-model-metrics
+    rule: require-performance-metrics
+    kind: InferenceService
+    resources: [prod-unapproved]
+    result: fail
+
+  # --- preconditions: staging models skip the production-only rules ---
+  - policy: require-production-approval
+    rule: require-approval-for-production
+    kind: InferenceService
+    resources: [iris-classifier]
+    result: skip
+  - policy: require-model-metrics
+    rule: require-performance-metrics
+    kind: InferenceService
+    resources: [iris-classifier]
+    result: skip

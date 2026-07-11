@@ -1,0 +1,27 @@
+# Kyverno CLI tests for the audit-unsigned-images policy.
+#
+# The policy shares a file with verify-image-signatures, whose verifyImages
+# rule performs live cosign/Rekor verification - not runnable hermetically.
+# scripts/test-policies.sh extracts audit-unsigned-images into
+# rendered/audit-policy.yaml so only the audit rule executes here;
+# verify-image-signatures is integration-tested by any real deploy (every
+# pipeline pod admission exercises it).
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: image-audit-policy
+policies:
+  - rendered/audit-policy.yaml
+resources:
+  - resources/pods.yaml
+results:
+  - policy: audit-unsigned-images
+    rule: audit-external-images
+    kind: Pod
+    resources: [ghcr-pipeline-pod]
+    result: pass
+  - policy: audit-unsigned-images
+    rule: audit-external-images
+    kind: Pod
+    resources: [dockerhub-pod]
+    result: fail

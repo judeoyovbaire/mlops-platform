@@ -1,0 +1,21 @@
+# Pod fixtures for the audit-unsigned-images policy tests.
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ghcr-pipeline-pod
+  namespace: argo
+spec:
+  containers:
+    - name: main
+      image: ghcr.io/judeoyovbaire/mlops-platform/ml-training:839eecf
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dockerhub-pod
+  namespace: mlops
+spec:
+  containers:
+    - name: main
+      image: docker.io/library/nginx:1.27
