@@ -10,8 +10,18 @@ terraform {
     }
   }
 
-  # Bootstrap uses local state (chicken-and-egg problem)
-  # After creation, you could migrate this to S3 if desired
+  # Bootstrap state lives in the very bucket it manages (chicken-and-egg
+  # applies only to FIRST creation - once the bucket exists, keeping this
+  # state local is how it got lost in July 2026). Partial config; init with:
+  #   terraform init \
+  #     -backend-config="bucket=mlops-platform-tfstate-<ACCOUNT_ID>" \
+  #     -backend-config="key=bootstrap/aws/terraform.tfstate" \
+  #     -backend-config="region=eu-west-1" \
+  #     -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
+  #     -backend-config="encrypt=true"
+  # First-ever creation in a fresh account: comment this out, apply with
+  # local state, restore it, re-init with -migrate-state.
+  backend "s3" {}
 }
 
 provider "aws" {
@@ -136,6 +146,9 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" 
       kms_master_key_id = aws_kms_key.terraform_state.arn
     }
     bucket_key_enabled = true
+    # AWS now returns this on every SSE rule; leaving it undeclared makes
+    # the provider see a different rule and plan a perpetual update.
+    blocked_encryption_types = ["SSE-C"]
   }
 }
 

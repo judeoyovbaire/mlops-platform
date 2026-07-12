@@ -96,6 +96,92 @@ jobs:
             echo "## AWS Infrastructure: No Drift" >> $GITHUB_STEP_SUMMARY
           fi
 
+      # Prod drift is checked only once prod has real state (same gating as
+      # the PR plan job in ci-cd.yaml). Azure/GCP adopt this when bootstrapped.
+      - name: Check if prod state exists
+        if: steps.aws-creds.outcome == 'success'
+        id: prod-state
+        run: |
+          if aws s3api head-object \
+            --bucket "mlops-platform-tfstate-${{ steps.aws-account.outputs.account_id }}" \
+            --key "mlops-platform/prod/terraform.tfstate" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "## AWS Prod Drift: skipped (environment has never been applied)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Terraform Init (prod)
+        if: steps.aws-creds.outcome == 'success' && steps.prod-state.outputs.exists == 'true'
+        working-directory: infrastructure/terraform/environments/aws/prod
+        run: |
+          terraform init \
+            -backend-config="bucket=mlops-platform-tfstate-${{ steps.aws-account.outputs.account_id }}" \
+            -backend-config="key=mlops-platform/prod/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
+            -backend-config="encrypt=true"
+
+      - name: Detect Drift (prod)
+        if: steps.aws-creds.outcome == 'success' && steps.prod-state.outputs.exists == 'true'
+        id: detect-prod
+        working-directory: infrastructure/terraform/environments/aws/prod
+        run: |
+          set +e
+          terraform plan -detailed-exitcode -no-color -out=tfplan 2>&1 | tee plan.txt
+          EXIT_CODE=$?
+          set -e
+
+          if [ $EXIT_CODE -eq 2 ]; then
+            echo "drift_detected=true" >> $GITHUB_OUTPUT
+            echo "## AWS Prod Infrastructure Drift Detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Drift Details</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            head -200 plan.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "drift_detected=false" >> $GITHUB_OUTPUT
+            echo "## AWS Prod Infrastructure: No Drift" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Create Issue for Prod Drift
+        if: steps.detect-prod.outputs.drift_detected == 'true'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('infrastructure/terraform/environments/aws/prod/plan.txt', 'utf8');
+            const truncatedPlan = plan.length > 5000 ? plan.substring(0, 5000) + '\n\n... (truncated)' : plan;
+
+            const title = `[Drift] AWS PROD infrastructure drift detected - ${new Date().toISOString().split('T')[0]}`;
+            const body = `## Infrastructure Drift Detected
+
+            **Cloud:** AWS
+            **Environment:** prod
+            **Detected:** ${new Date().toISOString()}
+
+            ### Drift Details
+
+            \\`\\`\\`
+            ${truncatedPlan}
+            \\`\\`\\`
+
+            See the dev drift issue template for recommended actions.
+
+            ---
+            *This issue was automatically created by the drift detection workflow.*`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['infrastructure', 'drift', 'automated', 'aws', 'prod']
+            });
+
       - name: Create Issue for Drift
         if: steps.detect.outputs.drift_detected == 'true'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8

@@ -94,23 +94,28 @@ module "eks" {
     "karpenter.sh/discovery" = var.cluster_name
   }
 
-  # Cluster addons
+  # Cluster addons - versions PINNED (was most_recent = true, which made
+  # every apply a potential surprise upgrade and defeated plan review).
+  # Discovered for Kubernetes ${var.cluster_version} via:
+  #   aws eks describe-addon-versions --kubernetes-version 1.34 \
+  #     --addon-name <name> --query 'addons[0].addonVersions[0].addonVersion'
+  # Bump deliberately alongside cluster_version upgrades.
   addons = {
     eks-pod-identity-agent = {
-      most_recent                 = true
+      addon_version               = "v1.3.10-eksbuild.3"
       resolve_conflicts_on_create = "OVERWRITE"
       before_compute              = true
     }
     coredns = {
-      most_recent                 = true
+      addon_version               = "v1.13.2-eksbuild.11"
       resolve_conflicts_on_create = "OVERWRITE"
     }
     kube-proxy = {
-      most_recent                 = true
+      addon_version               = "v1.34.6-eksbuild.13"
       resolve_conflicts_on_create = "OVERWRITE"
     }
     vpc-cni = {
-      most_recent                 = true
+      addon_version               = "v1.22.3-eksbuild.1"
       resolve_conflicts_on_create = "OVERWRITE"
       before_compute              = true
       configuration_values = jsonencode({
@@ -121,7 +126,7 @@ module "eks" {
       })
     }
     aws-ebs-csi-driver = {
-      most_recent                 = true
+      addon_version               = "v1.62.0-eksbuild.1"
       resolve_conflicts_on_create = "OVERWRITE"
       service_account_role_arn    = module.ebs_csi_irsa.arn
     }

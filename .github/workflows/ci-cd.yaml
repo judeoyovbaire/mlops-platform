@@ -766,6 +766,65 @@ jobs:
             echo "</details>" >> $GITHUB_STEP_SUMMARY
           fi
 
+      # Prod is planned only once it has real state: an unconditional plan
+      # of a never-applied environment is a full-create wall of noise on
+      # every PR. Azure/GCP plan jobs adopt this pattern when those clouds
+      # are bootstrapped (ADR-014: AWS-first verification).
+      - name: Check if prod state exists
+        if: steps.aws-creds.outcome == 'success'
+        id: prod-state
+        run: |
+          if aws s3api head-object \
+            --bucket "mlops-platform-tfstate-${{ steps.aws-account.outputs.account_id }}" \
+            --key "mlops-platform/prod/terraform.tfstate" &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "## AWS Prod Plan: skipped (environment has never been applied)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Terraform Init (prod)
+        if: steps.aws-creds.outcome == 'success' && steps.prod-state.outputs.exists == 'true'
+        working-directory: infrastructure/terraform/environments/aws/prod
+        run: |
+          terraform init \
+            -backend-config="bucket=mlops-platform-tfstate-${{ steps.aws-account.outputs.account_id }}" \
+            -backend-config="key=mlops-platform/prod/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
+            -backend-config="encrypt=true"
+
+      - name: Check if prod EKS cluster exists
+        if: steps.aws-creds.outcome == 'success' && steps.prod-state.outputs.exists == 'true'
+        id: prod-eks-check
+        run: |
+          if aws eks describe-cluster --name mlops-platform-prod --region ${{ env.AWS_REGION }} &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Terraform Plan (prod)
+        if: steps.aws-creds.outcome == 'success' && steps.prod-state.outputs.exists == 'true'
+        working-directory: infrastructure/terraform/environments/aws/prod
+        run: |
+          if [ "${{ steps.prod-eks-check.outputs.exists }}" == "false" ]; then
+            terraform plan -no-color -target=module.eks -out=tfplan 2>&1 | tee plan.txt
+          else
+            terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+          fi
+          if grep -q "No changes" plan.txt; then
+            echo "## AWS Prod Terraform Plan: No Changes" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## AWS Prod Terraform Plan" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>Click to expand plan</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            head -500 plan.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          fi
+
       - name: Comment Plan on PR
         if: steps.aws-creds.outcome == 'success' && github.event_name == 'pull_request'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
