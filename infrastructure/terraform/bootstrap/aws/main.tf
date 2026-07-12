@@ -328,6 +328,7 @@ resource "aws_iam_role_policy" "terraform_eks_ec2" {
           "eks:AssociateAccessPolicy", "eks:CreateAccessEntry",
           "eks:DeleteAccessEntry", "eks:DescribeAccessEntry",
           "eks:ListAccessEntries", "eks:ListAccessPolicies",
+          "eks:ListAssociatedAccessPolicies", "eks:DisassociateAccessPolicy", "eks:UpdateAccessEntry",
           "eks:AssociateIdentityProviderConfig"
         ]
         Resource = "*"
