@@ -21,8 +21,11 @@ mkdir -p "${SLO_DIR}/rendered"
 for src in "${SLO_DIR}"/*.yaml; do
     base="$(basename "$src" .yaml)"
     [[ "$base" == "kustomization" ]] && continue
-    docker run --rm -v "${SLO_DIR}:/slo" "$SLOTH_IMAGE" \
-        generate -i "/slo/${base}.yaml" -o "/slo/rendered/${base}-rules.yaml" \
-        --extra-labels "release=prometheus"
+    # Render via stdout: the sloth image runs as a non-root user that
+    # cannot write to a runner-owned bind mount (CI failed on -o).
+    docker run --rm -v "${SLO_DIR}:/slo:ro" "$SLOTH_IMAGE" \
+        generate -i "/slo/${base}.yaml" \
+        --extra-labels "release=prometheus" \
+        > "${SLO_DIR}/rendered/${base}-rules.yaml"
     echo "rendered: slo/rendered/${base}-rules.yaml"
 done
