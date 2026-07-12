@@ -24,37 +24,51 @@ spec:
       - mlflow
 
 ---
-# PodMonitor for KServe InferenceServices (ADR-016).
-# A PodMonitor, not a ServiceMonitor: MLServer serves Prometheus metrics on
-# container port 8082, which is not part of the predictor Service (the
-# Service fronts the 8080 data plane, where /metrics is a 404). The old
-# ServiceMonitor also matched nothing - KServe sets the
-# serving.kserve.io/inferenceservice label to the isvc NAME, never "true".
-apiVersion: monitoring.coreos.com/v1
-kind: PodMonitor
+# ScrapeConfig for KServe InferenceServices (ADR-016).
+# Not a Service/PodMonitor: MLServer serves metrics on container port 8082,
+# which is neither in the predictor Service (it fronts the 8080 data plane)
+# nor a DECLARED containerPort - and Pod/PodMonitor port matching only sees
+# declared ports (verified live: PodMonitor targetPort=8082 yielded zero
+# targets). Pod-role SD + an address rewrite has no such requirement.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
 metadata:
   name: kserve-inference
-  namespace: mlops
+  namespace: monitoring
   labels:
     app: kserve
     release: prometheus
 spec:
-  selector:
-    matchExpressions:
-      - key: serving.kserve.io/inferenceservice
-        operator: Exists
-  podMetricsEndpoints:
-    - targetPort: 8082
-      path: /metrics
-      interval: 15s
-      relabelings:
-        # Friendly label for every query surface (alerts, SLOs, gates).
-        - sourceLabels:
-            [__meta_kubernetes_pod_label_serving_kserve_io_inferenceservice]
-          targetLabel: inference_service
-  namespaceSelector:
-    matchNames:
-      - mlops
+  kubernetesSDConfigs:
+    - role: pod
+      namespaces:
+        names:
+          - mlops
+  metricsPath: /metrics
+  scrapeInterval: 15s
+  relabelings:
+    # Only KServe predictor pods (label value is the isvc name)...
+    - sourceLabels:
+        [__meta_kubernetes_pod_label_serving_kserve_io_inferenceservice]
+      regex: "(.+)"
+      action: keep
+    # ...and only the serving container (one pod-role target per container).
+    - sourceLabels: [__meta_kubernetes_pod_container_name]
+      regex: "kserve-container"
+      action: keep
+    # Scrape the MLServer metrics port regardless of declared ports.
+    - sourceLabels: [__meta_kubernetes_pod_ip]
+      regex: "(.+)"
+      targetLabel: __address__
+      replacement: "$1:8082"
+    # Friendly label for every query surface (alerts, SLOs, gates).
+    - sourceLabels:
+        [__meta_kubernetes_pod_label_serving_kserve_io_inferenceservice]
+      targetLabel: inference_service
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
 
 ---
 # ServiceMonitor for Argo Workflows controller metrics
