@@ -185,6 +185,10 @@ resource "kubectl_manifest" "network_policies" {
     kubernetes_namespace.mlflow,
     kubernetes_namespace.argo,
     kubernetes_namespace.monitoring,
+    # argocd's namespace comes from the helm release (create_namespace),
+    # not a kubernetes_namespace resource - the first fresh rebuild after
+    # the original fix still raced it.
+    helm_release.argocd,
   ]
 }
 
