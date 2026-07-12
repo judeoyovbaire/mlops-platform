@@ -18,9 +18,9 @@ spec:
       sli:
         events:
           errorQuery: >
-            sum(rate(revision_request_count{response_code!~"2.."}[{{.window}}]))
+            sum(rate(rest_server_requests_total{namespace="mlops",status_code!~"2..",path=~".*/infer"}[{{.window}}]))
           totalQuery: >
-            sum(rate(revision_request_count[{{.window}}]))
+            sum(rate(rest_server_requests_total{namespace="mlops",path=~".*/infer"}[{{.window}}]))
       alerting:
         name: InferenceAvailabilityBurnRate
         labels:

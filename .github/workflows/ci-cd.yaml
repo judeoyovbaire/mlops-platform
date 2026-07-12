@@ -238,6 +238,20 @@ jobs:
       - name: Validate Kustomize build
         run: kustomize build infrastructure/kubernetes/ > /dev/null
 
+      - name: Validate rendered SLOs are in sync
+        # slo/rendered/ is generated from the Sloth CRs by
+        # scripts/render-slos.sh (ADR-016). Same drift guard as the
+        # dependency lockfiles: edit a source SLO without re-rendering
+        # and this fails.
+        run: |
+          ./scripts/render-slos.sh
+          if ! git diff --exit-code -- 'infrastructure/kubernetes/slo/rendered/*.yaml'; then
+            echo "::error::Rendered SLO rules out of sync with Sloth sources." \
+              "Regenerate with scripts/render-slos.sh."
+            exit 1
+          fi
+          echo "Rendered SLOs in sync"
+
   # Admission policies get admit+deny fixture tests: enforce-semantic-
   # versioning shipped with a substitution bug that blocked every deploy
   # and was undetectable until a real InferenceService hit the webhook

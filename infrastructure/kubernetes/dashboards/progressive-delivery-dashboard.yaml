@@ -95,7 +95,7 @@ data:
           "id": 5,
           "options": {"legend": {"calcs": ["mean", "last"], "displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
           "targets": [
-            {"expr": "sum(rate(revision_request_count{response_code=\"200\",namespace=\"mlops\"}[2m])) by (revision_name) / sum(rate(revision_request_count{namespace=\"mlops\"}[2m])) by (revision_name)", "legendFormat": "{{ revision_name }}"}
+            {"expr": "sum(rate(rest_server_requests_total{status_code=\"200\",namespace=\"mlops\"}[2m])) by (inference_service) / sum(rate(rest_server_requests_total{namespace=\"mlops\"}[2m])) by (inference_service)", "legendFormat": "{{ inference_service }}"}
           ],
           "title": "Success Rate by Revision",
           "type": "timeseries"
@@ -107,7 +107,7 @@ data:
           "id": 6,
           "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
           "targets": [
-            {"expr": "histogram_quantile(0.95, sum(rate(revision_request_latencies_bucket{namespace=\"mlops\"}[2m])) by (le, revision_name)) * 1000", "legendFormat": "{{ revision_name }}"}
+            {"expr": "histogram_quantile(0.95, sum(rate(rest_server_request_duration_seconds_bucket{namespace=\"mlops\"}[2m])) by (le, inference_service)) * 1000", "legendFormat": "{{ inference_service }}"}
           ],
           "title": "P95 Latency by Revision (ms)",
           "type": "timeseries"

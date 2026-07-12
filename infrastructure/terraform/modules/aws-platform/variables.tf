@@ -125,3 +125,15 @@ variable "grafana_admin_password" {
   type        = string
   sensitive   = true
 }
+
+variable "enable_grafana_cloud_remote_write" {
+  description = "Ship evidence metrics to Grafana Cloud (survives cluster teardown). Requires the <cluster_name>/grafana-cloud/remote-write secret in Secrets Manager."
+  type        = bool
+  default     = false
+}
+
+variable "grafana_cloud_remote_write_url" {
+  description = "Grafana Cloud Prometheus push endpoint (not sensitive - credentials come from Secrets Manager)"
+  type        = string
+  default     = ""
+}

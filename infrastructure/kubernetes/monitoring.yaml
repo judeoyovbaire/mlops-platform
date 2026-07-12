@@ -24,9 +24,14 @@ spec:
       - mlflow
 
 ---
-# ServiceMonitor for KServe InferenceServices
+# PodMonitor for KServe InferenceServices (ADR-016).
+# A PodMonitor, not a ServiceMonitor: MLServer serves Prometheus metrics on
+# container port 8082, which is not part of the predictor Service (the
+# Service fronts the 8080 data plane, where /metrics is a 404). The old
+# ServiceMonitor also matched nothing - KServe sets the
+# serving.kserve.io/inferenceservice label to the isvc NAME, never "true".
 apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
+kind: PodMonitor
 metadata:
   name: kserve-inference
   namespace: mlops
@@ -35,12 +40,18 @@ metadata:
     release: prometheus
 spec:
   selector:
-    matchLabels:
-      serving.kserve.io/inferenceservice: "true"
-  endpoints:
-    - port: http
+    matchExpressions:
+      - key: serving.kserve.io/inferenceservice
+        operator: Exists
+  podMetricsEndpoints:
+    - targetPort: 8082
       path: /metrics
       interval: 15s
+      relabelings:
+        # Friendly label for every query surface (alerts, SLOs, gates).
+        - sourceLabels:
+            [__meta_kubernetes_pod_label_serving_kserve_io_inferenceservice]
+          targetLabel: inference_service
   namespaceSelector:
     matchNames:
       - mlops
@@ -84,28 +95,28 @@ spec:
         - alert: HighInferenceLatency
           expr: |
             histogram_quantile(0.95,
-              sum(rate(revision_request_latencies_bucket{namespace="mlops"}[5m])) by (le, revision_name)
+              sum(rate(rest_server_request_duration_seconds_bucket{namespace="mlops"}[5m])) by (le, inference_service)
             ) > 1
           for: 5m
           labels:
             severity: warning
           annotations:
-            summary: "High inference latency for {{ $labels.revision_name }}"
-            description: "P95 latency is above 1 second for inference service {{ $labels.revision_name }}"
+            summary: "High inference latency for {{ $labels.inference_service }}"
+            description: "P95 latency is above 1 second for inference service {{ $labels.inference_service }}"
 
         # Inference service errors
         - alert: HighInferenceErrorRate
           expr: |
-            sum(rate(revision_request_count{response_code!="200",namespace="mlops"}[5m])) by (revision_name)
+            sum(rate(rest_server_requests_total{status_code!~"2..",namespace="mlops"}[5m])) by (inference_service)
             /
-            sum(rate(revision_request_count{namespace="mlops"}[5m])) by (revision_name)
+            sum(rate(rest_server_requests_total{namespace="mlops"}[5m])) by (inference_service)
             > 0.05
           for: 5m
           labels:
             severity: critical
           annotations:
-            summary: "High error rate for {{ $labels.revision_name }}"
-            description: "Error rate is above 5% for inference service {{ $labels.revision_name }}"
+            summary: "High error rate for {{ $labels.inference_service }}"
+            description: "Error rate is above 5% for inference service {{ $labels.inference_service }}"
 
         # Model serving pod restarts
         - alert: InferenceServiceRestarts
@@ -243,46 +254,46 @@ spec:
         # Model serving throughput drop
         - alert: ModelThroughputDrop
           expr: |
-            (model_throughput_baseline{namespace="mlops"} - sum(rate(revision_request_count{namespace="mlops"}[5m])) by (revision_name)) / model_throughput_baseline{namespace="mlops"} > 0.3
+            (model_throughput_baseline{namespace="mlops"} - sum(rate(rest_server_requests_total{namespace="mlops"}[5m])) by (inference_service)) / model_throughput_baseline{namespace="mlops"} > 0.3
           for: 10m
           labels:
             severity: warning
           annotations:
-            summary: "Model throughput drop for {{ $labels.revision_name }}"
-            description: "Throughput dropped by {{ $value | printf \"%.1f\" }}% for {{ $labels.revision_name }}. May indicate performance issues."
+            summary: "Model throughput drop for {{ $labels.inference_service }}"
+            description: "Throughput dropped by {{ $value | printf \"%.1f\" }}% for {{ $labels.inference_service }}. May indicate performance issues."
 
         # Model prediction latency spike
         - alert: ModelLatencySpike
           expr: |
-            (histogram_quantile(0.95, sum(rate(revision_request_latencies_bucket{namespace="mlops"}[5m])) by (le, revision_name)) - model_latency_baseline{namespace="mlops"}) / model_latency_baseline{namespace="mlops"} > 0.5
+            (histogram_quantile(0.95, sum(rate(rest_server_request_duration_seconds_bucket{namespace="mlops"}[5m])) by (le, inference_service)) * 1000 - model_latency_baseline{namespace="mlops"}) / model_latency_baseline{namespace="mlops"} > 0.5
           for: 5m
           labels:
             severity: warning
           annotations:
-            summary: "Model latency spike for {{ $labels.revision_name }}"
-            description: "P95 latency increased by {{ $value | printf \"%.1f\" }}% for {{ $labels.revision_name }}. Current: {{ $labels.current_latency }}ms, Baseline: {{ $labels.baseline_latency }}ms"
+            summary: "Model latency spike for {{ $labels.inference_service }}"
+            description: "P95 latency increased by {{ $value | printf \"%.1f\" }}% for {{ $labels.inference_service }}. Current: {{ $labels.current_latency }}ms, Baseline: {{ $labels.baseline_latency }}ms"
 
         # Model prediction confidence drop
         - alert: LowModelConfidence
           expr: |
-            avg(model_prediction_confidence{namespace="mlops"}) by (revision_name) < 0.7
+            avg(model_prediction_confidence{namespace="mlops"}) by (inference_service) < 0.7
           for: 15m
           labels:
             severity: warning
           annotations:
-            summary: "Low prediction confidence for {{ $labels.revision_name }}"
-            description: "Average prediction confidence is {{ $value | printf \"%.3f\" }} for {{ $labels.revision_name }}. Model may need retraining."
+            summary: "Low prediction confidence for {{ $labels.inference_service }}"
+            description: "Average prediction confidence is {{ $value | printf \"%.3f\" }} for {{ $labels.inference_service }}. Model may need retraining."
 
         # Model prediction queue depth (for batch inference)
         - alert: HighPredictionQueueDepth
           expr: |
-            sum(revision_queue_depth{namespace="mlops"}) by (revision_name) > 100
+            sum(rest_server_requests_in_progress{namespace="mlops"}) by (inference_service) > 100
           for: 5m
           labels:
             severity: warning
           annotations:
-            summary: "High queue depth for {{ $labels.revision_name }}"
-            description: "Prediction queue depth is {{ $value }} for {{ $labels.revision_name }}. Consider scaling up."
+            summary: "High queue depth for {{ $labels.inference_service }}"
+            description: "Prediction queue depth is {{ $value }} for {{ $labels.inference_service }}. Consider scaling up."
 
         # Model serving cost anomaly
         - alert: ModelServingCostAnomaly
@@ -321,7 +332,7 @@ data:
           "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
           "targets": [
             {
-              "expr": "sum(rate(revision_request_count{namespace=\"mlops\"}[5m]))",
+              "expr": "sum(rate(rest_server_requests_total{namespace=\"mlops\"}[5m]))",
               "legendFormat": "Requests/sec"
             }
           ]
@@ -333,7 +344,7 @@ data:
           "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum(rate(revision_request_latencies_bucket{namespace=\"mlops\"}[5m])) by (le))",
+              "expr": "histogram_quantile(0.95, sum(rate(rest_server_request_duration_seconds_bucket{namespace=\"mlops\"}[5m])) by (le))",
               "legendFormat": "P95 Latency"
             }
           ],
@@ -362,7 +373,7 @@ data:
           "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
           "targets": [
             {
-              "expr": "sum(rate(revision_request_count{response_code!=\"200\",namespace=\"mlops\"}[5m])) / sum(rate(revision_request_count{namespace=\"mlops\"}[5m])) * 100",
+              "expr": "sum(rate(rest_server_requests_total{status_code!~\"2..\",namespace=\"mlops\"}[5m])) / sum(rate(rest_server_requests_total{namespace=\"mlops\"}[5m])) * 100",
               "legendFormat": "Error %"
             }
           ],
@@ -387,8 +398,8 @@ data:
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum(rate(revision_request_latencies_bucket{namespace=\"mlops\"}[5m])) by (le, revision_name))",
-              "legendFormat": "{{revision_name}}"
+              "expr": "histogram_quantile(0.95, sum(rate(rest_server_request_duration_seconds_bucket{namespace=\"mlops\"}[5m])) by (le, inference_service))",
+              "legendFormat": "{{inference_service}}"
             }
           ]
         },
@@ -399,8 +410,8 @@ data:
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
           "targets": [
             {
-              "expr": "sum(rate(revision_request_count{namespace=\"mlops\"}[5m])) by (revision_name)",
-              "legendFormat": "{{revision_name}}"
+              "expr": "sum(rate(rest_server_requests_total{namespace=\"mlops\"}[5m])) by (inference_service)",
+              "legendFormat": "{{inference_service}}"
             }
           ]
         }

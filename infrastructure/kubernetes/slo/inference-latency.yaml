@@ -16,16 +16,18 @@ spec:
       description: "99% of time windows should have P99 latency < 500ms"
       sli:
         events:
+          # MLServer's duration histogram is native seconds; its default
+          # buckets have no 0.5 boundary, so the SLI uses le="0.5"'s nearest
+          # existing bucket boundary 0.5 -> verified present in the runtime
+          # image's bucket set (0.005..10). 500ms = le="0.5".
           errorQuery: >
             (
-              1 - (
-                sum(rate(revision_request_latencies_bucket{le="500"}[{{.window}}]))
-                /
-                sum(rate(revision_request_latencies_bucket{le="+Inf"}[{{.window}}]))
-              )
-            ) * sum(rate(revision_request_latencies_count[{{.window}}]))
+              sum(rate(rest_server_request_duration_seconds_count{namespace="mlops",path=~".*/infer"}[{{.window}}]))
+              -
+              sum(rate(rest_server_request_duration_seconds_bucket{namespace="mlops",path=~".*/infer",le="0.5"}[{{.window}}]))
+            )
           totalQuery: >
-            sum(rate(revision_request_latencies_count[{{.window}}]))
+            sum(rate(rest_server_request_duration_seconds_count{namespace="mlops",path=~".*/infer"}[{{.window}}]))
       alerting:
         name: InferenceLatencyBurnRate
         labels:

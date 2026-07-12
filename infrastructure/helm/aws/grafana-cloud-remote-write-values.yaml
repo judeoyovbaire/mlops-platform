@@ -1,0 +1,25 @@
+# Grafana Cloud remote_write overlay (ADR-016) - applied ONLY when
+# enable_grafana_cloud_remote_write is true (monitoring.tf). Burst-weekend
+# clusters vaporize metrics on every destroy; this ships the evidence
+# series (rollback timelines, SLO burn rates, GPU utilization) to the
+# Grafana Cloud free tier so dashboards span cluster lifetimes.
+#
+# Credentials come from Secrets Manager via External Secrets:
+#   ${cluster_name}/grafana-cloud/remote-write  (keys: url, username, password)
+prometheus:
+  prometheusSpec:
+    remoteWrite:
+      - url: ${remote_write_url}
+        basicAuth:
+          username:
+            name: grafana-cloud-remote-write
+            key: username
+          password:
+            name: grafana-cloud-remote-write
+            key: password
+        # Allowlist, not denylist: the free tier is 10k series - ship only
+        # the evidence series. Cardinality hygiene is the point.
+        writeRelabelConfigs:
+          - sourceLabels: [__name__]
+            regex: "(rest_server_.*|model_.*|slo:.*|sloth_slo_.*|ALERTS|ALERTS_FOR_STATE|up|argo_workflows_count|DCGM_FI_DEV_GPU_UTIL|DCGM_FI_DEV_FB_USED)"
+            action: keep

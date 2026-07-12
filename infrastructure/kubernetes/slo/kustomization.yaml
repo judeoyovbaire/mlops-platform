@@ -1,6 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+# The Sloth CRs (*.yaml here) are the SOURCE format; what ships is the
+# pre-rendered PrometheusRule output in rendered/ (ADR-016 - no Sloth
+# operator just to template three files). Regenerate with
+# scripts/render-slos.sh; CI fails if sources and rendered drift.
 resources:
-  - inference-availability.yaml
-  - inference-latency.yaml
-  - pipeline-success.yaml
+  - rendered/inference-availability-rules.yaml
+  - rendered/inference-latency-rules.yaml
+  - rendered/pipeline-success-rules.yaml

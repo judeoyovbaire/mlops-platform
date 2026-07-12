@@ -26,13 +26,22 @@ resource "helm_release" "prometheus_stack" {
   version    = var.helm_prometheus_stack_version
   namespace  = kubernetes_namespace.monitoring.metadata[0].name
 
-  values = [
-    templatefile("${path.module}/../../../helm/aws/prometheus-stack-values.yaml", {
-      slack_notifications_enabled = var.slack_notifications_enabled
-      slack_channel               = var.slack_channel
-      acm_certificate_arn         = var.acm_certificate_arn
-    })
-  ]
+  values = concat(
+    [
+      templatefile("${path.module}/../../../helm/aws/prometheus-stack-values.yaml", {
+        slack_notifications_enabled = var.slack_notifications_enabled
+        slack_channel               = var.slack_channel
+        acm_certificate_arn         = var.acm_certificate_arn
+      })
+    ],
+    # Durable telemetry for burst clusters (ADR-016). Off by default so the
+    # platform never depends on an unprovisioned Grafana Cloud secret.
+    var.enable_grafana_cloud_remote_write ? [
+      templatefile("${path.module}/../../../helm/aws/grafana-cloud-remote-write-values.yaml", {
+        remote_write_url = var.grafana_cloud_remote_write_url
+      })
+    ] : []
+  )
 
   # Increase timeout for large chart with many CRDs
   timeout = 1200
@@ -177,4 +186,40 @@ resource "kubectl_manifest" "network_policies" {
     kubernetes_namespace.argo,
     kubernetes_namespace.monitoring,
   ]
+}
+
+# Grafana Cloud remote_write credentials (ADR-016) - synced from Secrets
+# Manager only when the feature is enabled. Prometheus references the
+# resulting secret via basicAuth in the remote_write overlay.
+resource "kubectl_manifest" "grafana_cloud_remote_write_secret" {
+  count = var.enable_grafana_cloud_remote_write ? 1 : 0
+
+  yaml_body = yamlencode({
+    apiVersion = "external-secrets.io/v1"
+    kind       = "ExternalSecret"
+    metadata = {
+      name      = "grafana-cloud-remote-write"
+      namespace = kubernetes_namespace.monitoring.metadata[0].name
+    }
+    spec = {
+      refreshInterval = "1h"
+      secretStoreRef = {
+        name = "aws-sm"
+        kind = "ClusterSecretStore"
+      }
+      target = { name = "grafana-cloud-remote-write" }
+      data = [
+        {
+          secretKey = "username"
+          remoteRef = { key = "${var.cluster_name}/grafana-cloud/remote-write", property = "username" }
+        },
+        {
+          secretKey = "password"
+          remoteRef = { key = "${var.cluster_name}/grafana-cloud/remote-write", property = "password" }
+        },
+      ]
+    }
+  })
+
+  depends_on = [helm_release.external_secrets]
 }
