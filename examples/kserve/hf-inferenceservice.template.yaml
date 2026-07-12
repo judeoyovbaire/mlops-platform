@@ -39,6 +39,9 @@ spec:
         name: huggingface
       args:
         - --model_name=${MODEL_NAME}
+        # HF_TASK uses huggingfaceserver's OWN task vocabulary, not the
+        # transformers pipeline names (verified live: "text-classification"
+        # is rejected; the classifier task is "sequence_classification").
         - --task=${HF_TASK}
       storageUri: "${MODEL_STORAGE_URI}"
       resources:

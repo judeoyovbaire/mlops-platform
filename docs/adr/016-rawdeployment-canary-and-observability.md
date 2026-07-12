@@ -2,8 +2,18 @@
 
 ## Status
 
-Accepted (2026-07-12). Traffic-split mechanics under ALB to be confirmed by
-the Phase B spike (see Consequences).
+Accepted (2026-07-12). **Spike resolved (2026-07-13):** `canaryTrafficPercent`
+is ignored under RawDeployment - a challenger update is a plain in-place
+rolling update (verified live; no second deployment, no traffic split,
+PREVROLLEDOUTREVISION never populates). The adopted mechanism is therefore
+**post-deploy verification with automated rollback**: deploy the challenger,
+judge it under real traffic with the AnalysisRun, on Failure patch
+`storageUri` back to the champion. Demonstrated end-to-end: 100% error rate
+measured on a degraded challenger -> verdict Failed -> automatic rollback ->
+recovery, ~80 s from first measurement to healthy champion
+(docs/evidence/rollback-demo-*). A true percentage traffic split needs two
+InferenceServices behind weighted ALB target groups - future work, not
+Milestone B.
 
 ## Context
 

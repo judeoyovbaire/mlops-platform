@@ -1,0 +1,116 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisRun
+metadata:
+  creationTimestamp: "2026-07-12T22:18:12Z"
+  generation: 5
+  name: canary-iris-classifier-1783894692
+  namespace: mlops
+  resourceVersion: "121043"
+  uid: a0c36700-6743-4ffb-8790-f97800b7e800
+spec:
+  metrics:
+  - count: 5
+    failureLimit: 2
+    initialDelay: 60s
+    interval: 60s
+    name: success-rate
+    provider:
+      prometheus:
+        address: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+        query: |
+          (sum(rate(rest_server_requests_total{status_code=~"2..",inference_service="iris-classifier",pod=~"iris-classifier-predictor-.*",path=~".*/infer"}[2m])) or vector(0))
+          /
+          clamp_min(sum(rate(rest_server_requests_total{inference_service="iris-classifier",pod=~"iris-classifier-predictor-.*",path=~".*/infer"}[2m])), 1e-10)
+    successCondition: result[0] >= 0.95
+  - count: 5
+    failureLimit: 2
+    initialDelay: 60s
+    interval: 60s
+    name: latency-p95
+    provider:
+      prometheus:
+        address: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+        query: |
+          (histogram_quantile(0.95,
+            sum(rate(rest_server_request_duration_seconds_bucket{inference_service="iris-classifier",pod=~"iris-classifier-predictor-.*",path=~".*/infer"}[2m])) by (le)
+          ) * 1000) or vector(0)
+    successCondition: result[0] <= 500
+  - count: 5
+    failureLimit: 1
+    initialDelay: 60s
+    interval: 60s
+    name: error-rate
+    provider:
+      prometheus:
+        address: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+        query: |
+          (sum(rate(rest_server_requests_total{status_code!~"2..",inference_service="iris-classifier",pod=~"iris-classifier-predictor-.*",path=~".*/infer"}[2m])) or vector(0))
+          /
+          clamp_min(sum(rate(rest_server_requests_total{inference_service="iris-classifier",pod=~"iris-classifier-predictor-.*",path=~".*/infer"}[2m])), 1e-10)
+    successCondition: result[0] < 0.05
+status:
+  completedAt: "2026-07-12T22:20:12Z"
+  dryRunSummary: {}
+  message: Metric "error-rate" assessed Failed due to failed (2) > failureLimit (1)
+  metricResults:
+  - count: 2
+    failed: 2
+    measurements:
+    - finishedAt: "2026-07-12T22:19:12Z"
+      phase: Failed
+      startedAt: "2026-07-12T22:19:12Z"
+      value: '[0]'
+    - finishedAt: "2026-07-12T22:20:12Z"
+      phase: Failed
+      startedAt: "2026-07-12T22:20:12Z"
+      value: '[0]'
+    metadata:
+      ResolvedPrometheusQuery: |
+        (sum(rate(rest_server_requests_total{status_code=~"2..",inference_service="iris-classifier",pod=~"iris-classifier-predictor-.*",path=~".*/infer"}[2m])) or vector(0))
+        /
+        clamp_min(sum(rate(rest_server_requests_total{inference_service="iris-classifier",pod=~"iris-classifier-predictor-.*",path=~".*/infer"}[2m])), 1e-10)
+    name: success-rate
+    phase: Successful
+  - consecutiveSuccess: 2
+    count: 2
+    measurements:
+    - finishedAt: "2026-07-12T22:19:12Z"
+      phase: Successful
+      startedAt: "2026-07-12T22:19:12Z"
+      value: '[9.604166666666668]'
+    - finishedAt: "2026-07-12T22:20:12Z"
+      phase: Successful
+      startedAt: "2026-07-12T22:20:12Z"
+      value: '[9.4453125]'
+    metadata:
+      ResolvedPrometheusQuery: |
+        (histogram_quantile(0.95,
+          sum(rate(rest_server_request_duration_seconds_bucket{inference_service="iris-classifier",pod=~"iris-classifier-predictor-.*",path=~".*/infer"}[2m])) by (le)
+        ) * 1000) or vector(0)
+    name: latency-p95
+    phase: Successful
+    successful: 2
+  - count: 2
+    failed: 2
+    measurements:
+    - finishedAt: "2026-07-12T22:19:12Z"
+      phase: Failed
+      startedAt: "2026-07-12T22:19:12Z"
+      value: '[1]'
+    - finishedAt: "2026-07-12T22:20:12Z"
+      phase: Failed
+      startedAt: "2026-07-12T22:20:12Z"
+      value: '[1]'
+    metadata:
+      ResolvedPrometheusQuery: |
+        (sum(rate(rest_server_requests_total{status_code!~"2..",inference_service="iris-classifier",pod=~"iris-classifier-predictor-.*",path=~".*/infer"}[2m])) or vector(0))
+        /
+        clamp_min(sum(rate(rest_server_requests_total{inference_service="iris-classifier",pod=~"iris-classifier-predictor-.*",path=~".*/infer"}[2m])), 1e-10)
+    name: error-rate
+    phase: Failed
+  phase: Failed
+  runSummary:
+    count: 3
+    failed: 1
+    successful: 2
+  startedAt: "2026-07-12T22:18:12Z"
