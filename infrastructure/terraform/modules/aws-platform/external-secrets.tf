@@ -189,3 +189,35 @@ resource "kubectl_manifest" "alertmanager_slack_external_secret" {
     kubernetes_namespace.monitoring
   ]
 }
+
+# HuggingFace Hub token for the pretrained pipeline (JDH-397) - optional:
+# the workflow's fetch step references this secret with optional: true, so
+# anonymous Hub access works without it. Enable for gated/private models.
+resource "kubectl_manifest" "huggingface_hub_token" {
+  count = var.enable_huggingface_hub_token ? 1 : 0
+
+  yaml_body = yamlencode({
+    apiVersion = "external-secrets.io/v1"
+    kind       = "ExternalSecret"
+    metadata = {
+      name      = "huggingface-hub-token"
+      namespace = kubernetes_namespace.argo.metadata[0].name
+    }
+    spec = {
+      refreshInterval = "1h"
+      secretStoreRef = {
+        name = "aws-sm"
+        kind = "ClusterSecretStore"
+      }
+      target = { name = "huggingface-hub-token" }
+      data = [
+        {
+          secretKey = "token"
+          remoteRef = { key = "${var.cluster_name}/huggingface/token", property = "token" }
+        },
+      ]
+    }
+  })
+
+  depends_on = [helm_release.external_secrets]
+}

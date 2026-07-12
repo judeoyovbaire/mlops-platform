@@ -137,3 +137,9 @@ variable "grafana_cloud_remote_write_url" {
   type        = string
   default     = ""
 }
+
+variable "enable_huggingface_hub_token" {
+  description = "Sync the HuggingFace Hub token from Secrets Manager (<cluster_name>/huggingface/token) for gated/private model access. Off = anonymous Hub access."
+  type        = bool
+  default     = false
+}

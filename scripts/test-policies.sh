@@ -31,6 +31,17 @@ envsubst '$MODEL_NAME $MODEL_STORAGE_URI $MODEL_VERSION $MODEL_RUN_ID $MODEL_EXP
     < "${PROJECT_ROOT}/examples/kserve/champion-inferenceservice.template.yaml" \
     > "${POLICY_TESTS}/model-registry/rendered/champion-rendered.yaml"
 
+MODEL_NAME=sentiment-classifier \
+MODEL_VERSION=1 \
+MODEL_RUN_ID=test-run-id \
+MODEL_EXPERIMENT_ID=2 \
+MODEL_STORAGE_URI=s3://example-bucket/2/test-run-id/artifacts/hf_model \
+HF_REVISION=714eb0fa89d2f80546fda750413ed43d93601a13 \
+HF_TASK=text-classification \
+envsubst '$MODEL_NAME $MODEL_STORAGE_URI $MODEL_VERSION $MODEL_RUN_ID $MODEL_EXPERIMENT_ID $HF_REVISION $HF_TASK' \
+    < "${PROJECT_ROOT}/examples/kserve/hf-inferenceservice.template.yaml" \
+    > "${POLICY_TESTS}/model-registry/rendered/hf-rendered.yaml"
+
 # Fixture 2: extract the audit policy from the shared file.
 mkdir -p "${POLICY_TESTS}/image-audit/rendered"
 PYTHON_BIN="${PYTHON_BIN:-python3}"

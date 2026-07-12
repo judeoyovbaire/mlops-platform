@@ -18,6 +18,17 @@ def output_dir(tmp_path):
     return str(tmp_path / "hf-model")
 
 
+RESOLVED_SHA = "714eb0fa89d2f80546fda750413ed43d93601a13"
+
+
+def _hub_info(pipeline_tag=None, safetensors=None, sha=RESOLVED_SHA):
+    info = MagicMock()
+    info.pipeline_tag = pipeline_tag
+    info.safetensors = safetensors
+    info.sha = sha
+    return info
+
+
 class TestFetchModel:
     """Tests for the fetch_model function."""
 
@@ -26,11 +37,11 @@ class TestFetchModel:
     def test_fetch_model_success(self, mock_model_info, mock_pipeline, output_dir):
         """Test successful model fetch and validation."""
         # Mock model info
-        mock_info = MagicMock()
-        mock_info.pipeline_tag = "text-classification"
-        mock_info.safetensors = MagicMock()
-        mock_info.safetensors.total = 66_000_000
-        mock_model_info.return_value = mock_info
+        safetensors = MagicMock()
+        safetensors.total = 66_000_000
+        mock_model_info.return_value = _hub_info(
+            pipeline_tag="text-classification", safetensors=safetensors
+        )
 
         # Mock pipeline
         mock_pipe = MagicMock()
@@ -58,6 +69,9 @@ class TestFetchModel:
         with open(metadata_path) as f:
             metadata = json.load(f)
         assert metadata["model_id"] == result.model_id
+        # Supply-chain lineage travels in the metadata
+        assert metadata["resolved_revision"] == RESOLVED_SHA
+        assert result.resolved_revision == RESOLVED_SHA
 
         # Verify model was saved
         mock_pipe.model.save_pretrained.assert_called_once()
@@ -67,7 +81,7 @@ class TestFetchModel:
     @patch("pipelines.pretrained.src.fetch_model.model_info")
     def test_fetch_model_custom_test_input(self, mock_model_info, mock_pipeline, output_dir):
         """Test with custom test input."""
-        mock_model_info.return_value = MagicMock(pipeline_tag=None, safetensors=None)
+        mock_model_info.return_value = _hub_info()
         mock_pipe = MagicMock()
         mock_pipe.return_value = [{"label": "NEGATIVE", "score": 0.95}]
         mock_pipe.model = MagicMock()
@@ -89,7 +103,7 @@ class TestFetchModel:
     @patch("pipelines.pretrained.src.fetch_model.model_info")
     def test_fetch_model_download_failure(self, mock_model_info, mock_pipeline, output_dir):
         """Test failure when model download fails."""
-        mock_model_info.return_value = MagicMock(pipeline_tag=None, safetensors=None)
+        mock_model_info.return_value = _hub_info()
         mock_pipeline.side_effect = OSError("Connection failed")
 
         with pytest.raises(RuntimeError, match="Failed to download model"):
@@ -99,7 +113,7 @@ class TestFetchModel:
     @patch("pipelines.pretrained.src.fetch_model.model_info")
     def test_fetch_model_inference_failure(self, mock_model_info, mock_pipeline, output_dir):
         """Test failure when sanity inference fails."""
-        mock_model_info.return_value = MagicMock(pipeline_tag=None, safetensors=None)
+        mock_model_info.return_value = _hub_info()
         mock_pipe = MagicMock()
         mock_pipe.side_effect = RuntimeError("Inference error")
         mock_pipeline.return_value = mock_pipe
@@ -109,19 +123,46 @@ class TestFetchModel:
 
     @patch("pipelines.pretrained.src.fetch_model.pipeline")
     @patch("pipelines.pretrained.src.fetch_model.model_info")
-    def test_fetch_model_info_failure_non_fatal(self, mock_model_info, mock_pipeline, output_dir):
-        """Test that model_info failure is non-fatal (warning only)."""
+    def test_fetch_model_unresolvable_revision_is_fatal(
+        self, mock_model_info, mock_pipeline, output_dir
+    ):
+        """Revision resolution is a hard supply-chain gate, not best-effort:
+        without a resolved commit SHA the model has no provenance identity."""
         mock_model_info.side_effect = Exception("API rate limit")
+
+        with pytest.raises(RuntimeError, match="Could not resolve"):
+            fetch_model(model_id="test/model", output_dir=output_dir)
+        mock_pipeline.assert_not_called()
+
+    @patch("pipelines.pretrained.src.fetch_model.pipeline")
+    @patch("pipelines.pretrained.src.fetch_model.model_info")
+    def test_fetch_model_missing_sha_is_fatal(self, mock_model_info, mock_pipeline, output_dir):
+        """Hub metadata without a commit SHA must also fail."""
+        mock_model_info.return_value = _hub_info(sha=None)
+
+        with pytest.raises(RuntimeError, match="no commit SHA"):
+            fetch_model(model_id="test/model", output_dir=output_dir)
+        mock_pipeline.assert_not_called()
+
+    @patch("pipelines.pretrained.src.fetch_model.pipeline")
+    @patch("pipelines.pretrained.src.fetch_model.model_info")
+    def test_fetch_model_rejects_pickle_weights(self, mock_model_info, mock_pipeline, output_dir):
+        """A .bin weight file in the saved artifact must fail the fetch -
+        pickle-based weights execute arbitrary code on load."""
+        mock_model_info.return_value = _hub_info()
         mock_pipe = MagicMock()
         mock_pipe.return_value = [{"label": "POSITIVE", "score": 0.9}]
-        mock_pipe.model = MagicMock()
+
+        def _save_with_pickle(path, **kwargs):
+            with open(os.path.join(path, "pytorch_model.bin"), "wb") as f:
+                f.write(b"pickle")
+
+        mock_pipe.model.save_pretrained.side_effect = _save_with_pickle
         mock_pipe.tokenizer = MagicMock()
         mock_pipeline.return_value = mock_pipe
 
-        result = fetch_model(model_id="test/model", output_dir=output_dir)
-
-        assert result.success is True
-        assert result.num_parameters is None
+        with pytest.raises(RuntimeError, match="Pickle-based weight files"):
+            fetch_model(model_id="test/model", output_dir=output_dir)
 
     def test_default_test_inputs_has_text_classification(self):
         """Test that default inputs cover text-classification."""
@@ -133,23 +174,30 @@ class TestFetchModel:
     @patch("pipelines.pretrained.src.fetch_model.model_info")
     def test_fetch_model_with_revision(self, mock_model_info, mock_pipeline, output_dir):
         """Test fetch with specific revision."""
-        mock_model_info.return_value = MagicMock(pipeline_tag=None, safetensors=None)
+        mock_model_info.return_value = _hub_info()
         mock_pipe = MagicMock()
         mock_pipe.return_value = [{"label": "POSITIVE", "score": 0.9}]
         mock_pipe.model = MagicMock()
         mock_pipe.tokenizer = MagicMock()
         mock_pipeline.return_value = mock_pipe
 
-        fetch_model(
+        result = fetch_model(
             model_id="test/model",
             output_dir=output_dir,
             revision="v1.0",
         )
 
+        # The download pins to the RESOLVED SHA, never the mutable ref
         mock_pipeline.assert_called_once_with(
             task="text-classification",
             model="test/model",
-            revision="v1.0",
-            model_kwargs={"cache_dir": os.path.join(output_dir, "cache")},
+            revision=RESOLVED_SHA,
+            trust_remote_code=False,
+            model_kwargs={
+                "cache_dir": os.path.join(output_dir, "cache"),
+                "use_safetensors": True,
+            },
         )
         mock_model_info.assert_called_once_with("test/model", revision="v1.0")
+        assert result.requested_revision == "v1.0"
+        assert result.resolved_revision == RESOLVED_SHA

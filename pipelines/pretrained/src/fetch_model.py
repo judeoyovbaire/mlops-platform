@@ -47,6 +47,10 @@ class FetchResult:
     test_input: str
     test_output: str
     success: bool
+    # Supply chain: the ref the caller asked for and the commit SHA it
+    # resolved to. Downstream steps and MLflow lineage use the SHA only.
+    requested_revision: str | None = None
+    resolved_revision: str | None = None
     error_message: str | None = None
 
 
@@ -66,42 +70,61 @@ def fetch_model(
         model_id: HuggingFace model identifier (e.g. "distilbert/distilbert-base-uncased-finetuned-sst-2-english").
         output_dir: Directory to save model artifacts and metadata.
         task: HuggingFace pipeline task (default: "text-classification").
-        revision: Model revision/branch (default: None for latest).
+        revision: Ref to fetch (branch, tag, or commit SHA). Whatever is
+            given, it is RESOLVED to a commit SHA before download - HF model
+            repos are mutable git refs, the model-artifact equivalent of a
+            :main image tag. Default None resolves the repo's default branch.
         test_input: Custom test input string. If None, a default for the task is used.
 
     Returns:
-        FetchResult with model metadata and validation output.
+        FetchResult with model metadata, the resolved revision SHA, and
+        validation output.
 
     Raises:
-        RuntimeError: If download or inference fails.
+        RuntimeError: If revision resolution, download, or inference fails.
     """
     logger.info(f"Fetching model '{model_id}' for task '{task}'")
 
     os.makedirs(output_dir, exist_ok=True)
 
-    # Fetch model metadata from HuggingFace Hub
-    num_parameters = None
-    pipeline_tag = None
+    # Resolve the ref to a commit SHA - a HARD gate, not best-effort. All
+    # downloads below pin to this SHA and it travels to MLflow as lineage.
     try:
         info = model_info(model_id, revision=revision)
-        num_parameters = getattr(info, "safetensors", None)
-        if num_parameters and hasattr(num_parameters, "total"):
-            num_parameters = num_parameters.total
-        else:
-            num_parameters = None
-        pipeline_tag = getattr(info, "pipeline_tag", None)
-        logger.info(f"Model info: pipeline_tag={pipeline_tag}, parameters={num_parameters}")
     except Exception as e:
-        logger.warning(f"Could not fetch model info: {e}")
+        raise RuntimeError(
+            f"Could not resolve '{model_id}' (revision={revision!r}) on the "
+            f"Hub: {e}. Fetch requires resolvable model metadata - the "
+            f"resolved commit SHA is the model's supply-chain identity."
+        ) from e
+    resolved_revision = getattr(info, "sha", None)
+    if not resolved_revision:
+        raise RuntimeError(f"Hub returned no commit SHA for '{model_id}' (revision={revision!r})")
+    logger.info(f"Resolved revision: {revision or '(default branch)'} -> {resolved_revision}")
 
-    # Build the pipeline (downloads model + tokenizer)
-    logger.info(f"Downloading model and tokenizer for '{model_id}'...")
+    num_parameters = getattr(info, "safetensors", None)
+    if num_parameters and hasattr(num_parameters, "total"):
+        num_parameters = num_parameters.total
+    else:
+        num_parameters = None
+    pipeline_tag = getattr(info, "pipeline_tag", None)
+    logger.info(f"Model info: pipeline_tag={pipeline_tag}, parameters={num_parameters}")
+
+    # Build the pipeline (downloads model + tokenizer), pinned to the SHA.
+    # use_safetensors: refuse pickle-based .bin weights - loading them
+    # executes arbitrary code. trust_remote_code=False is the library
+    # default but the security posture here is explicit, not implied.
+    logger.info(f"Downloading model and tokenizer for '{model_id}@{resolved_revision[:12]}'...")
     try:
         pipe = pipeline(  # type: ignore[call-overload]  # task is a runtime str, overloads expect Literal
             task=task,
             model=model_id,
-            revision=revision,
-            model_kwargs={"cache_dir": os.path.join(output_dir, "cache")},
+            revision=resolved_revision,
+            trust_remote_code=False,
+            model_kwargs={
+                "cache_dir": os.path.join(output_dir, "cache"),
+                "use_safetensors": True,
+            },
         )
     except Exception as e:
         raise RuntimeError(f"Failed to download model '{model_id}': {e}") from e
@@ -123,9 +146,18 @@ def fetch_model(
     # Save model and tokenizer locally
     model_save_dir = os.path.join(output_dir, "model")
     os.makedirs(model_save_dir, exist_ok=True)
-    pipe.model.save_pretrained(model_save_dir)
+    pipe.model.save_pretrained(model_save_dir, safe_serialization=True)
     pipe.tokenizer.save_pretrained(model_save_dir)
     logger.info(f"Model saved to {model_save_dir}")
+
+    # Belt and braces: the artifact that ships downstream must contain no
+    # pickle-based weights, whatever the library defaults do.
+    pickle_weights = [f for f in os.listdir(model_save_dir) if f.endswith(".bin")]
+    if pickle_weights:
+        raise RuntimeError(
+            f"Pickle-based weight files in saved artifact: {pickle_weights}. "
+            f"Only safetensors weights may be registered."
+        )
 
     fetch_result = FetchResult(
         model_id=model_id,
@@ -136,6 +168,8 @@ def fetch_model(
         test_input=test_input,
         test_output=test_output,
         success=True,
+        requested_revision=revision,
+        resolved_revision=resolved_revision,
     )
 
     # Write metadata file for downstream steps
@@ -167,7 +201,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--revision",
         default=None,
-        help="Model revision/branch (default: latest)",
+        help=(
+            "Ref to fetch (branch/tag/SHA) - always resolved to a commit SHA "
+            "before download (default: repo default branch, resolved)"
+        ),
     )
     parser.add_argument(
         "--test-input",

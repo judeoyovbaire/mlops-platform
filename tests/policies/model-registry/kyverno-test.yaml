@@ -20,9 +20,10 @@ metadata:
 policies:
   - ../../../infrastructure/kubernetes/governance/model-registry-policies.yaml
 resources:
-  # Rendered by scripts/test-policies.sh from the REAL champion template -
-  # if the template and the policies drift apart, this suite fails.
+  # Rendered by scripts/test-policies.sh from the REAL templates -
+  # if a template and the policies drift apart, this suite fails.
   - rendered/champion-rendered.yaml
+  - rendered/hf-rendered.yaml
   - resources/inferenceservices.yaml
 results:
   # --- the envsubst-rendered champion template must be admitted ---
@@ -40,6 +41,23 @@ results:
     rule: validate-version-format
     kind: InferenceService
     resources: [iris-classifier]
+    result: pass
+
+  # --- the rendered HF pretrained template must be admitted ---
+  - policy: require-model-metadata
+    rule: require-model-labels
+    kind: InferenceService
+    resources: [sentiment-classifier]
+    result: pass
+  - policy: require-model-lineage
+    rule: require-mlflow-lineage
+    kind: InferenceService
+    resources: [sentiment-classifier]
+    result: pass
+  - policy: enforce-semantic-versioning
+    rule: validate-version-format
+    kind: InferenceService
+    resources: [sentiment-classifier]
     result: pass
 
   # --- fully-annotated production model: every rule admits ---

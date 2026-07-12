@@ -23,6 +23,8 @@ def metadata_file(tmp_path):
         "test_input": "I love this product!",
         "test_output": '[{"label": "POSITIVE", "score": 0.9998}]',
         "success": True,
+        "requested_revision": None,
+        "resolved_revision": "714eb0fa89d2f80546fda750413ed43d93601a13",
     }
     path = tmp_path / "metadata.json"
     path.write_text(json.dumps(metadata))
@@ -31,6 +33,20 @@ def metadata_file(tmp_path):
 
 class TestRegisterPretrainedModel:
     """Tests for the register_pretrained_model function."""
+
+    def test_register_requires_resolved_revision(self, tmp_path):
+        """Artifacts without a pinned Hub commit SHA are not registrable -
+        the supply chain must not be bypassable at the registration step."""
+        metadata = {"model_id": "m", "task": "t", "model_dir": str(tmp_path)}
+        path = tmp_path / "metadata.json"
+        path.write_text(json.dumps(metadata))
+
+        with pytest.raises(ModelRegistrationError, match="resolved_revision"):
+            register_pretrained_model(
+                metadata_path=str(path),
+                model_name="sentiment-classifier",
+                mlflow_uri="http://localhost:5000",
+            )
 
     @patch("pipelines.pretrained.src.register_model.mlflow")
     @patch("pipelines.pretrained.src.register_model.hf_pipeline")

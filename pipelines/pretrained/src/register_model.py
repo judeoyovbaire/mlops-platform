@@ -94,7 +94,18 @@ def register_pretrained_model(
     task = metadata["task"]
     model_dir = metadata["model_dir"]
 
-    logger.info(f"Model: {model_id}, task: {task}, dir: {model_dir}")
+    # Supply-chain gate: refuse to register an artifact without a resolved
+    # Hub commit SHA (fetch_model records it; its absence means the chain
+    # was bypassed). HF model repos are mutable refs - the SHA is the
+    # model's identity, same as an image digest.
+    resolved_revision = metadata.get("resolved_revision")
+    if not resolved_revision:
+        raise ModelRegistrationError(
+            "metadata.json has no resolved_revision - artifacts without a "
+            "pinned Hub commit SHA are not registrable. Re-run fetch_model."
+        )
+
+    logger.info(f"Model: {model_id}@{resolved_revision[:12]}, task: {task}, dir: {model_dir}")
 
     # Connect to MLflow
     try:
@@ -134,6 +145,7 @@ def register_pretrained_model(
                 "task": task,
                 "source": "huggingface_hub",
                 "pipeline_tag": metadata.get("pipeline_tag", task),
+                "hf_revision": resolved_revision,
             }
             if metadata.get("num_parameters"):
                 params["num_parameters"] = str(metadata["num_parameters"])
@@ -155,6 +167,14 @@ def register_pretrained_model(
             )
             logger.info("Model logged to MLflow")
 
+            # Also log the raw HF directory (model + tokenizer together,
+            # exactly as save_pretrained wrote it) - this is the layout
+            # KServe's huggingfaceserver consumes via storageUri. Same
+            # pattern as the training pipeline's serving_model: register
+            # the artifact in the shape serving actually loads.
+            mlflow.log_artifacts(model_dir, artifact_path="hf_model")
+            logger.info("Serving-layout artifact logged at 'hf_model'")
+
     except MlflowException as e:
         raise ModelRegistrationError(f"MLflow logging failed: {e}") from e
 
@@ -163,6 +183,11 @@ def register_pretrained_model(
         model_uri = f"runs:/{run_id}/model"
         mv = mlflow.register_model(model_uri, model_name)
         logger.info(f"Registered {model_name} version {mv.version}")
+
+        # Lineage on the registry version itself: the deploy path reads the
+        # version, not the run, so the SHA must live here too.
+        client.set_model_version_tag(model_name, mv.version, "hf_model_id", model_id)
+        client.set_model_version_tag(model_name, mv.version, "hf_revision", resolved_revision)
 
         client.set_registered_model_alias(model_name, alias, mv.version)
         logger.info(f"Set alias '{alias}' -> version {mv.version}")

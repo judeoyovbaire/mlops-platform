@@ -1,0 +1,50 @@
+# HF pretrained InferenceService template - registry->serving link for
+# huggingface-format models (JDH-397; mirrors the champion template).
+#
+# Rendered by the deploy flow (envsubst) after resolving the registry
+# alias. MODEL_STORAGE_URI points at the 'hf_model' artifact: the raw
+# save_pretrained layout (config + safetensors weights + tokenizer in one
+# directory) that kserve/huggingfaceserver consumes directly. The runtime
+# version rides on the cluster's kserve chart (helm_kserve_version) - see
+# pipelines/serving-runtime-contract.yaml.
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: ${MODEL_NAME}
+  namespace: mlops
+  labels:
+    app.kubernetes.io/name: ${MODEL_NAME}
+    app.kubernetes.io/component: inference
+    app.kubernetes.io/part-of: mlops-platform
+    app.kubernetes.io/managed-by: ci-deploy
+    # Required by governance/model-registry-policies.yaml (Kyverno Enforce)
+    mlops.io/model-name: ${MODEL_NAME}
+    mlops.io/model-version: "${MODEL_VERSION}"
+    mlops.io/model-owner: platform-team
+    mlops.io/model-stage: staging
+  annotations:
+    mlops.io/mlflow-run-id: "${MODEL_RUN_ID}"
+    mlops.io/mlflow-experiment-id: "${MODEL_EXPERIMENT_ID}"
+    mlops.io/registry-alias: "champion"
+    # Model supply chain: the Hub commit SHA this artifact was fetched at
+    # (immutable refs for models, not just images).
+    mlops.io/hf-revision: "${HF_REVISION}"
+spec:
+  predictor:
+    serviceAccountName: kserve-inference
+    minReplicas: 1
+    maxReplicas: 2
+    model:
+      modelFormat:
+        name: huggingface
+      args:
+        - --model_name=${MODEL_NAME}
+        - --task=${HF_TASK}
+      storageUri: "${MODEL_STORAGE_URI}"
+      resources:
+        requests:
+          cpu: 500m
+          memory: 2Gi
+        limits:
+          cpu: "2"
+          memory: 4Gi
