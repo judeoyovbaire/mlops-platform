@@ -40,7 +40,7 @@ metadata:
     release: prometheus
 spec:
   kubernetesSDConfigs:
-    - role: pod
+    - role: Pod
       namespaces:
         names:
           - mlops
