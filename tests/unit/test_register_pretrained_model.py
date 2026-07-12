@@ -1,6 +1,7 @@
 """Tests for the HuggingFace pretrained model registration step."""
 
 import json
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -29,6 +30,14 @@ def metadata_file(tmp_path):
     path = tmp_path / "metadata.json"
     path.write_text(json.dumps(metadata))
     return str(path)
+
+
+@pytest.fixture(autouse=True)
+def fake_torch_stack(monkeypatch):
+    """torch/transformers exist in the pipeline image, not the dev venv -
+    register_model imports them at call time to pin pip requirements."""
+    monkeypatch.setitem(sys.modules, "torch", MagicMock(__version__="2.6.0+cpu"))
+    monkeypatch.setitem(sys.modules, "transformers", MagicMock(__version__="4.51.3"))
 
 
 class TestRegisterPretrainedModel:

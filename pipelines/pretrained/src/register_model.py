@@ -13,8 +13,6 @@ from dataclasses import dataclass
 
 import mlflow
 import mlflow.transformers
-import torch
-import transformers
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
 from transformers import pipeline as hf_pipeline
@@ -165,7 +163,12 @@ def register_pretrained_model(
             # Explicit pip requirements: mlflow's default inference imports
             # torchvision (absent here) just to read version numbers, and
             # the serving path consumes the raw hf_model artifact anyway -
-            # pin exactly what produced the model, nothing more.
+            # pin exactly what produced the model, nothing more. Imported
+            # here, not at module top: torch exists in the image, not in
+            # the dev venv that runs the unit tests.
+            import torch
+            import transformers
+
             mlflow.transformers.log_model(
                 transformers_model=pipe,
                 artifact_path="model",
