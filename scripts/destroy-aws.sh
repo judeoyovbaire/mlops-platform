@@ -201,15 +201,20 @@ post_destroy_cleanup() {
         fi
     done
 
-    # 2. Delete CloudWatch log group (prevents "already exists" on reinstall)
+    # 2. Delete CloudWatch log groups (prevents "already exists" on
+    # reinstall). vpc-flow-logs is included explicitly: in-flight flow-log
+    # delivery re-creates its group AFTER terraform deletes it - the July 13
+    # rebuild collided on exactly that orphan.
     print_info "Cleaning up CloudWatch log groups..."
-    if aws logs delete-log-group \
-        --log-group-name "/aws/eks/${CLUSTER_NAME}/cluster" \
-        --region "${AWS_REGION}" 2>/dev/null; then
-        print_status "  Deleted: /aws/eks/${CLUSTER_NAME}/cluster"
-    else
-        print_info "  Log group already deleted or doesn't exist"
-    fi
+    for lg in "/aws/eks/${CLUSTER_NAME}/cluster" "/aws/vpc-flow-logs/${CLUSTER_NAME}"; do
+        if aws logs delete-log-group \
+            --log-group-name "$lg" \
+            --region "${AWS_REGION}" 2>/dev/null; then
+            print_status "  Deleted: $lg"
+        else
+            print_info "  Already gone: $lg"
+        fi
+    done
 
     # 3. Terminate any orphaned EC2 instances from Karpenter
     print_info "Checking for orphaned EC2 instances..."
@@ -344,16 +349,22 @@ verify_cleanup() {
         print_status "No orphaned EC2 instances"
     fi
 
-    # Check log group
-    if aws logs describe-log-groups \
-        --log-group-name-prefix "/aws/eks/${CLUSTER_NAME}/cluster" \
-        --region "${AWS_REGION}" \
-        --query 'logGroups[0].logGroupName' \
-        --output text 2>/dev/null | grep -q "${CLUSTER_NAME}"; then
-        print_warning "CloudWatch log group still exists"
+    # Check log groups (both prefixes - flow-log delivery re-creates its
+    # group after terraform destroy)
+    REMAINING_LGS=""
+    for lg_prefix in "/aws/eks/${CLUSTER_NAME}" "/aws/vpc-flow-logs/${CLUSTER_NAME}"; do
+        FOUND=$(aws logs describe-log-groups \
+            --log-group-name-prefix "$lg_prefix" \
+            --region "${AWS_REGION}" \
+            --query 'logGroups[0].logGroupName' \
+            --output text 2>/dev/null)
+        [[ -n "$FOUND" && "$FOUND" != "None" ]] && REMAINING_LGS="$REMAINING_LGS $FOUND"
+    done
+    if [[ -n "$REMAINING_LGS" ]]; then
+        print_warning "CloudWatch log groups still exist:$REMAINING_LGS"
         issues=$((issues + 1))
     else
-        print_status "CloudWatch log group deleted"
+        print_status "CloudWatch log groups deleted"
     fi
 
     # Check for cluster S3 buckets (force_destroy should have emptied them)
