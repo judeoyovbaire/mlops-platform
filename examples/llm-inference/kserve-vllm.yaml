@@ -1,220 +1,185 @@
-# KServe InferenceService for LLM with vLLM
-# Deploys Mistral-7B-Instruct for text generation
+# vLLM on KServe RawDeployment - the JDH-376 benchmark pair (A10G/g5).
+#
+# Two configurations of the same ungated Apache-2.0 model, sized for one
+# g5.xlarge (A10G 24GB) each, so bf16-vs-AWQ can be measured side by side:
+#   llm-qwen-bf16 - Qwen2.5-7B-Instruct, bfloat16 (the baseline)
+#   llm-qwen-awq  - Qwen2.5-7B-Instruct-AWQ (4-bit, the production default)
+#
+# Fixes to the never-launched original:
+# - nodeSelector matches the Karpenter GPU pool's ACTUAL label
+#   (node-type: gpu; the old role: gpu matched nothing)
+# - no Knative autoscaling annotations - meaningless in RawDeployment
+# - no VLLM_ATTENTION_BACKEND forcing - vLLM auto-selects; forcing
+#   FLASH_ATTN was the T4 abort in the original
+# - model revisions PINNED to Hub commit SHAs (immutable refs for models -
+#   the JDH-397 principle; vLLM --revision)
+# - /dev/shm sized for vLLM; HF cache on emptyDir backed by the node's
+#   100Gi gp3; ungated models, no HF token needed
 #
 # Prerequisites:
-#   - GPU node pool with NVIDIA GPUs (g4dn.xlarge or larger)
-#   - At least 16GB GPU memory
+# - spot-G quota >= 4 vCPUs (JDH-375; 8 to run both at once)
+# - nvidia-device-plugin (installed by the platform - aws-platform/gpu.tf)
 #
-# Usage:
-#   kubectl apply -f kserve-vllm.yaml
-#   kubectl wait --for=condition=Ready inferenceservice/llm-mistral -n mlops --timeout=600s
-
+# Usage: kubectl apply -f kserve-vllm.yaml (node ~2 min, model pull + load
+# ~5-8 min). Benchmark: scripts/benchmark/llm_bench.py (see README).
+---
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
-  name: llm-mistral
+  name: llm-qwen-bf16
   namespace: mlops
+  labels:
+    app.kubernetes.io/part-of: mlops-platform
+    mlops.io/model-name: llm-qwen-bf16
+    mlops.io/model-version: "1"
+    mlops.io/model-owner: platform-team
+    mlops.io/model-stage: staging
   annotations:
-    # Autoscaling configuration
-    autoscaling.knative.dev/target: "5"
-    autoscaling.knative.dev/metric: "concurrency"
-    autoscaling.knative.dev/minScale: "0"
-    autoscaling.knative.dev/maxScale: "2"
+    mlops.io/mlflow-run-id: "external-pretrained"
+    mlops.io/mlflow-experiment-id: "external-pretrained"
+    mlops.io/hf-revision: "a09a35458c702b33eeacc393d103063234e8bc28"
 spec:
   predictor:
-    # Timeout for model loading (large models need more time)
     timeout: 1800
-
     containers:
       - name: kserve-container
-        image: vllm/vllm-openai:v0.8.0
-
+        image: vllm/vllm-openai:v0.11.0
         args:
-          - --model=mistralai/Mistral-7B-Instruct-v0.2
-          - --max-model-len=4096
-          - --gpu-memory-utilization=0.9
-          - --dtype=float16
+          - --model=Qwen/Qwen2.5-7B-Instruct
+          - --revision=a09a35458c702b33eeacc393d103063234e8bc28
+          - --dtype=bfloat16
+          - --max-model-len=8192
+          - --gpu-memory-utilization=0.90
           - --port=8080
-          - --served-model-name=mistral-7b
-
+          - --served-model-name=qwen25-7b
         ports:
           - containerPort: 8080
             protocol: TCP
-
-        env:
-          # HuggingFace token for gated models (optional)
-          # - name: HUGGING_FACE_HUB_TOKEN
-          #   valueFrom:
-          #     secretKeyRef:
-          #       name: huggingface-secret
-          #       key: token
-          - name: VLLM_ATTENTION_BACKEND
-            value: "FLASH_ATTN"
-
         resources:
-          limits:
-            nvidia.com/gpu: "1"
-            memory: "24Gi"
           requests:
-            cpu: "4"
-            memory: "16Gi"
+            cpu: "3"
+            memory: 12Gi
             nvidia.com/gpu: "1"
-
-        # Security hardening (compatible with GPU workloads)
+          limits:
+            memory: 14Gi
+            nvidia.com/gpu: "1"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
-            drop:
-              - ALL
-
-        # Health checks
+            drop: ["ALL"]
+        volumeMounts:
+          - name: shm
+            mountPath: /dev/shm
+          - name: hf-cache
+            mountPath: /root/.cache/huggingface
         readinessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 60
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 30
-
-        livenessProbe:
           httpGet:
             path: /health
             port: 8080
           initialDelaySeconds: 120
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 60
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 300
           periodSeconds: 30
           timeoutSeconds: 5
           failureThreshold: 3
-
-    # GPU node selector
+    volumes:
+      - name: shm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 2Gi
+      - name: hf-cache
+        emptyDir:
+          sizeLimit: 40Gi
     nodeSelector:
-      role: gpu
-
-    # Toleration for GPU taint
+      node-type: gpu
     tolerations:
       - key: "nvidia.com/gpu"
         operator: "Equal"
         value: "true"
         effect: "NoSchedule"
-
 ---
-# Smaller model for testing (TinyLlama - works on smaller GPUs)
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
-  name: llm-tinyllama
+  name: llm-qwen-awq
   namespace: mlops
+  labels:
+    app.kubernetes.io/part-of: mlops-platform
+    mlops.io/model-name: llm-qwen-awq
+    mlops.io/model-version: "1"
+    mlops.io/model-owner: platform-team
+    mlops.io/model-stage: staging
   annotations:
-    autoscaling.knative.dev/minScale: "0"
-    autoscaling.knative.dev/maxScale: "1"
-spec:
-  predictor:
-    timeout: 600
-
-    containers:
-      - name: kserve-container
-        image: vllm/vllm-openai:v0.8.0
-
-        args:
-          - --model=TinyLlama/TinyLlama-1.1B-Chat-v1.0
-          - --max-model-len=2048
-          - --gpu-memory-utilization=0.8
-          - --dtype=float16
-          - --port=8080
-          - --served-model-name=tinyllama
-
-        ports:
-          - containerPort: 8080
-            protocol: TCP
-
-        resources:
-          limits:
-            nvidia.com/gpu: "1"
-            memory: "8Gi"
-          requests:
-            cpu: "2"
-            memory: "4Gi"
-            nvidia.com/gpu: "1"
-
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          failureThreshold: 20
-
-    nodeSelector:
-      role: gpu
-
-    tolerations:
-      - key: "nvidia.com/gpu"
-        operator: "Equal"
-        value: "true"
-        effect: "NoSchedule"
-
----
-# Code generation model (CodeLlama)
-apiVersion: serving.kserve.io/v1beta1
-kind: InferenceService
-metadata:
-  name: llm-codellama
-  namespace: mlops
-  annotations:
-    autoscaling.knative.dev/minScale: "0"
-    autoscaling.knative.dev/maxScale: "1"
+    mlops.io/mlflow-run-id: "external-pretrained"
+    mlops.io/mlflow-experiment-id: "external-pretrained"
+    mlops.io/hf-revision: "b25037543e9394b818fdfca67ab2a00ecc7dd641"
 spec:
   predictor:
     timeout: 1800
-
     containers:
       - name: kserve-container
-        image: vllm/vllm-openai:v0.8.0
-
+        image: vllm/vllm-openai:v0.11.0
         args:
-          - --model=codellama/CodeLlama-7b-Instruct-hf
-          - --max-model-len=4096
-          - --gpu-memory-utilization=0.9
+          - --model=Qwen/Qwen2.5-7B-Instruct-AWQ
+          - --revision=b25037543e9394b818fdfca67ab2a00ecc7dd641
+          - --quantization=awq
           - --dtype=float16
+          - --max-model-len=8192
+          - --gpu-memory-utilization=0.90
           - --port=8080
-          - --served-model-name=codellama
-
+          - --served-model-name=qwen25-7b-awq
         ports:
           - containerPort: 8080
             protocol: TCP
-
         resources:
-          limits:
-            nvidia.com/gpu: "1"
-            memory: "24Gi"
           requests:
-            cpu: "4"
-            memory: "16Gi"
+            cpu: "3"
+            memory: 12Gi
             nvidia.com/gpu: "1"
-
+          limits:
+            memory: 14Gi
+            nvidia.com/gpu: "1"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
-            drop:
-              - ALL
-
+            drop: ["ALL"]
+        volumeMounts:
+          - name: shm
+            mountPath: /dev/shm
+          - name: hf-cache
+            mountPath: /root/.cache/huggingface
         readinessProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 60
+          initialDelaySeconds: 120
           periodSeconds: 10
-          failureThreshold: 30
-
+          timeoutSeconds: 5
+          failureThreshold: 60
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 300
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+    volumes:
+      - name: shm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 2Gi
+      - name: hf-cache
+        emptyDir:
+          sizeLimit: 40Gi
     nodeSelector:
-      role: gpu
-
+      node-type: gpu
     tolerations:
       - key: "nvidia.com/gpu"
         operator: "Equal"

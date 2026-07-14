@@ -143,3 +143,8 @@ variable "enable_huggingface_hub_token" {
   type        = bool
   default     = false
 }
+
+variable "helm_nvidia_device_plugin_version" {
+  description = "nvidia-device-plugin chart version (exposes nvidia.com/gpu on GPU nodes)"
+  type        = string
+}

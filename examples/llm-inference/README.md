@@ -1,214 +1,73 @@
-# LLM Inference with vLLM on KServe
+# LLM Inference with vLLM on KServe (JDH-376)
 
-This example demonstrates deploying a Large Language Model (LLM) for inference using vLLM and KServe on the MLOps platform.
+Real vLLM serving on real GPUs, with an honest benchmark. The previous
+version of this example had never been launched - it forced FLASH_ATTN on
+hardware that aborts on it, carried Knative annotations under
+RawDeployment, and its nodeSelector matched no node the platform creates.
+This version is built for the platform's actual GPU strategy (JDH-375).
 
-## Overview
+## What deploys
 
-[vLLM](https://github.com/vllm-project/vllm) is a high-throughput LLM inference engine that provides:
-- **PagedAttention**: Efficient memory management for KV cache
-- **Continuous batching**: Dynamic batching for improved throughput
-- **Tensor parallelism**: Distribute models across multiple GPUs
-- **OpenAI-compatible API**: Drop-in replacement for OpenAI endpoints
+`kserve-vllm.yaml` - two configurations of the same ungated Apache-2.0
+model, one g5.xlarge (NVIDIA A10G 24GB, spot) each:
 
-## Architecture
+| InferenceService | Model | Precision | Why |
+|---|---|---|---|
+| `llm-qwen-bf16` | Qwen/Qwen2.5-7B-Instruct | bfloat16 | baseline |
+| `llm-qwen-awq` | Qwen/Qwen2.5-7B-Instruct-AWQ | AWQ 4-bit | the production default |
 
-```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│   Client App    │────▶│     KServe       │────▶│     vLLM        │
-│                 │     │  InferenceService│     │   (GPU Pod)     │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
-                               │                        │
-                               ▼                        ▼
-                        ┌─────────────┐          ┌──────────────┐
-                        │  Prometheus │          │  HuggingFace │
-                        │  Metrics    │          │  Model Hub   │
-                        └─────────────┘          └──────────────┘
-```
+Both pin their HuggingFace revision to a commit SHA (immutable refs for
+models - the same principle the platform enforces for image tags).
+
+Why A10G and not L4: **eu-west-1 offers no g6/L4 instances** (verified via
+AWS spot advisor data). The A10G matches the L4's 24GB with ~2x the memory
+bandwidth and full FlashAttention-2 support - benchmarks stay representative.
 
 ## Prerequisites
 
-- GPU node pool with NVIDIA GPUs (g4dn.xlarge or larger)
-- At least 16GB GPU memory for 7B models
-- NVIDIA GPU Operator installed (or GPU-enabled AMI)
+1. **Spot-G quota**: `All G and VT Spot Instance Requests` >= 4 vCPUs
+   (8 to run both configs concurrently). Fresh accounts have 0 - request
+   an increase and wait for approval before any session.
+2. **nvidia-device-plugin**: installed by the platform
+   (`aws-platform/gpu.tf`) - without it, GPU nodes boot with drivers but
+   Kubernetes never sees `nvidia.com/gpu`.
+3. The Karpenter GPU pool (spot-only, g5/g4dn, 4h node expiry) ships with
+   the platform.
 
-## Quick Start
-
-### 1. Deploy the InferenceService
+## Run a benchmark session
 
 ```bash
-# Deploy Mistral-7B-Instruct (requires ~14GB GPU memory)
 kubectl apply -f kserve-vllm.yaml
+kubectl wait --for=condition=Ready inferenceservice/llm-qwen-bf16 -n mlops --timeout=900s
+# node ~2 min (spot), image pull + model download + load ~5-8 min
 
-# Check status
-kubectl get inferenceservice llm-mistral -n mlops
+SVC=$(kubectl get svc -n mlops -l serving.kserve.io/inferenceservice=llm-qwen-bf16 -o jsonpath='{.items[0].metadata.name}')
+kubectl port-forward -n mlops svc/$SVC 8080:80 &
 
-# Wait for ready
-kubectl wait --for=condition=Ready inferenceservice/llm-mistral -n mlops --timeout=600s
+python ../../scripts/benchmark/llm_bench.py \
+  --base-url http://localhost:8080 --model qwen25-7b \
+  --concurrency 1,4,8,16 --requests-per-level 24 \
+  --gpu-hourly-usd 0.77 --date $(date -u +%F) \
+  --output-json results/bf16.json --output-md results/bf16.md
+# repeat against llm-qwen-awq with --model qwen25-7b-awq
 ```
 
-### 2. Test the Endpoint
+The harness measures TTFT p50/p95, end-to-end latency, per-request decode
+speed, aggregate throughput (the continuous-batching payoff), and derives
+**$/Mtok** from the spot rate - the number that makes GPU serving
+economics concrete. Results are committed under `results/`.
+
+## Session economics (measured 2026-07-14)
+
+- g5.xlarge spot: ~$0.77/hr (eu-west-1c cheapest AZ)
+- Full benchmark session (both configs, 4 concurrency levels): ~2-3 GPU
+  hours ~= **$5 of GPU** + cluster base
+- Karpenter expires GPU nodes after 4h; the AWS budget alarms at 50%/100%
+  of the monthly cap
+
+## Cleanup
 
 ```bash
-# Port forward (or use ALB URL)
-kubectl port-forward svc/llm-mistral-predictor -n mlops 8080:80 &
-
-# Test with OpenAI-compatible API
-curl -X POST http://localhost:8080/v1/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "mistralai/Mistral-7B-Instruct-v0.2",
-    "prompt": "Explain kubernetes in one sentence:",
-    "max_tokens": 100,
-    "temperature": 0.7
-  }'
+kubectl delete -f kserve-vllm.yaml
+# node consolidates away within ~1 minute of the last GPU pod terminating
 ```
-
-### 3. Chat Completions (OpenAI-compatible)
-
-```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "mistralai/Mistral-7B-Instruct-v0.2",
-    "messages": [
-      {"role": "user", "content": "What is MLOps?"}
-    ],
-    "max_tokens": 200
-  }'
-```
-
-## Model Options
-
-| Model | Size | GPU Memory | Instance Type | Use Case |
-|-------|------|------------|---------------|----------|
-| `TinyLlama/TinyLlama-1.1B-Chat-v1.0` | 1.1B | ~4GB | g4dn.xlarge | Testing, demos |
-| `microsoft/phi-2` | 2.7B | ~6GB | g4dn.xlarge | Code, reasoning |
-| `mistralai/Mistral-7B-Instruct-v0.2` | 7B | ~14GB | g4dn.xlarge | General purpose |
-| `meta-llama/Llama-2-7b-chat-hf` | 7B | ~14GB | g4dn.xlarge | Chat (requires license) |
-| `codellama/CodeLlama-7b-Instruct-hf` | 7B | ~14GB | g4dn.xlarge | Code generation |
-| `mistralai/Mixtral-8x7B-Instruct-v0.1` | 46.7B | ~90GB | p4d.24xlarge | High quality (multi-GPU) |
-
-## Configuration
-
-### GPU Resources
-
-```yaml
-# kserve-vllm.yaml
-resources:
-  limits:
-    nvidia.com/gpu: "1"        # Number of GPUs
-  requests:
-    cpu: "4"
-    memory: "16Gi"
-```
-
-### vLLM Arguments
-
-```yaml
-args:
-  - --model=mistralai/Mistral-7B-Instruct-v0.2
-  - --max-model-len=4096       # Context length
-  - --gpu-memory-utilization=0.9
-  - --dtype=float16            # or bfloat16 for newer GPUs
-  - --tensor-parallel-size=1   # Increase for multi-GPU
-```
-
-### Autoscaling
-
-```yaml
-# Scale based on GPU utilization or request latency
-annotations:
-  autoscaling.knative.dev/target: "10"         # Concurrent requests
-  autoscaling.knative.dev/metric: "concurrency"
-  autoscaling.knative.dev/minScale: "0"        # Scale to zero
-  autoscaling.knative.dev/maxScale: "3"
-```
-
-## Production Considerations
-
-### 1. Model Caching
-
-Pre-download models to avoid cold start delays:
-
-```yaml
-# Use a PVC with the model pre-loaded
-volumeMounts:
-  - name: model-cache
-    mountPath: /root/.cache/huggingface
-volumes:
-  - name: model-cache
-    persistentVolumeClaim:
-      claimName: huggingface-cache
-```
-
-### 2. Request Batching
-
-vLLM handles batching automatically, but tune for your workload:
-
-```yaml
-args:
-  - --max-num-seqs=256         # Max concurrent sequences
-  - --max-num-batched-tokens=8192
-```
-
-### 3. Monitoring
-
-Key metrics to track:
-- `vllm:num_requests_running` - Active requests
-- `vllm:num_requests_waiting` - Queue depth
-- `vllm:gpu_cache_usage_perc` - KV cache utilization
-- `vllm:avg_generation_throughput_toks_per_s` - Tokens/second
-
-### 4. Cost Optimization
-
-- Use **SPOT instances** for non-critical workloads
-- Enable **scale-to-zero** for dev/staging
-- Use smaller models (TinyLlama, Phi-2) for testing
-- Consider **quantized models** (AWQ, GPTQ) for reduced memory
-
-## Comparison: vLLM vs Other Serving Options
-
-| Feature | vLLM | TGI | Triton | TensorRT-LLM |
-|---------|------|-----|--------|--------------|
-| Throughput | High | High | Very High | Very High |
-| Ease of Use | Easy | Easy | Complex | Complex |
-| OpenAI API | Yes | Yes | Custom | Custom |
-| Quantization | AWQ, GPTQ | GPTQ | All | All |
-| Multi-GPU | Yes | Yes | Yes | Yes |
-| KServe Support | Native | Native | Native | Custom |
-
-## Troubleshooting
-
-### Model Download Timeout
-
-```bash
-# Increase timeout for large models
-kubectl patch inferenceservice llm-mistral -n mlops --type=merge -p '
-  {"spec":{"predictor":{"timeout":1800}}}'
-```
-
-### Out of Memory
-
-```bash
-# Use quantized model
---model=TheBloke/Mistral-7B-Instruct-v0.2-AWQ
---quantization=awq
-```
-
-### Check Logs
-
-```bash
-kubectl logs -f deployment/llm-mistral-predictor -n mlops
-```
-
-## Files
-
-- `kserve-vllm.yaml` - KServe InferenceService for vLLM
-- `test_llm.py` - Python test script
-- `requirements.txt` - Dependencies
-
-## References
-
-- [vLLM Documentation](https://docs.vllm.ai/)
-- [KServe LLM Runtime](https://kserve.github.io/website/latest/modelserving/v1beta1/llm/)
-- [HuggingFace Model Hub](https://huggingface.co/models)

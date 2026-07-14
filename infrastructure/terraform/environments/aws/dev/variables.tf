@@ -328,3 +328,11 @@ variable "slack_webhook_url" {
   default     = ""
   sensitive   = true
 }
+variable "helm_nvidia_device_plugin_version" {
+  description = "nvidia-device-plugin chart version"
+  type        = string
+  validation {
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_nvidia_device_plugin_version))
+    error_message = "Must be a semantic version."
+  }
+}

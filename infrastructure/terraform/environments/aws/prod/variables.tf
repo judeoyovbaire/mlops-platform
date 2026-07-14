@@ -321,3 +321,12 @@ variable "helm_dcgm_exporter_version" {
     error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
   }
 }
+
+variable "helm_nvidia_device_plugin_version" {
+  description = "nvidia-device-plugin chart version"
+  type        = string
+  validation {
+    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_nvidia_device_plugin_version))
+    error_message = "Must be a semantic version."
+  }
+}
