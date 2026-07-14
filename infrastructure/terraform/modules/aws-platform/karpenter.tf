@@ -148,15 +148,21 @@ resource "kubectl_manifest" "karpenter_gpu_nodepool" {
             kind: EC2NodeClass
             name: gpu
           requirements:
+            # JDH-375 approved GPU strategy (€100/mo cap): g5/A10G primary
+            # (eu-west-1 has NO g6/L4 - verified via spot advisor data),
+            # g4dn/T4 fallback. p3/p4d removed: a single p4d is ~$30/hr -
+            # one scheduling accident would burn the monthly budget in 4h.
             - key: karpenter.k8s.aws/instance-category
               operator: In
-              values: ["g", "p"]
+              values: ["g"]
             - key: karpenter.k8s.aws/instance-family
               operator: In
-              values: ["g4dn", "g5", "p3", "p4d"]
+              values: ["g4dn", "g5"]
+            # Spot ONLY - the cost guard. If spot is interrupted mid-
+            # benchmark, rerun; never silently 2x the rate.
             - key: karpenter.sh/capacity-type
               operator: In
-              values: ["spot", "on-demand"]
+              values: ["spot"]
             - key: kubernetes.io/arch
               operator: In
               values: ["amd64"]
@@ -165,9 +171,11 @@ resource "kubectl_manifest" "karpenter_gpu_nodepool" {
               value: "true"
               effect: NoSchedule
       limits:
-        cpu: "100"
-        memory: 400Gi
-        nvidia.com/gpu: "8"
+        # At most one g5.2xlarge + one g5.xlarge concurrently - sized to
+        # the approved budget, not to ambition.
+        cpu: "16"
+        memory: 80Gi
+        nvidia.com/gpu: "2"
       disruption:
         consolidationPolicy: WhenEmptyOrUnderutilized
         consolidateAfter: 1m
