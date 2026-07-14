@@ -26,7 +26,7 @@ import sys
 import time
 from pathlib import Path
 
-import yaml
+import yaml  # type: ignore[import-untyped]  # types-PyYAML not a runtime dep
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TEMPLATE = (

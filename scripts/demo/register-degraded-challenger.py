@@ -26,10 +26,10 @@ import mlflow.pyfunc
 import pandas as pd
 
 
-class DegradedModel(mlflow.pyfunc.PythonModel):
+class DegradedModel(mlflow.pyfunc.PythonModel):  # type: ignore[name-defined]  # mlflow stubs omit PythonModel
     """Loads fine, fails on every prediction - the canary-killer."""
 
-    def predict(self, context, model_input, params=None):
+    def predict(self, context: object, model_input: object, params: object = None) -> object:
         raise ValueError(
             "DEMO degradation: this challenger fails on every prediction "
             "(registered by scripts/demo/register-degraded-challenger.py)"
