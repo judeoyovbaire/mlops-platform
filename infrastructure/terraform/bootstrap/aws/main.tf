@@ -184,6 +184,13 @@ resource "aws_s3_bucket_lifecycle_configuration" "terraform_state" {
 
 # DynamoDB Table for State Locking
 
+# EC2 Spot service-linked role - accounts that have never launched Spot
+# lack it, and instance-launching roles (Karpenter) cannot create it:
+# first GPU session failed with ServiceLinkedRoleCreationNotPermitted.
+resource "aws_iam_service_linked_role" "spot" {
+  aws_service_name = "spot.amazonaws.com"
+}
+
 resource "aws_dynamodb_table" "terraform_locks" {
   name         = "${var.project_name}-terraform-locks"
   billing_mode = "PAY_PER_REQUEST"

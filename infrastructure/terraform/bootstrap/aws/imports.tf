@@ -65,3 +65,7 @@ import {
   to = aws_iam_role_policy.terraform_services
   id = "mlops-platform-github-actions:terraform-services"
 }
+import {
+  to = aws_iam_service_linked_role.spot
+  id = "arn:aws:iam::183590992229:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
+}
