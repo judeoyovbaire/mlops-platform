@@ -155,9 +155,15 @@ resource "kubectl_manifest" "karpenter_gpu_nodepool" {
             - key: karpenter.k8s.aws/instance-category
               operator: In
               values: ["g"]
+            # g5 (A10G, Ampere SM 8.6) ONLY - NOT g4dn (T4, Turing SM 7.5).
+            # Verified live 2026-07-17: vLLM 0.11.0 crashes on T4 (FlashInfer
+            # sampler check_cuda_arch AttributeError) and bf16-7B OOMs on
+            # 16GB. Karpenter picked the cheaper g4dn when both were allowed
+            # - the benchmark needs 24GB Ampere. g6/L4 unavailable in
+            # eu-west-1 (JDH-375).
             - key: karpenter.k8s.aws/instance-family
               operator: In
-              values: ["g4dn", "g5"]
+              values: ["g5"]
             # Spot ONLY - the cost guard. If spot is interrupted mid-
             # benchmark, rerun; never silently 2x the rate.
             - key: karpenter.sh/capacity-type
