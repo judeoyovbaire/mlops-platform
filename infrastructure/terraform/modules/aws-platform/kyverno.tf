@@ -231,7 +231,7 @@ resource "kubectl_manifest" "kyverno_restrict_registries" {
             pattern:
               spec:
                 containers:
-                  - image: "*.amazonaws.com/* | *.azurecr.io/* | gcr.io/* | ghcr.io/* | quay.io/* | docker.io/kserve/* | kserve/* | docker.io/curlimages/* | curlimages/* | docker.io/seldonio/* | seldonio/* | docker.io/tensorflow/* | tensorflow/* | docker.io/pytorch/* | pytorch/* | docker.io/huggingface/* | huggingface/*"
+                  - image: "*.amazonaws.com/* | *.azurecr.io/* | gcr.io/* | ghcr.io/* | quay.io/* | docker.io/kserve/* | kserve/* | docker.io/curlimages/* | curlimages/* | docker.io/seldonio/* | seldonio/* | docker.io/tensorflow/* | tensorflow/* | docker.io/pytorch/* | pytorch/* | docker.io/huggingface/* | huggingface/* | docker.io/vllm/* | vllm/*"
   YAML
 
   depends_on = [helm_release.kyverno]
