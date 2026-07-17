@@ -15,6 +15,13 @@ resource "helm_release" "nvidia_device_plugin" {
 
   values = [yamlencode({
     nodeSelector = { "node-type" = "gpu" }
+    # The chart defaults to a nodeAffinity requiring node-feature-discovery
+    # / gpu-operator labels (pci-10de.present, nvidia.com/gpu.present) that
+    # this platform does not run - it AND-combines with our nodeSelector,
+    # so desired=0 and no GPU is ever advertised. Override to empty: the
+    # nodeSelector + toleration below fully scope the daemonset to the
+    # Karpenter GPU pool.
+    affinity     = {}
     tolerations = [{
       key      = "nvidia.com/gpu"
       operator = "Equal"
