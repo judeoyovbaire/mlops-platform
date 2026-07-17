@@ -61,6 +61,10 @@ spec:
             memory: 12Gi
             nvidia.com/gpu: "1"
           limits:
+            # Explicit cpu limit: without it the mlops LimitRange injects
+            # its default (1), making requests(3) > limits and the
+            # Deployment invalid. g5.xlarge has 4 vCPUs.
+            cpu: "4"
             memory: 14Gi
             nvidia.com/gpu: "1"
         securityContext:
@@ -143,6 +147,10 @@ spec:
             memory: 12Gi
             nvidia.com/gpu: "1"
           limits:
+            # Explicit cpu limit: without it the mlops LimitRange injects
+            # its default (1), making requests(3) > limits and the
+            # Deployment invalid. g5.xlarge has 4 vCPUs.
+            cpu: "4"
             memory: 14Gi
             nvidia.com/gpu: "1"
         securityContext:
