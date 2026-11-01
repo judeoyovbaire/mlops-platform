@@ -171,7 +171,7 @@ MLflow provides the experiment tracking and model registry capabilities.
 KServe (CNCF Incubating) handles model serving with advanced deployment strategies. It replaced Seldon Core due to licensing changes (Seldon moved to BSL 1.1 in Jan 2024).
 
 **Features:**
-- RawDeployment mode (no Knative required)
+- RawDeployment mode (no Knative required); KServe now calls it `Standard` and still accepts `RawDeployment` as a deprecated alias
 - Post-deploy verification with automated rollback (ADR-016); `canaryTrafficPercent` is ignored in RawDeployment
 - Native support for sklearn, PyTorch, TensorFlow, vLLM
 - MLflow model integration
@@ -299,7 +299,8 @@ The platform deploys these components:
 | cert-manager                 | jetstack/cert-manager                    |
 | ArgoCD                       | argo/argo-cd                             |
 | KServe CRDs                  | kserve/kserve-crd                        |
-| KServe Controller            | kserve/kserve                            |
+| KServe controller            | kserve/kserve-resources                  |
+| KServe serving runtimes      | kserve/kserve-runtime-configs            |
 | MLflow                       | community-charts/mlflow                  |
 | Argo Workflows               | argo/argo-workflows                      |
 | Prometheus Stack             | prometheus-community/kube-prometheus-stack |
@@ -647,7 +648,7 @@ Current versions deployed by the platform:
 |-----------|---------|-------|
 | Kubernetes | 1.37 | EKS (1.36 is the fallback) |
 | MLflow | 3.16.0 (chart 1.11.7) | Helm chart with S3 artifacts, RDS backend |
-| KServe | 0.16.0 | CNCF Incubating, RawDeployment mode |
+| KServe | 0.21.0 | CNCF Incubating, Standard (formerly RawDeployment) mode |
 | Argo Workflows | 2.0.15 (chart) | ML pipeline execution engine (v4.1.6) |
 | Argo Rollouts | 2.43.8 (chart) | AnalysisRun engine only (ADR-016) |
 | Argo Events | 2.4.27 (chart) | Event bus |

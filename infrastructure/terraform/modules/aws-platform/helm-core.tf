@@ -94,17 +94,28 @@ resource "helm_release" "kserve" {
   depends_on = [helm_release.cert_manager]
 }
 
-# KServe Controller
+# KServe Controller. The single `kserve` chart stopped at v0.16.0; from
+# v0.17 the controller is `kserve-resources` and the ClusterServingRuntimes
+# moved to `kserve-runtime-configs` (below).
 resource "helm_release" "kserve_controller" {
   name       = "kserve-controller"
   repository = "oci://ghcr.io/kserve/charts"
-  chart      = "kserve"
+  chart      = "kserve-resources"
   version    = var.helm_kserve_version # Note: KServe OCI charts require 'v' prefix
   namespace  = kubernetes_namespace.kserve.metadata[0].name
 
+  # Standard is KServe's current name for RawDeployment (a deprecated alias it
+  # still parses). The kserve-resources default is Knative, so this is required.
   set {
     name  = "kserve.controller.deploymentMode"
-    value = "RawDeployment"
+    value = "Standard"
+  }
+
+  # kserve-resources defaults to Always from v0.19; the tag is pinned, so do
+  # not re-pull from Docker Hub (anonymous rate limit via NAT) on each restart.
+  set {
+    name  = "kserve.controller.imagePullPolicy"
+    value = "IfNotPresent"
   }
 
   # Disable KServe's built-in ingress creation - no Ingress is created; access via port-forward
@@ -135,6 +146,42 @@ resource "helm_release" "kserve_controller" {
   }
 
   depends_on = [helm_release.kserve]
+}
+
+# KServe ClusterServingRuntimes (mlserver for modelFormat: mlflow, huggingface
+# server for modelFormat: huggingface, ...). Without this release those
+# InferenceServices have no runtime. The chart renders nothing unless
+# servingruntime.enabled is set.
+resource "helm_release" "kserve_runtime_configs" {
+  name       = "kserve-runtime-configs"
+  repository = "oci://ghcr.io/kserve/charts"
+  chart      = "kserve-runtime-configs"
+  version    = var.helm_kserve_version
+  namespace  = kubernetes_namespace.kserve.metadata[0].name
+
+  set {
+    name  = "kserve.servingruntime.enabled"
+    value = "true"
+  }
+
+  # Marks the vLLM ClusterServingRuntime spec.disabled (KServe never selects
+  # it). It ships with image tag `latest`; the repo's vLLM InferenceServices
+  # bring their own pinned container (examples/llm-inference), and
+  # disallow-latest-tag would reject pods using this runtime anyway.
+  set {
+    name  = "kserve.servingruntime.vllmserver.disabled"
+    value = "true"
+  }
+
+  # The controller serves the ServingRuntime validating webhook
+  # (failurePolicy Fail); give cert-manager's cainjector time to write the
+  # caBundle after the controller reports ready.
+  depends_on = [time_sleep.kserve_webhook_ready]
+}
+
+resource "time_sleep" "kserve_webhook_ready" {
+  depends_on      = [helm_release.kserve_controller]
+  create_duration = "30s"
 }
 
 # MLflow

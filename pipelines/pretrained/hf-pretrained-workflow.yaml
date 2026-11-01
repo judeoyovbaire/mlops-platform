@@ -205,7 +205,7 @@ spec:
             path: /tmp/hf-model
       script:
         # Must track helm_kserve_version + serving-runtime-contract.yaml.
-        image: kserve/huggingfaceserver:v0.16.0
+        image: kserve/huggingfaceserver:v0.21.0
         command: [python]
         source: |
           import json

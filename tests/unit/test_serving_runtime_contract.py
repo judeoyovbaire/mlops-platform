@@ -88,7 +88,7 @@ class TestServingRuntimeContract:
 class TestHuggingFaceRuntimeContract:
     """The HF pretrained pipeline's gate must run the image KServe serves
     huggingface-format models with - and that image's tag rides on the
-    kserve chart version, so all three must agree."""
+    KServe chart version, so all three must agree."""
 
     def test_pretrained_gate_image_matches_contract(self, contract):
         docs = list(yaml.safe_load_all(PRETRAINED_WORKFLOW.read_text()))
@@ -103,7 +103,7 @@ class TestHuggingFaceRuntimeContract:
         )
 
     def test_huggingface_tag_matches_kserve_chart_version(self, contract):
-        """kserve/huggingfaceserver:<tag> is versioned WITH the kserve chart -
+        """kserve/huggingfaceserver:<tag> is versioned WITH the KServe charts -
         bumping helm_kserve_version without the contract (or vice versa)
         would gate against a different runtime than the cluster serves."""
         m = re.search(r'helm_kserve_version\s*=\s*"([^"]+)"', HELM_VERSIONS.read_text())
