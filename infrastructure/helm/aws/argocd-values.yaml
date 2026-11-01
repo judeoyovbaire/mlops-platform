@@ -31,13 +31,16 @@ server:
 # Controller configuration
 controller:
   replicas: 1
+  # 512Mi was OOMKilled on the first sync of the baseline (2026-11-01 dry
+  # run): the cluster cache covers every CRD on the cluster (KServe, Argo,
+  # Kyverno, Prometheus, Karpenter, ESO). 2Gi held through the sync.
   resources:
     requests:
       cpu: 100m
-      memory: 256Mi
+      memory: 1Gi
     limits:
-      cpu: 500m
-      memory: 512Mi
+      cpu: "1"
+      memory: 2Gi
 
 # Repo server configuration
 repoServer:

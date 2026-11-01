@@ -53,6 +53,8 @@ spec:
         # (keyless, not keys: the field is server-defaulted but undeclared in
         # the CRD schema, so it cannot be pinned in Git)
         - .spec.rules[].verifyImages[].attestors[].entries[].keyless.signatureAlgorithm
+        # Kyverno 1.19 also defaults signatureAlgorithm at the entry level.
+        - .spec.rules[].verifyImages[].attestors[].entries[].signatureAlgorithm
   syncPolicy:
     automated:
       prune: true

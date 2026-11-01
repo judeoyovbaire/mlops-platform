@@ -274,51 +274,8 @@ resource "kubectl_manifest" "kyverno_disallow_privileged" {
   depends_on = [helm_release.kyverno]
 }
 
-# Policy: Add default network policy to new namespaces
-# Generates default-deny ingress; effective only once VPC CNI network policy
-# enforcement is enabled (enableNetworkPolicy is unset in modules/eks/main.tf).
-resource "kubectl_manifest" "kyverno_generate_netpol" {
-  yaml_body = <<-YAML
-    apiVersion: kyverno.io/v1
-    kind: ClusterPolicy
-    metadata:
-      name: add-default-networkpolicy
-      annotations:
-        policies.kyverno.io/title: Add Default Network Policy
-        policies.kyverno.io/category: Security
-        policies.kyverno.io/severity: medium
-        policies.kyverno.io/description: >-
-          Automatically generates a default-deny network policy for new namespaces.
-          Implements zero-trust networking for ML workloads.
-    spec:
-      rules:
-        - name: default-deny
-          match:
-            any:
-              - resources:
-                  kinds:
-                    - Namespace
-          exclude:
-            any:
-              - resources:
-                  namespaces:
-                    - kube-system
-                    - kube-public
-                    - kube-node-lease
-                    - kyverno
-                    - cert-manager
-          generate:
-            apiVersion: networking.k8s.io/v1
-            kind: NetworkPolicy
-            name: default-deny-ingress
-            namespace: "{{request.object.metadata.name}}"
-            synchronize: true
-            data:
-              spec:
-                podSelector: {}
-                policyTypes:
-                  - Ingress
-  YAML
-
-  depends_on = [helm_release.kyverno]
-}
+# add-default-networkpolicy lives in infrastructure/kubernetes/governance/
+# (ArgoCD baseline): Kyverno 1.19 admits a generate rule only if the submitter
+# can create the generated kind through Kubernetes RBAC, and the CI role is an
+# admin through an EKS access policy, which that check does not see (2026-11-01
+# dry run: "policy author ... is not authorized").
