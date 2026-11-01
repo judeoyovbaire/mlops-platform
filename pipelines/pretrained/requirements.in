@@ -5,7 +5,10 @@
 #   (run from the repo root; the linux/amd64 target comes from [tool.uv.pip] in pyproject.toml)
 # CI fails if requirements.txt is stale relative to this file.
 --extra-index-url https://download.pytorch.org/whl/cpu
-transformers==5.10.1
+# transformers stays on 4.x in this image: 5.x needs huggingface_hub>=1.5
+# and a tested image build (torch 2.6, py3.10). Renovate's 5.10.1 bump could
+# not be resolved here (JDH-412). The dev environment (uv.lock) is on 5.10.1.
+transformers==4.51.3
 huggingface_hub==0.30.2
 mlflow==3.17.2
 torch==2.6.0
