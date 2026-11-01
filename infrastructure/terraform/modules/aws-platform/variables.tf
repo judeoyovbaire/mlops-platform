@@ -1,8 +1,8 @@
 # aws-platform module inputs.
 #
 # This module owns the Kubernetes platform layer that is common to every AWS
-# environment (Karpenter pools, core Helm releases, Kyverno/Tetragon security,
-# monitoring stack, namespaces, storage classes, multi-tenancy quotas). It
+# environment (Karpenter pools, core Helm releases, Kyverno policies,
+# monitoring stack, namespaces, storage classes). It
 # was created to end a dev/prod copy-paste that once shipped prod GPU nodes
 # tagged Environment: dev. The repo now runs dev only (ADR-017); environment
 # differences stay explicit inputs so a second environment needs no copies.
@@ -112,7 +112,6 @@ variable "helm_opencost_version" { type = string }
 variable "helm_otel_collector_version" { type = string }
 variable "helm_prometheus_stack_version" { type = string }
 variable "helm_tempo_version" { type = string }
-variable "helm_tetragon_version" { type = string }
 
 variable "grafana_admin_password" {
   description = "Grafana admin password (generated in the environment's secrets.tf)"

@@ -175,11 +175,6 @@ cleanup_kyverno() {
     kubectl delete policyexception --all -A 2>/dev/null || true
 }
 
-cleanup_tetragon() {
-    print_info "Removing Tetragon policies..."
-    kubectl delete tracingpolicies --all 2>/dev/null || true
-}
-
 # =============================================================================
 # Confirmation Functions
 # =============================================================================

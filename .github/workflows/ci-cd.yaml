@@ -634,12 +634,6 @@ jobs:
           uv run python -c "from components.drift_detection import drift_detector; print('Drift detector imports OK')"
         continue-on-error: true
 
-      - name: Validate feast feature store imports
-        run: |
-          uv sync --frozen --extra feast
-          uv run python -c "import sys; sys.path.insert(0, 'pipelines/feature-store'); import features; print('Feast features loaded OK')"
-        continue-on-error: true
-
       - name: Validate compiled lockfiles are in sync
         # Each image's requirements.txt is a compiled lockfile generated from
         # requirements.in (all transitive deps pinned + hashed). Recompiling

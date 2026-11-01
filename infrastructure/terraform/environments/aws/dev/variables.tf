@@ -169,16 +169,6 @@ variable "helm_karpenter_version" {
   }
 }
 
-variable "helm_tetragon_version" {
-  description = "Tetragon Helm chart version"
-  type        = string
-
-  validation {
-    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_tetragon_version))
-    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
-  }
-}
-
 variable "helm_kyverno_version" {
   description = "Kyverno Helm chart version"
   type        = string

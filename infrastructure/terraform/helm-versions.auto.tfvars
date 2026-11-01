@@ -19,8 +19,6 @@ helm_minio_version = "5.4.0"
 helm_prometheus_stack_version = "81.6.9"
 # renovate: datasource=helm depName=kyverno registryUrl=https://kyverno.github.io/kyverno
 helm_kyverno_version = "3.6.2"
-# renovate: datasource=helm depName=tetragon registryUrl=https://helm.cilium.io
-helm_tetragon_version = "1.6.0"
 # renovate: datasource=helm depName=external-secrets registryUrl=https://charts.external-secrets.io
 helm_external_secrets_version = "1.2.1"
 # renovate: datasource=helm depName=loki registryUrl=https://grafana.github.io/helm-charts
