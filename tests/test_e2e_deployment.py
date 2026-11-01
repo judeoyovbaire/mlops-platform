@@ -26,7 +26,10 @@ class TestSecurityConfiguration:
         """Load the AWS dev root plus the shared aws-platform module (ADR-015)."""
         content = ""
         tf_root = PROJECT_ROOT / "infrastructure" / "terraform"
-        for tf_dir in (tf_root / "environments" / "aws" / "dev", tf_root / "modules" / "aws-platform"):
+        for tf_dir in (
+            tf_root / "environments" / "aws" / "dev",
+            tf_root / "modules" / "aws-platform",
+        ):
             for tf_file in sorted(tf_dir.glob("*.tf")):
                 content += tf_file.read_text()
         return content
