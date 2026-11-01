@@ -47,7 +47,9 @@ finding group 7.
 ```
 
 Phases:
-1. **Kubernetes cleanup** — Kyverno webhooks/policies, InferenceService
+1. **Kubernetes cleanup** — detach the ArgoCD `platform-baseline` Application
+   (orphan, no cascade, so self-heal cannot recreate what follows), Kyverno
+   webhooks/policies, InferenceService
    deletion (finalizers cleared while the controller still exists),
    Karpenter nodeclaims/pools.
 2. **Backup recovery point purge** — vaults cannot be deleted while they

@@ -155,7 +155,9 @@ resource "helm_release" "mlflow" {
   depends_on = [
     kubernetes_service_account.mlflow,
     kubernetes_secret.mlflow_postgres,
-    time_sleep.alb_controller_ready
+    time_sleep.alb_controller_ready,
+    # Network and admission policies first (ADR-017 decision 6).
+    terraform_data.platform_baseline_ready,
   ]
 }
 
@@ -300,5 +302,6 @@ resource "helm_release" "minio" {
     value = "none"
   }
 
-  depends_on = [time_sleep.alb_controller_ready]
+  # Network and admission policies first (ADR-017 decision 6).
+  depends_on = [time_sleep.alb_controller_ready, terraform_data.platform_baseline_ready]
 }

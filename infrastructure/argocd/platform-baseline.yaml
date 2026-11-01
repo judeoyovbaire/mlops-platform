@@ -2,10 +2,10 @@
 #
 # Manages everything under infrastructure/kubernetes/ (governance policies,
 # SLOs, PDBs, quotas, progressive-delivery templates, Argo Events,
-# monitoring rules, dashboards) as a GitOps-synced unit. Terraform installs
-# ArgoCD itself; this Application is the one manual bootstrap step per
-# cluster (see README.md in this directory), after which the platform
-# surface is continuously reconciled from Git.
+# monitoring rules, dashboards) as a GitOps-synced unit, and is their only
+# owner (ADR-017 decision 6). Terraform applies this Application and waits
+# for Synced/Healthy (modules/aws-platform/gitops-baseline.tf); from then on
+# the platform surface is continuously reconciled from Git.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

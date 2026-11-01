@@ -143,19 +143,6 @@ resource "helm_release" "alloy" {
   ]
 }
 
-# Grafana Dashboards - ConfigMaps for sidecar auto-discovery
-resource "kubectl_manifest" "grafana_mlops_overview_dashboard" {
-  yaml_body = file("${path.module}/../../../kubernetes/dashboards/mlops-overview-dashboard.yaml")
-
-  depends_on = [helm_release.prometheus_stack]
-}
-
-resource "kubectl_manifest" "grafana_cloud_cost_dashboard" {
-  yaml_body = file("${path.module}/../../../kubernetes/dashboards/cloud-cost-dashboard.yaml")
-
-  depends_on = [helm_release.prometheus_stack]
-}
-
 # Store Grafana password in SSM
 resource "aws_ssm_parameter" "grafana_admin_password" {
   name        = "/${var.cluster_name}/grafana/admin-password"
@@ -167,28 +154,29 @@ resource "aws_ssm_parameter" "grafana_admin_password" {
   tags = var.tags
 }
 
-# Network Policies - Managed via Terraform for lifecycle tracking
-data "kubectl_file_documents" "network_policies" {
-  content = file("${path.module}/../../../kubernetes/network-policies.yaml")
+# network-policies.yaml and the mlops-overview / cloud-cost dashboards used
+# to be applied here as well as by ArgoCD. ArgoCD is now the only owner
+# (gitops-baseline.tf). The removed blocks drop them from any existing state
+# without deleting the live objects that ArgoCD manages.
+removed {
+  from = kubectl_manifest.network_policies
+  lifecycle {
+    destroy = false
+  }
 }
 
-resource "kubectl_manifest" "network_policies" {
-  for_each  = data.kubectl_file_documents.network_policies.manifests
-  yaml_body = each.value
+removed {
+  from = kubectl_manifest.grafana_mlops_overview_dashboard
+  lifecycle {
+    destroy = false
+  }
+}
 
-  # The policies target these namespaces. On incremental applies the
-  # namespaces always pre-existed; the first from-scratch rebuild raced
-  # them and failed with "namespaces not found".
-  depends_on = [
-    kubernetes_namespace.mlops,
-    kubernetes_namespace.mlflow,
-    kubernetes_namespace.argo,
-    kubernetes_namespace.monitoring,
-    # argocd's namespace comes from the helm release (create_namespace),
-    # not a kubernetes_namespace resource - the first fresh rebuild after
-    # the original fix still raced it.
-    helm_release.argocd,
-  ]
+removed {
+  from = kubectl_manifest.grafana_cloud_cost_dashboard
+  lifecycle {
+    destroy = false
+  }
 }
 
 # Grafana Cloud remote_write credentials (ADR-016) - synced from Secrets

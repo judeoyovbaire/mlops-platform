@@ -415,7 +415,7 @@ terraform -chdir=infrastructure/terraform/bootstrap/aws output github_actions_ro
 | **Model Serving** | ✅ KServe (CNCF) | ✅ KServe | ✅ Built-in | ✅ Built-in | ✅ Built-in |
 | **Experiment Tracking** | ✅ MLflow | ✅ MLflow | ✅ Built-in | ✅ Built-in | ✅ Built-in |
 | **CI/CD Integration** | ✅ GitHub Actions | ⚠️ Manual | ✅ CodePipeline | ✅ Cloud Build | ✅ DevOps |
-| **GitOps** | ⚠️ ArgoCD installed, app rollout in progress | ⚠️ Manual | ❌ | ❌ | ⚠️ Partial |
+| **GitOps** | ✅ ArgoCD owns the platform baseline (models deployed by CI) | ⚠️ Manual | ❌ | ❌ | ⚠️ Partial |
 | **Observability** | ✅ Prometheus/Grafana | ⚠️ Basic | ✅ CloudWatch | ✅ Cloud Monitoring | ✅ Monitor |
 | **Security** | ✅ IRSA/PSA | ⚠️ Basic | ✅ IAM | ✅ IAM | ✅ Managed Identity |
 | **Vendor Lock-in** | ✅ None | ✅ None | ❌ AWS | ❌ GCP | ❌ Azure |
