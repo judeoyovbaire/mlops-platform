@@ -30,7 +30,7 @@ help:
 	@echo "  make deploy-aws         - Deploy to AWS EKS (~15-20 min)"
 	@echo "  make status-aws         - Check AWS deployment status"
 	@echo "  make destroy-aws        - Destroy AWS resources"
-	@echo "  make secrets-aws        - Print credentials (Grafana only works; see docs/secrets-management.md)"
+	@echo "  make secrets-aws        - Print platform credentials"
 	@echo ""
 	@echo "Terraform (Advanced):"
 	@echo "  make terraform-init-aws     - Initialize AWS Terraform"
@@ -177,7 +177,7 @@ port-forward-mlflow:
 port-forward-argocd:
 	@echo "Forwarding ArgoCD to localhost:8080..."
 	@echo "Access ArgoCD at https://localhost:8080"
-	@echo "Password: $$($(KUBECTL) -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d 2>/dev/null || echo 'Check secrets')"
+	@echo "Password: $$($(KUBECTL) -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 --decode 2>/dev/null || echo 'Check secrets')"
 	$(KUBECTL) port-forward svc/argocd-server 8080:443 -n argocd
 
 port-forward-argo-wf:

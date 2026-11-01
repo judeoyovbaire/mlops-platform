@@ -50,19 +50,7 @@
             "file": "/environments/aws/dev/secrets.tf",
             "findings": [
                 {
-                    "resource": "aws_secretsmanager_secret.argocd_admin_password",
-                    "check_ids": [
-                        "CKV2_AWS_57"
-                    ]
-                },
-                {
                     "resource": "aws_secretsmanager_secret.minio_root_password",
-                    "check_ids": [
-                        "CKV2_AWS_57"
-                    ]
-                },
-                {
-                    "resource": "aws_secretsmanager_secret.mlflow_db_password",
                     "check_ids": [
                         "CKV2_AWS_57"
                     ]

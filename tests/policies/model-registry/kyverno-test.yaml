@@ -25,6 +25,12 @@ resources:
   - rendered/champion-rendered.yaml
   - rendered/hf-rendered.yaml
   - resources/inferenceservices.yaml
+  # The example manifests people apply by hand must also be admitted -
+  # two of them were rejected by require-model-lineage until JDH-413.
+  - ../../../examples/kserve/inferenceservice-examples.yaml
+  - ../../../examples/kserve/huggingface-sentiment.yaml
+  - ../../../examples/kserve/transformer-inferenceservice.yaml
+  - ../../../examples/llm-inference/kserve-vllm.yaml
 results:
   # --- the envsubst-rendered champion template must be admitted ---
   - policy: require-model-metadata
@@ -125,3 +131,20 @@ results:
     kind: InferenceService
     resources: [iris-classifier]
     result: skip
+
+  # --- hand-applied examples must be admitted ---
+  - policy: require-model-metadata
+    rule: require-model-labels
+    kind: InferenceService
+    resources: [sklearn-iris, hf-sentiment, sklearn-iris-with-transformer, llm-qwen-bf16, llm-qwen-awq]
+    result: pass
+  - policy: require-model-lineage
+    rule: require-mlflow-lineage
+    kind: InferenceService
+    resources: [sklearn-iris, hf-sentiment, sklearn-iris-with-transformer, llm-qwen-bf16, llm-qwen-awq]
+    result: pass
+  - policy: enforce-semantic-versioning
+    rule: validate-version-format
+    kind: InferenceService
+    resources: [sklearn-iris, hf-sentiment, sklearn-iris-with-transformer, llm-qwen-bf16, llm-qwen-awq]
+    result: pass

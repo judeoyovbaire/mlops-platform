@@ -19,6 +19,11 @@ metadata:
     mlops.io/model-version: "1.0.0"
     mlops.io/model-owner: platform-team
     mlops.io/model-stage: staging
+  annotations:
+    # A public KServe sample model, not an MLflow run: the lineage policy
+    # requires these keys.
+    mlops.io/mlflow-run-id: "external-pretrained"
+    mlops.io/mlflow-experiment-id: "external-pretrained"
 spec:
   predictor:
     serviceAccountName: kserve-inference

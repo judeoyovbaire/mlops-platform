@@ -98,35 +98,6 @@ resource "kubectl_manifest" "cluster_secret_store" {
   depends_on = [helm_release.external_secrets]
 }
 
-# External Secret for MLflow (syncs Secrets Manager to K8s Secret)
-resource "kubectl_manifest" "mlflow_external_secret" {
-  yaml_body = <<-YAML
-    apiVersion: external-secrets.io/v1
-    kind: ExternalSecret
-    metadata:
-      name: mlflow-db-credentials
-      namespace: mlflow
-    spec:
-      refreshInterval: 1h
-      secretStoreRef:
-        name: aws-sm
-        kind: ClusterSecretStore
-      target:
-        name: mlflow-db-credentials
-        creationPolicy: Owner
-      data:
-        - secretKey: password
-          remoteRef:
-            key: ${var.cluster_name}/mlflow/db-password
-            property: password
-  YAML
-
-  depends_on = [
-    kubectl_manifest.cluster_secret_store,
-    kubernetes_namespace.mlflow
-  ]
-}
-
 # External Secret for MinIO (Argo Workflows artifact storage)
 resource "kubectl_manifest" "argo_minio_external_secret" {
   yaml_body = <<-YAML

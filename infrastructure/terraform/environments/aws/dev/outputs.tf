@@ -62,19 +62,9 @@ output "oidc_provider_arn" {
 
 # AWS Secrets Manager - Secret Locations
 
-output "secrets_manager_mlflow_db" {
-  description = "Secrets Manager ARN for MLflow DB credentials"
-  value       = aws_secretsmanager_secret.mlflow_db_password.arn
-}
-
 output "secrets_manager_minio" {
   description = "Secrets Manager ARN for MinIO root credentials"
   value       = aws_secretsmanager_secret.minio_root_password.arn
-}
-
-output "secrets_manager_argocd" {
-  description = "Secrets Manager ARN for ArgoCD admin credentials"
-  value       = aws_secretsmanager_secret.argocd_admin_password.arn
 }
 
 # Access Information
@@ -96,20 +86,15 @@ output "access_info" {
     make port-forward-argocd    # localhost:8080
 
   ============================================================
-  Secrets (stored in AWS Secrets Manager)
+  Credentials
   ============================================================
 
-  All secrets are auto-generated and stored securely in Secrets Manager.
-  Retrieve with:
+  Print every login with:
+    make secrets-aws
 
-    # MLflow DB credentials
-    aws secretsmanager get-secret-value --secret-id "${var.cluster_name}/mlflow/db-password" --query 'SecretString' --output text | jq .
-
-    # MinIO root credentials
-    aws secretsmanager get-secret-value --secret-id "${var.cluster_name}/minio/root-password" --query 'SecretString' --output text | jq .
-
-    # ArgoCD admin credentials
-    aws secretsmanager get-secret-value --secret-id "${var.cluster_name}/argocd/admin-password" --query 'SecretString' --output text | jq .
+  Grafana is in SSM, MinIO in Secrets Manager, the MLflow DB password is
+  RDS-managed, and ArgoCD uses argocd-initial-admin-secret.
+  See docs/secrets-management.md.
 
   ============================================================
   Service Details

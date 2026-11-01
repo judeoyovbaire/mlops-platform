@@ -162,19 +162,15 @@ status() {
     echo "  make port-forward-mlflow | make port-forward-grafana | make port-forward-argocd"
 
     echo ""
-    echo -e "${BLUE}SSM Secrets (stored securely):${NC}"
-    echo "  /${CLUSTER_NAME}/mlflow/db-password"
-    echo "  /${CLUSTER_NAME}/minio/root-password"
-    echo "  /${CLUSTER_NAME}/argocd/admin-password"
-    echo "  /${CLUSTER_NAME}/grafana/admin-password"
-    echo ""
-    echo "  Retrieve with: aws ssm get-parameter --name \"/<param>\" --with-decryption"
+    echo -e "${BLUE}Credentials:${NC}"
+    echo "  make secrets-aws   (Grafana: SSM, MinIO: Secrets Manager, MLflow DB: RDS-managed, ArgoCD: initial admin secret)"
 }
 
-# Show secrets from SSM
+# Print platform logins from where each one actually lives
+# (docs/secrets-management.md).
 secrets() {
     echo ""
-    echo -e "${BLUE}Retrieving secrets from AWS SSM Parameter Store...${NC}"
+    echo -e "${BLUE}Retrieving platform credentials...${NC}"
 
     cd "${TF_DIR}"
 
@@ -186,21 +182,34 @@ secrets() {
     CLUSTER_NAME=$(terraform output -raw cluster_name)
     AWS_REGION=$(terraform output -raw configure_kubectl | grep -oE '\-\-region [a-z0-9-]+' | awk '{print $2}')
 
-    echo ""
-    echo -e "${CYAN}MLflow DB Password:${NC}"
-    aws ssm get-parameter --name "/${CLUSTER_NAME}/mlflow/db-password" --with-decryption --query 'Parameter.Value' --output text --region "${AWS_REGION}" 2>/dev/null || print_error "Not found"
+    # Pin the kubectl reads to THIS cluster via a throwaway kubeconfig, as
+    # destroy-aws.sh does: the current context could be another cluster.
+    KUBECONFIG="$(mktemp)"
+    export KUBECONFIG
+    trap 'rm -f "${KUBECONFIG}"' EXIT
+    aws eks update-kubeconfig --region "${AWS_REGION}" --name "${CLUSTER_NAME}" \
+        --kubeconfig "${KUBECONFIG}" >/dev/null 2>&1 \
+        || print_warning "Could not fetch kubeconfig for ${CLUSTER_NAME}; the ArgoCD and MLflow entries will fail"
 
     echo ""
-    echo -e "${CYAN}MinIO Root Password:${NC}"
-    aws ssm get-parameter --name "/${CLUSTER_NAME}/minio/root-password" --with-decryption --query 'Parameter.Value' --output text --region "${AWS_REGION}" 2>/dev/null || print_error "Not found"
+    echo -e "${CYAN}Grafana admin password (SSM):${NC}"
+    aws ssm get-parameter --name "/${CLUSTER_NAME}/grafana/admin-password" --with-decryption \
+        --query 'Parameter.Value' --output text --region "${AWS_REGION}" 2>/dev/null || print_error "Not found"
 
     echo ""
-    echo -e "${CYAN}ArgoCD Admin Password:${NC}"
-    aws ssm get-parameter --name "/${CLUSTER_NAME}/argocd/admin-password" --with-decryption --query 'Parameter.Value' --output text --region "${AWS_REGION}" 2>/dev/null || print_error "Not found"
+    echo -e "${CYAN}ArgoCD admin password (user: admin):${NC}"
+    kubectl -n argocd get secret argocd-initial-admin-secret \
+        -o jsonpath='{.data.password}' 2>/dev/null | base64 --decode 2>/dev/null && echo "" || print_error "Not found"
 
     echo ""
-    echo -e "${CYAN}Grafana Admin Password:${NC}"
-    aws ssm get-parameter --name "/${CLUSTER_NAME}/grafana/admin-password" --with-decryption --query 'Parameter.Value' --output text --region "${AWS_REGION}" 2>/dev/null || print_error "Not found"
+    echo -e "${CYAN}MinIO root credentials (Secrets Manager):${NC}"
+    aws secretsmanager get-secret-value --secret-id "${CLUSTER_NAME}/minio/root-password" \
+        --query 'SecretString' --output text --region "${AWS_REGION}" 2>/dev/null || print_error "Not found"
+
+    echo ""
+    echo -e "${CYAN}MLflow DB password (RDS-managed, copied to mlflow/mlflow-postgres):${NC}"
+    kubectl -n mlflow get secret mlflow-postgres \
+        -o jsonpath='{.data.password}' 2>/dev/null | base64 --decode 2>/dev/null && echo "" || print_error "Not found"
 
     echo ""
 }
@@ -242,7 +251,7 @@ main() {
             echo "Commands:"
             echo "  deploy   Deploy MLOps platform to AWS EKS (fully automated)"
             echo "  status   Check deployment status"
-            echo "  secrets  Retrieve secrets from AWS SSM Parameter Store"
+            echo "  secrets  Print platform credentials"
             echo "  destroy  Destroy all AWS resources"
             echo "  help     Show this help message"
             echo ""
