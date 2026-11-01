@@ -304,7 +304,7 @@ The platform deploys these components:
 | Argo Workflows               | argo/argo-workflows                      |
 | Prometheus Stack             | prometheus-community/kube-prometheus-stack |
 | Loki                         | grafana/loki                             |
-| Tempo                        | grafana/tempo                            |
+| Tempo                        | grafana-community/tempo                  |
 | OpenTelemetry Collector      | open-telemetry/opentelemetry-collector   |
 | External Secrets             | external-secrets/external-secrets        |
 | Kyverno                      | kyverno/kyverno                          |
@@ -655,17 +655,17 @@ Current versions deployed by the platform:
 | ArgoCD | 10.11.6 | Chart deploys Argo CD v3.5.6 |
 | AWS ALB Controller | 1.17.1 | Installed; no Ingress objects created |
 | cert-manager | 1.21.3 | TLS certificate management |
-| Prometheus Stack | 81.6.9 | Monitoring and alerting |
-| Loki | 6.24.0 | Log aggregation (hardened securityContext) |
-| Tempo | 1.15.0 | Distributed tracing (hardened securityContext) |
-| OpenTelemetry Collector | 0.108.0 | Unified telemetry pipeline (hardened securityContext) |
+| Prometheus Stack | 92.17.0 | Monitoring and alerting (Grafana 13) |
+| Loki | 6.55.0 | Log aggregation (hardened securityContext); last OSS chart in grafana/helm-charts |
+| Tempo | 2.4.0 | Distributed tracing, grafana-community chart (Tempo 2.10) |
+| OpenTelemetry Collector | 0.178.1 | Unified telemetry pipeline (hardened securityContext) |
 | External Secrets | 2.14.0 | Secrets Manager (`ClusterSecretStore aws-sm`) |
 | Kyverno | 3.9.2 (v1.19.2) | Policy engine; held below 1.20, which rejects new ClusterPolicy objects |
 | MinIO | 5.4.0 | S3-compatible object storage (Argo artifacts) |
-| OpenCost | 2.5.26 (chart) | Cost metrics |
-| DCGM Exporter | 3.6.1 (chart) | GPU metrics |
-| Alloy | 0.12.0 (chart) | Log shipper |
-| NVIDIA Device Plugin | 0.19.3 (chart) | Exposes `nvidia.com/gpu` |
+| OpenCost | 2.5.33 (chart) | Cost metrics |
+| DCGM Exporter | 4.8.4 (chart) | GPU metrics |
+| Alloy | 1.15.0 (chart) | Log shipper |
+| NVIDIA Device Plugin | 0.20.1 (chart) | Exposes `nvidia.com/gpu` |
 | vLLM | v0.11.0 | High-throughput LLM inference |
 
 On Kubernetes 1.37 only External Secrets 2.14 is officially tested upstream. cert-manager 1.21 lists 1.33-1.36 and Kyverno 1.19 lists 1.33-1.35; no newer release exists (inside the Kyverno cap), so the first 1.37 session is their test. 1.36 is the fallback.

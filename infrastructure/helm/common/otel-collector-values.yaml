@@ -70,7 +70,8 @@ config:
 
   exporters:
     # Traces → Tempo
-    otlp/tempo:
+    # otlp was renamed otlp_grpc in Collector v0.144.
+    otlp_grpc/tempo:
       endpoint: tempo.monitoring:4317
       tls:
         # insecure: true — in-cluster gRPC between OTel Collector and Tempo.
@@ -87,7 +88,7 @@ config:
       traces:
         receivers: [otlp]
         processors: [memory_limiter, batch]
-        exporters: [otlp/tempo]
+        exporters: [otlp_grpc/tempo]
       metrics:
         receivers: [otlp]
         processors: [memory_limiter, batch]

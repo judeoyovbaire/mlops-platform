@@ -204,6 +204,20 @@
       "groupName": "kyverno"
     },
     {
+      "description": "loki 7.x in grafana/helm-charts is Enterprise-only; the OSS chart moved to grafana-community. Hold the grafana repo pin on 6.x until the repo move.",
+      "matchPackageNames": [
+        "loki"
+      ],
+      "allowedVersions": "<7.0.0"
+    },
+    {
+      "description": "tempo chart 3.x ships Tempo 3, an architectural major with no rollback and a config rewrite. Hold on 2.x until that change is planned.",
+      "matchPackageNames": [
+        "tempo"
+      ],
+      "allowedVersions": "<3.0.0"
+    },
+    {
       "description": "Manual merge only while the first Renovate batches are observed (JDH-406, decided 2026-11-01). Keyed on update type, not package name, so it also catches lockFileMaintenance PRs (no packageName) that :automergeMinor would otherwise merge. Must stay the LAST rule; delete it to re-enable the automerge rules above.",
       "matchUpdateTypes": [
         "major",

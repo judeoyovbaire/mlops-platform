@@ -85,7 +85,7 @@ resource "helm_release" "loki" {
 # Tempo - Trace Storage Backend with S3 Storage
 resource "helm_release" "tempo" {
   name       = "tempo"
-  repository = "https://grafana.github.io/helm-charts"
+  repository = "https://grafana-community.github.io/helm-charts"
   chart      = "tempo"
   version    = var.helm_tempo_version
   namespace  = kubernetes_namespace.monitoring.metadata[0].name

@@ -275,7 +275,7 @@ variable "helm_opencost_version" {
   description = "OpenCost Helm chart version"
   type        = string
   # renovate: datasource=helm depName=opencost registryUrl=https://opencost.github.io/opencost-helm-chart
-  default = "2.5.26"
+  default = "2.5.33"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_opencost_version))
@@ -287,7 +287,7 @@ variable "helm_dcgm_exporter_version" {
   description = "NVIDIA DCGM Exporter Helm chart version"
   type        = string
   # renovate: datasource=helm depName=dcgm-exporter registryUrl=https://nvidia.github.io/dcgm-exporter/helm-charts
-  default = "3.6.1"
+  default = "4.8.4"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_dcgm_exporter_version))
