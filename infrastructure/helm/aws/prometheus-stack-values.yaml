@@ -188,20 +188,23 @@ grafana:
         httpHeaderValue1: mlops
     - name: Tempo
       type: tempo
-      url: http://tempo.monitoring:3100
+      url: http://tempo.monitoring:3200
       access: proxy
       isDefault: false
+      jsonData:
+        serviceMap:
+          datasourceUid: prometheus
 
-  # Grafana plugins
-  plugins:
-    - grafana-piechart-panel
-    - grafana-clock-panel
+  # No extra plugins: grafana-piechart-panel was Angular (removed in Grafana
+  # 12; the core pie chart replaces it) and no dashboard used either panel.
 
 # Prometheus configuration
 prometheus:
   enabled: true
   prometheusSpec:
     replicas: 1
+    # Tempo's metrics generator remote-writes service-graph and span metrics.
+    enableRemoteWriteReceiver: true
     retention: 15d
     retentionSize: "45GB"
 

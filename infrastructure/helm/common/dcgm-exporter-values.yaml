@@ -28,10 +28,12 @@ serviceMonitor:
   enabled: true
   namespace: monitoring
   interval: 15s
+  # Chart 4.x defaults scrapeTimeout to 25s; a timeout above the interval
+  # makes Prometheus Operator drop the whole ServiceMonitor silently.
+  scrapeTimeout: 10s
   additionalLabels:
     release: prometheus
 
-# Metrics to collect (DCGM field IDs)
-arguments:
-  - "-f"
-  - "/etc/dcgm-exporter/dcp-metrics-included.csv"
+# No `arguments`: chart 4.x mounts its counters ConfigMap at
+# /etc/dcgm-exporter/default-counters.csv, the exporter's default path. The
+# old `-f dcp-metrics-included.csv` read the file baked into the image instead.

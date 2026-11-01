@@ -1,5 +1,5 @@
 # Tempo Helm Values for AWS EKS - SingleBinary with S3 storage (dev)
-# Chart: grafana/tempo
+# Chart: grafana-community/tempo (2.x = Tempo 2.10). HTTP API on 3200.
 # Uses S3 for trace storage with IRSA for authentication
 
 tempo:
@@ -18,6 +18,24 @@ tempo:
       wal:
         path: /var/tempo/wal
 
+  # The grafana/tempo chart enabled these two processors whenever the metrics
+  # generator was on; the community chart leaves them to the overrides.
+  overrides:
+    defaults:
+      metrics_generator:
+        processors:
+          - service-graphs
+          - span-metrics
+
+  # The chart reads tempo.resources; a top-level resources key is ignored.
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
   # OTLP receiver for traces from the OpenTelemetry Collector
   receivers:
     otlp:
@@ -35,11 +53,3 @@ serviceAccount:
 # Disable persistence when using S3
 persistence:
   enabled: false
-
-resources:
-  requests:
-    cpu: 200m
-    memory: 512Mi
-  limits:
-    cpu: 1000m
-    memory: 2Gi
