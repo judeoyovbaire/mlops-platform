@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-017](017-pivot-to-llm-inference-on-eks.md) (2026-11-01)
 
 ## Context
 

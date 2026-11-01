@@ -13,7 +13,7 @@ An Architecture Decision Record captures an important architectural decision mad
 | [001](001-kserve-over-seldon.md) | Use KServe over Seldon Core for Model Serving | Accepted | 2024-01 |
 | [002](002-karpenter-over-cluster-autoscaler.md) | Use Karpenter over Cluster Autoscaler | Accepted | 2024-01 |
 | [003](003-rawdeployment-mode-kserve.md) | Use RawDeployment Mode for KServe | Accepted | 2024-01 |
-| [004](004-multi-cloud-infrastructure-strategy.md) | Multi-Cloud Infrastructure Strategy | Accepted | 2025-01 |
+| [004](004-multi-cloud-infrastructure-strategy.md) | Multi-Cloud Infrastructure Strategy | Superseded by 017 | 2025-01 |
 | [005](005-oidc-authentication-over-static-credentials.md) | OIDC Authentication Over Static Credentials | Accepted | 2025-01 |
 | [006](006-argo-workflows-over-kubeflow-pipelines.md) | Argo Workflows Over Kubeflow Pipelines | Accepted | 2025-01 |
 | [007](007-skip-service-mesh.md) | Skip Service Mesh | Accepted | 2026-02 |
@@ -25,6 +25,8 @@ An Architecture Decision Record captures an important architectural decision mad
 | [013](013-descope-drift-triggered-retraining.md) | Descope Drift-Triggered Retraining | Accepted | 2026-07 |
 | [014](014-aws-first-verification.md) | AWS-First Verification Strategy | Accepted | 2026-07 |
 | [015](015-shared-aws-platform-module.md) | Shared aws-platform Module for the K8s Platform Layer | Accepted | 2026-07 |
+| [016](016-rawdeployment-canary-and-observability.md) | One canary mechanism and RawDeployment-native observability | Accepted | 2026-07 |
+| [017](017-pivot-to-llm-inference-on-eks.md) | Pivot to LLM inference on EKS; descope multi-cloud and classic MLOps | Accepted | 2026-11 |
 
 ## Creating a New ADR
 
