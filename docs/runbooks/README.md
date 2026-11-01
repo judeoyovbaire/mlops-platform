@@ -9,6 +9,7 @@ Runbooks for the AWS dev platform.
 | [Troubleshooting](troubleshooting.md) | Common failures across Terraform, KServe, MLflow, Argo, Kyverno and GPU nodes |
 | [Karpenter Node Not Provisioning](karpenter-node-not-provisioning.md) | GPU or training nodes do not come up |
 | [MLflow Connection Issues](mlflow-connection-issues.md) | MLflow tracking server connectivity (until MLflow leaves with the classic loop) |
+| [AWS Burst Session](burst-session.md) | Deploy, check, collect evidence, tear down and sweep in one session; guardrails and the 2026-11-01 dry run |
 | [AWS Environment Teardown](teardown.md) | Destroy the AWS platform cleanly (`destroy-aws.sh` procedure) |
 
 Model rollback (deploy challenger, AnalysisRun verdict, `storageUri` rollback) is documented with its scripts in [scripts/demo/README.md](../../scripts/demo/README.md).
