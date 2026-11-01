@@ -16,7 +16,7 @@ actually reconciles:
 
 Terraform applies this Application (`modules/aws-platform/gitops-baseline.tf`)
 right after ArgoCD and the CRD-providing charts, then blocks until ArgoCD
-reports it Synced and Healthy; MLflow and MinIO are only installed after
+reports it Synced and Healthy; MLflow is only installed after
 that (the controllers that provide the baseline's CRDs necessarily come
 first). There is no manual step. The Application tracks `main`, so a fresh
 cluster syncs the current `main` baseline even when applying an older commit.

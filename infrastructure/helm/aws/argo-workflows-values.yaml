@@ -88,22 +88,10 @@ server:
       cpu: 200m
       memory: 256Mi
 
-# Artifact repository configuration
-artifactRepository:
-  # Use MinIO for S3-compatible artifact storage
-  s3:
-    endpoint: minio.argo.svc:9000
-    bucket: mlpipeline
-    # insecure: true — MinIO runs in-cluster without TLS.
-    # Network policy restricts access to argo namespace only.
-    # For production with sensitive data, enable MinIO TLS.
-    insecure: true
-    accessKeySecret:
-      name: minio
-      key: rootUser
-    secretKeySecret:
-      name: minio
-      key: rootPassword
+# Artifact repository: an S3 bucket reached with the workflow pods' IRSA
+# credentials. Bucket, region and endpoint are set by Terraform
+# (modules/aws-platform/helm-core.tf), which also writes the
+# artifact-repositories ConfigMap the pipeline templates reference.
 
 # No executor image override: the chart sets argoexec to its own app version
 # (chart 2.0.x = v4.1.x). A hand-pinned tag drifts behind the controller.

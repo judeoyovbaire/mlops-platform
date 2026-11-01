@@ -366,14 +366,6 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kserve
-    # MinIO (internal)
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: argo
-      ports:
-        - protocol: TCP
-          port: 9000
     # DNS - restrict to cluster DNS (kube-dns/CoreDNS)
     - to:
         - namespaceSelector:
@@ -387,7 +379,7 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # HTTPS (for external data sources)
+    # HTTPS: S3 (Argo and MLflow artifacts) and external data sources
     - to: []
       ports:
         - protocol: TCP

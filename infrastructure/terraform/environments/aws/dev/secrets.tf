@@ -5,40 +5,8 @@
 # (manage_master_user_password, modules/eks/database.tf). The ArgoCD login is
 # the chart's argocd-initial-admin-secret. See docs/secrets-management.md.
 
-# MinIO root password - generated and managed by Secrets Manager
-resource "aws_secretsmanager_secret" "minio_root_password" {
-  name        = "${var.cluster_name}/minio/root-password"
-  description = "MinIO root password"
-  kms_key_id  = var.kms_key_arn
-  # Dev secrets guard infrastructure that terraform destroy removes with
-  # them - skip the 30-day recovery window that left soft-deleted entries
-  # behind after the July teardown.
-  recovery_window_in_days = 0
-
-  tags = var.tags
-}
-
-resource "aws_secretsmanager_secret_version" "minio_root_password" {
-  secret_id = aws_secretsmanager_secret.minio_root_password.id
-  secret_string = jsonencode({
-    username = "minio"
-    password = random_password.minio.result
-  })
-
-  lifecycle {
-    ignore_changes = [secret_string]
-  }
-}
-
-# Initial password generation (only used on first apply)
-# Stored in Secrets Manager (Grafana: SSM) and also in Terraform state
-
-resource "random_password" "minio" {
-  length           = 32
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
-
+# Grafana admin password: generated once, stored in SSM
+# (modules/aws-platform/monitoring.tf) and in Terraform state.
 resource "random_password" "grafana_admin" {
   length  = 24
   special = false
@@ -51,7 +19,9 @@ resource "aws_secretsmanager_secret" "slack_webhook_url" {
   name        = "${var.cluster_name}/alertmanager/slack-webhook-url"
   description = "Slack webhook URL for AlertManager notifications"
   kms_key_id  = var.kms_key_arn
-  # See recovery-window note above.
+  # Dev secrets guard infrastructure that terraform destroy removes with
+  # them - skip the 30-day recovery window that left soft-deleted entries
+  # behind after the July teardown.
   recovery_window_in_days = 0
 
   tags = var.tags
@@ -89,8 +59,3 @@ resource "aws_ssm_parameter" "cluster_name_param" {
 }
 
 # Outputs - reference ARNs, not values (to avoid state exposure)
-
-output "minio_secret_arn" {
-  description = "ARN of the MinIO root password secret"
-  value       = aws_secretsmanager_secret.minio_root_password.arn
-}

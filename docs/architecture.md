@@ -234,7 +234,7 @@ Karpenter provides just-in-time node provisioning for GPU and training workloads
 
 ### 7. GitOps with ArgoCD
 
-Terraform installs the platform's controllers with Helm. ArgoCD owns everything under `infrastructure/kubernetes/` (governance policies, network policies, quotas, PDBs, SLO rules, dashboards, rollout templates, Argo Events) through the `platform-baseline` Application, with automated sync, prune and self-heal (ADR-017 decision 6). Terraform applies that Application and waits for it to be Synced and Healthy before installing MLflow and MinIO. Model deployments are still pushed by CI (`reusable-deploy-model.yaml`), not synced from Git.
+Terraform installs the platform's controllers with Helm. ArgoCD owns everything under `infrastructure/kubernetes/` (governance policies, network policies, quotas, PDBs, SLO rules, dashboards, rollout templates, Argo Events) through the `platform-baseline` Application, with automated sync, prune and self-heal (ADR-017 decision 6). Terraform applies that Application and waits for it to be Synced and Healthy before installing MLflow. Model deployments are still pushed by CI (`reusable-deploy-model.yaml`), not synced from Git.
 
 ## Cloud Providers
 
@@ -266,7 +266,7 @@ infrastructure/terraform/
 │   ├── kms.tf, backup.tf, ecr.tf, vpc-flow-logs.tf
 │   └── ...
 └── modules/aws-platform/  # Kubernetes layer (ADR-015)
-    ├── helm-core.tf       # ALB controller, cert-manager, ArgoCD, KServe, MLflow, Argo Workflows, MinIO
+    ├── helm-core.tf       # ALB controller, cert-manager, ArgoCD, KServe, MLflow, Argo Workflows (S3 artifacts)
     ├── monitoring.tf      # Prometheus stack, Loki, Tempo, OTel Collector, Alloy
     ├── kyverno.tf, karpenter.tf, gitops-baseline.tf
     └── ...
@@ -282,7 +282,7 @@ Module reference: [`modules/eks/README.md`](../infrastructure/terraform/modules/
 **AWS Resources Created:**
 - VPC with public/private subnets across 3 AZs
 - EKS cluster with managed node groups
-- S3 bucket for MLflow artifacts
+- S3 buckets for MLflow artifacts and Argo Workflows artifacts
 - RDS PostgreSQL for MLflow metadata
 - IAM roles with IRSA for secure pod authentication (full SA-to-role mapping: [IRSA access matrix](irsa-access-matrix.md))
 - AWS Load Balancer Controller installed; no Ingress objects are created (UIs reached by port-forward)
@@ -312,7 +312,6 @@ The platform deploys these components:
 | GPU Autoscaling              | karpenter/karpenter                      |
 | Argo Rollouts (AnalysisRuns) | argo/argo-rollouts                       |
 | Argo Events                  | argo/argo-events                         |
-| MinIO                        | minio/minio                              |
 | OpenCost                     | opencost/opencost                        |
 | DCGM Exporter                | dcgm-exporter/dcgm-exporter              |
 | Alloy                        | grafana/alloy                            |
@@ -662,7 +661,6 @@ Current versions deployed by the platform:
 | OpenTelemetry Collector | 0.178.1 | Unified telemetry pipeline (hardened securityContext) |
 | External Secrets | 2.14.0 | Secrets Manager (`ClusterSecretStore aws-sm`) |
 | Kyverno | 3.9.2 (v1.19.2) | Policy engine; held below 1.20, which rejects new ClusterPolicy objects |
-| MinIO | 5.4.0 | S3-compatible object storage (Argo artifacts) |
 | OpenCost | 2.5.33 (chart) | Cost metrics |
 | DCGM Exporter | 4.8.4 (chart) | GPU metrics |
 | Alloy | 1.15.0 (chart) | Log shipper |

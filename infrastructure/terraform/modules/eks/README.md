@@ -81,6 +81,7 @@ module "eks" {
 | private_subnets | List of private subnet IDs |
 | public_subnets | List of public subnet IDs |
 | mlflow_s3_bucket | S3 bucket for MLflow artifacts |
+| argo_artifacts_s3_bucket | S3 bucket for Argo Workflows artifacts |
 | loki_s3_bucket | S3 bucket for Loki logs |
 | tempo_s3_bucket | S3 bucket for Tempo traces |
 | loki_irsa_role_arn | IAM role ARN for Loki IRSA |

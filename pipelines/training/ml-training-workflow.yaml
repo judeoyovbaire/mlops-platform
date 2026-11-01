@@ -74,7 +74,8 @@ spec:
       - name: use-grid-search
         value: "false"
 
-  # Artifact storage using MinIO
+  # Artifact storage: the S3 repository Terraform writes into the
+  # artifact-repositories ConfigMap (modules/aws-platform/helm-core.tf).
   artifactRepositoryRef:
     configMap: artifact-repositories
     key: default-artifact-repository

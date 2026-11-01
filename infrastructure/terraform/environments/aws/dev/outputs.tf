@@ -62,11 +62,6 @@ output "oidc_provider_arn" {
 
 # AWS Secrets Manager - Secret Locations
 
-output "secrets_manager_minio" {
-  description = "Secrets Manager ARN for MinIO root credentials"
-  value       = aws_secretsmanager_secret.minio_root_password.arn
-}
-
 # Access Information
 
 output "access_info" {
@@ -92,8 +87,8 @@ output "access_info" {
   Print every login with:
     make secrets-aws
 
-  Grafana is in SSM, MinIO in Secrets Manager, the MLflow DB password is
-  RDS-managed, and ArgoCD uses argocd-initial-admin-secret.
+  Grafana is in SSM, the MLflow DB password is RDS-managed, and ArgoCD
+  uses argocd-initial-admin-secret.
   See docs/secrets-management.md.
 
   ============================================================

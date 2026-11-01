@@ -53,6 +53,11 @@ output "mlflow_s3_bucket" {
   value       = aws_s3_bucket.mlflow_artifacts.id
 }
 
+output "argo_artifacts_s3_bucket" {
+  description = "S3 bucket for Argo Workflows artifacts"
+  value       = aws_s3_bucket.argo_artifacts.id
+}
+
 output "loki_s3_bucket" {
   description = "S3 bucket for Loki logs"
   value       = aws_s3_bucket.loki_logs.id

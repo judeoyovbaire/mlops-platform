@@ -50,12 +50,6 @@
             "file": "/environments/aws/dev/secrets.tf",
             "findings": [
                 {
-                    "resource": "aws_secretsmanager_secret.minio_root_password",
-                    "check_ids": [
-                        "CKV2_AWS_57"
-                    ]
-                },
-                {
                     "resource": "aws_secretsmanager_secret.slack_webhook_url",
                     "check_ids": [
                         "CKV2_AWS_57"
@@ -132,6 +126,14 @@
                     "resource": "module.eks.aws_s3_bucket_lifecycle_configuration.tempo_traces",
                     "check_ids": [
                         "CKV_AWS_300"
+                    ]
+                },
+                {
+                    "resource": "module.eks.aws_s3_bucket.argo_artifacts",
+                    "check_ids": [
+                        "CKV2_AWS_62",
+                        "CKV_AWS_144",
+                        "CKV_AWS_18"
                     ]
                 }
             ]

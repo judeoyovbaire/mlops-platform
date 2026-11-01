@@ -22,8 +22,8 @@ variable "eks" {
     Outputs object of the environment's EKS module (pass `eks = module.eks`).
     Consumed attributes: cluster_name, cluster_endpoint, oidc_provider_arn,
     vpc_id, karpenter_irsa_role_arn, karpenter_node_role_name,
-    aws_lb_controller_irsa_role_arn, loki/mlflow/tempo IRSA role ARNs and
-    S3 bucket ids, mlflow_db_endpoint/name/secret_arn.
+    aws_lb_controller_irsa_role_arn, loki/mlflow/tempo IRSA role ARNs,
+    loki/mlflow/tempo/argo_artifacts S3 bucket ids, mlflow_db_endpoint/name/secret_arn.
   EOT
   type        = any
 }
@@ -71,25 +71,6 @@ variable "argocd_extra_values_files" {
   default     = []
 }
 
-variable "minio" {
-  description = <<-EOT
-    MinIO sizing: standalone/small by default (dev).
-    Limits are always rendered - the platform's own Kyverno
-    require-resource-limits policy (Enforce, argo namespace in scope)
-    admission-blocks limit-less pods.
-  EOT
-  type = object({
-    mode           = optional(string, "standalone")
-    replicas       = optional(number, 1)
-    storage_size   = optional(string, "10Gi")
-    memory_request = optional(string, "512Mi")
-    cpu_request    = optional(string, "250m")
-    memory_limit   = optional(string, "1Gi")
-    cpu_limit      = optional(string, "500m")
-  })
-  default = {}
-}
-
 # --- Helm chart versions (single source: helm-versions.auto.tfvars at root,
 # --- passed through by the calling environment) ---
 
@@ -106,7 +87,6 @@ variable "helm_karpenter_version" { type = string }
 variable "helm_kserve_version" { type = string }
 variable "helm_kyverno_version" { type = string }
 variable "helm_loki_version" { type = string }
-variable "helm_minio_version" { type = string }
 variable "helm_mlflow_version" { type = string }
 variable "helm_opencost_version" { type = string }
 variable "helm_otel_collector_version" { type = string }

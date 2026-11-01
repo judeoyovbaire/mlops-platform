@@ -99,39 +99,6 @@ resource "kubectl_manifest" "cluster_secret_store" {
   depends_on = [helm_release.external_secrets]
 }
 
-# External Secret for MinIO (Argo Workflows artifact storage)
-resource "kubectl_manifest" "argo_minio_external_secret" {
-  yaml_body = <<-YAML
-    apiVersion: external-secrets.io/v1
-    kind: ExternalSecret
-    metadata:
-      name: minio-credentials
-      namespace: argo
-    spec:
-      refreshInterval: 1h
-      secretStoreRef:
-        name: aws-sm
-        kind: ClusterSecretStore
-      target:
-        name: minio-credentials
-        creationPolicy: Owner
-      data:
-        - secretKey: rootUser
-          remoteRef:
-            key: ${var.cluster_name}/minio/root-password
-            property: username
-        - secretKey: rootPassword
-          remoteRef:
-            key: ${var.cluster_name}/minio/root-password
-            property: password
-  YAML
-
-  depends_on = [
-    kubectl_manifest.cluster_secret_store,
-    kubernetes_namespace_v1.argo
-  ]
-}
-
 # External Secret for AlertManager Slack Webhook
 resource "kubectl_manifest" "alertmanager_slack_external_secret" {
   count = var.slack_notifications_enabled ? 1 : 0

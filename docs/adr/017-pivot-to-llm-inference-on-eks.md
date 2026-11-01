@@ -77,7 +77,10 @@ Pivot **in place**: keep the history, change what `main` is.
    re-verified, so MinIO leaves with the loop rather than before it. Until then
    MLflow stays cluster-internal with no ingress, and JDH-410 (in-cluster
    authentication) closes with the removal rather than adding auth to a
-   component on its way out. Model weights for the LLM path are S3 objects with
+   component on its way out. (Update 2026-11-01: MinIO left early after all. Its
+   upstream images stopped being publicly pullable, so Argo artifacts moved to an
+   S3 bucket via IRSA during the JDH-409 dry run; the loop still needs
+   re-verifying.) Model weights for the LLM path are S3 objects with
    a sha256 manifest (JDH-401), not registry versions.
 6. **ArgoCD owns everything under `infrastructure/kubernetes/`.** Today
    Terraform (`modules/aws-platform/monitoring.tf`) applies

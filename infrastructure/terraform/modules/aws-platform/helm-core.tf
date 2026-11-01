@@ -226,113 +226,64 @@ resource "helm_release" "argo_workflows" {
       name  = "workflow.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
       value = module.argo_workflow_irsa.arn
     },
+    # Controller default artifact repository: the same S3 settings as the
+    # artifact-repositories ConfigMap below (a fallback; the resolver reads the
+    # ConfigMap first).
+    {
+      name  = "artifactRepository.s3.bucket"
+      value = local.argo_artifact_repository.s3.bucket
+    },
+    {
+      name  = "artifactRepository.s3.endpoint"
+      value = local.argo_artifact_repository.s3.endpoint
+    },
+    {
+      name  = "artifactRepository.s3.region"
+      value = local.argo_artifact_repository.s3.region
+    },
+    {
+      name  = "artifactRepository.s3.useSDKCreds"
+      value = tostring(local.argo_artifact_repository.s3.useSDKCreds)
+    },
+    {
+      name  = "artifactRepository.s3.insecure"
+      value = tostring(local.argo_artifact_repository.s3.insecure)
+    },
   ]
 
   depends_on = [time_sleep.alb_controller_ready]
 }
 
-# MinIO for pipeline artifact storage (lightweight S3-compatible storage)
-resource "helm_release" "minio" {
-  name       = "minio"
-  repository = "https://charts.min.io/"
-  chart      = "minio"
-  version    = var.helm_minio_version
-  namespace  = kubernetes_namespace_v1.argo.metadata[0].name
-
-  # The chart DEFAULTS to creating a consoleAdmin user with the hardcoded
-  # password "console123" - remove it. Credentials are ExternalSecret-managed
-  # (existingSecret below); dropping users also removes the extra post-job
-  # container that tripped the resource-limits policy.
-  values = [yamlencode({ users = [] })]
-
-  set = [
-    {
-      name  = "mode"
-      value = var.minio.mode
-    },
-    {
-      name  = "replicas"
-      value = tostring(var.minio.replicas)
-    },
-    {
-      name  = "persistence.size"
-      value = var.minio.storage_size
-    },
-    {
-      name  = "persistence.storageClass"
-      value = "gp3"
-    },
-    {
-      name  = "resources.requests.memory"
-      value = var.minio.memory_request
-    },
-    {
-      name  = "resources.requests.cpu"
-      value = var.minio.cpu_request
-    },
-    # Limits are mandatory: the platform's Kyverno require-resource-limits
-    # policy admission-blocks limit-less pods in the argo namespace.
-    {
-      name  = "resources.limits.memory"
-      value = var.minio.memory_limit
-    },
-    {
-      name  = "resources.limits.cpu"
-      value = var.minio.cpu_limit
-    },
-    # Use ExternalSecret-managed credentials (avoids secrets in Helm release metadata)
-    {
-      name  = "existingSecret"
-      value = "minio-credentials"
-    },
-    # The post-install bucket job must satisfy the platform's own Kyverno
-    # require-resource-limits policy (Enforce). NOTE: the chart keys the job
-    # container's resources under makeBucketJob.resources - postJob has no
-    # resources field (a previous fix targeted it and silently did nothing).
-    {
-      name  = "makeBucketJob.resources.requests.cpu"
-      value = "50m"
-    },
-    {
-      name  = "makeBucketJob.resources.requests.memory"
-      value = "64Mi"
-    },
-    {
-      name  = "makeBucketJob.resources.limits.cpu"
-      value = "200m"
-    },
-    {
-      name  = "makeBucketJob.resources.limits.memory"
-      value = "128Mi"
-    },
-    # Same treatment for the user-provisioning container, should users ever
-    # be configured again.
-    {
-      name  = "makeUserJob.resources.requests.cpu"
-      value = "50m"
-    },
-    {
-      name  = "makeUserJob.resources.requests.memory"
-      value = "64Mi"
-    },
-    {
-      name  = "makeUserJob.resources.limits.cpu"
-      value = "200m"
-    },
-    {
-      name  = "makeUserJob.resources.limits.memory"
-      value = "128Mi"
-    },
-    {
-      name  = "buckets[0].name"
-      value = "mlpipeline"
-    },
-    {
-      name  = "buckets[0].policy"
-      value = "none"
-    },
-  ]
-
-  # Network and admission policies first (ADR-017 decision 6).
-  depends_on = [time_sleep.alb_controller_ready, terraform_data.platform_baseline_ready]
+# Artifact repository the pipeline WorkflowTemplates reference
+# (artifactRepositoryRef: artifact-repositories#default-artifact-repository).
+# Terraform owns it, not the ArgoCD baseline, because the bucket name is
+# account-specific.
+locals {
+  argo_artifact_repository = {
+    s3 = {
+      bucket      = var.eks.argo_artifacts_s3_bucket
+      endpoint    = "s3.${var.aws_region}.amazonaws.com"
+      region      = var.aws_region
+      insecure    = false
+      useSDKCreds = true
+    }
+  }
 }
+
+resource "kubernetes_config_map_v1" "argo_artifact_repositories" {
+  metadata {
+    name      = "artifact-repositories"
+    namespace = kubernetes_namespace_v1.argo.metadata[0].name
+    labels = {
+      "app.kubernetes.io/part-of" = "mlops-platform"
+    }
+    annotations = {
+      "workflows.argoproj.io/default-artifact-repository" = "default-artifact-repository"
+    }
+  }
+
+  data = {
+    "default-artifact-repository" = yamlencode(local.argo_artifact_repository)
+  }
+}
+

@@ -34,7 +34,7 @@ group 1.
 
 | Service account | Workload | AWS access | Role definition |
 |---|---|---|---|
-| `argo:argo-workflow` | Training/serving pipeline steps (Argo Workflows) | MLflow artifacts bucket: list, get, put, delete, multipart + KMS data-key ops (client-side MLflow uploads, rule 2) | [`modules/aws-platform/argo-workflow-irsa.tf`](../infrastructure/terraform/modules/aws-platform/argo-workflow-irsa.tf) |
+| `argo:argo-workflow` | Training/serving pipeline steps (Argo Workflows) | MLflow artifacts bucket and Argo artifacts bucket: list, get, put, delete, multipart + KMS data-key ops via S3 (client-side MLflow uploads, rule 2; step output artifacts from the executor's init/wait containers) | [`modules/aws-platform/argo-workflow-irsa.tf`](../infrastructure/terraform/modules/aws-platform/argo-workflow-irsa.tf) |
 | `mlops:kserve-inference` | InferenceService predictors (KServe storage-initializer downloads the model) | MLflow artifacts bucket: read-only + `kms:Decrypt` | [`modules/aws-platform/kserve-inference-irsa.tf`](../infrastructure/terraform/modules/aws-platform/kserve-inference-irsa.tf) |
 | `mlflow:mlflow` | MLflow tracking server | MLflow artifacts bucket: read/write + KMS data-key ops (UI artifact serving; uploads stay client-side per rule 2) | [`modules/eks/iam.tf`](../infrastructure/terraform/modules/eks/iam.tf) (`mlflow_irsa`) |
 | `monitoring:loki` | Loki (log storage) | Loki logs bucket: read/write/delete + KMS data-key ops | [`modules/eks/iam.tf`](../infrastructure/terraform/modules/eks/iam.tf) (`loki_irsa`) |

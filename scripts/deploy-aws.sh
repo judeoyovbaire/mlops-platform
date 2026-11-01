@@ -163,7 +163,7 @@ status() {
 
     echo ""
     echo -e "${BLUE}Credentials:${NC}"
-    echo "  make secrets-aws   (Grafana: SSM, MinIO: Secrets Manager, MLflow DB: RDS-managed, ArgoCD: initial admin secret)"
+    echo "  make secrets-aws   (Grafana: SSM, MLflow DB: RDS-managed, ArgoCD: initial admin secret)"
 }
 
 # Print platform logins from where each one actually lives
@@ -200,11 +200,6 @@ secrets() {
     echo -e "${CYAN}ArgoCD admin password (user: admin):${NC}"
     kubectl -n argocd get secret argocd-initial-admin-secret \
         -o jsonpath='{.data.password}' 2>/dev/null | base64 --decode 2>/dev/null && echo "" || print_error "Not found"
-
-    echo ""
-    echo -e "${CYAN}MinIO root credentials (Secrets Manager):${NC}"
-    aws secretsmanager get-secret-value --secret-id "${CLUSTER_NAME}/minio/root-password" \
-        --query 'SecretString' --output text --region "${AWS_REGION}" 2>/dev/null || print_error "Not found"
 
     echo ""
     echo -e "${CYAN}MLflow DB password (RDS-managed, copied to mlflow/mlflow-postgres):${NC}"

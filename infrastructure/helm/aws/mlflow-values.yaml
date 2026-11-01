@@ -70,13 +70,15 @@ extraArgs:
 log:
   enabled: false
 
+# 512Mi was OOMKilled at startup on MLflow 3.16 with 2 uvicorn workers
+# (2026-11-01 dry run): each worker loads the full server.
 resources:
   requests:
     cpu: 100m
-    memory: 256Mi
+    memory: 1Gi
   limits:
-    cpu: 500m
-    memory: 512Mi
+    cpu: "1"
+    memory: 2Gi
 
 # Pod security (match chart defaults: user 1001)
 podSecurityContext:

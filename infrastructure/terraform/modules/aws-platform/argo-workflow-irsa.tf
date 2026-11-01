@@ -1,10 +1,12 @@
 # IRSA for Argo Workflow pods (ML pipelines)
 #
-# Training/serving pipeline steps log artifacts to MLflow, whose artifact
-# store is S3. MLflow clients upload DIRECTLY to the bucket (the tracking
-# server only hands out the s3:// URI), so the workflow pods themselves
-# need S3 credentials - without this role they fail with
-# "Unable to locate credentials" at model-logging time.
+# Two buckets:
+# - MLflow artifacts: pipeline steps log models to MLflow, whose clients
+#   upload DIRECTLY to S3 (the tracking server only hands out the s3:// URI).
+# - Argo artifacts: the executor's init and wait containers download and
+#   upload declared step artifacts with these credentials (useSDKCreds).
+#   Logs are not archived (archiveLogs is off). The argo-server has no S3
+#   role, so the UI cannot show artifact contents.
 module "argo_workflow_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "6.8.2"
@@ -23,12 +25,12 @@ module "argo_workflow_irsa" {
   }
 }
 
-# Scoped to the MLflow artifact bucket only. Delete is included because the
-# MLflow client cleans up partial uploads and registry operations can
-# overwrite artifact metadata files.
+# Scoped to the two buckets. Delete is included because the MLflow client
+# cleans up partial uploads and registry operations can overwrite artifact
+# metadata files.
 resource "aws_iam_policy" "argo_workflow_mlflow_s3" {
   name        = "${var.cluster_name}-argo-workflow-mlflow-s3"
-  description = "Allow Argo workflow pods to read/write MLflow artifacts in S3"
+  description = "Allow Argo workflow pods to read/write MLflow and Argo artifacts in S3"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -39,7 +41,10 @@ resource "aws_iam_policy" "argo_workflow_mlflow_s3" {
           "s3:ListBucket",
           "s3:GetBucketLocation"
         ]
-        Resource = "arn:aws:s3:::${var.eks.mlflow_s3_bucket}"
+        Resource = [
+          "arn:aws:s3:::${var.eks.mlflow_s3_bucket}",
+          "arn:aws:s3:::${var.eks.argo_artifacts_s3_bucket}",
+        ]
       },
       {
         Effect = "Allow"
@@ -50,7 +55,10 @@ resource "aws_iam_policy" "argo_workflow_mlflow_s3" {
           "s3:AbortMultipartUpload",
           "s3:ListMultipartUploadParts"
         ]
-        Resource = "arn:aws:s3:::${var.eks.mlflow_s3_bucket}/*"
+        Resource = [
+          "arn:aws:s3:::${var.eks.mlflow_s3_bucket}/*",
+          "arn:aws:s3:::${var.eks.argo_artifacts_s3_bucket}/*",
+        ]
       },
       {
         # The artifact bucket is SSE-KMS encrypted and its key policy
