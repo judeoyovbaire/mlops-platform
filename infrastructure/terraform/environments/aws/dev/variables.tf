@@ -321,3 +321,20 @@ variable "helm_nvidia_device_plugin_version" {
     error_message = "Must be a semantic version."
   }
 }
+
+variable "human_admin_role_arns" {
+  description = <<-EOT
+    IAM roles that get EKS cluster-admin access entries for people (local
+    kubectl, the EKS console). Access entries accept the full role ARN with
+    its path. For IAM Identity Center roles the path region is the Identity
+    Center home region, not the deploy region. List them with:
+      aws iam list-roles --path-prefix /aws-reserved/sso.amazonaws.com/
+    The suffix changes if the permission set or account assignment is
+    re-created, and a re-created role never matches an old access entry even
+    with the same ARN, so update this value then.
+  EOT
+  type        = list(string)
+  default = [
+    "arn:aws:iam::183590992229:role/aws-reserved/sso.amazonaws.com/eu-west-1/AWSReservedSSO_AdministratorAccess_1f87709bd8efddb9",
+  ]
+}

@@ -39,12 +39,13 @@ module "eks" {
   mlflow_db_skip_final_snapshot = true  # Dev doesn't need final snapshots
   mlflow_db_deletion_protection = false # Dev can be freely torn down
 
-  # Grant cluster admin access to GitHub Actions role and root account
-  # GitHub Actions for CI/CD deployments, root for local access
-  cluster_admin_arns = [
-    "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/mlops-platform-github-actions",
-    "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
-  ]
+  # Cluster admins: the GitHub Actions deploy role plus var.human_admin_role_arns
+  # (the IAM Identity Center role used for local kubectl and the EKS console).
+  # An access entry for ":root" only covers the root user, so it is not listed.
+  cluster_admin_arns = concat(
+    ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/mlops-platform-github-actions"],
+    var.human_admin_role_arns,
+  )
 
   # Disable dynamic cluster creator permissions - use explicit ARNs only
   enable_cluster_creator_admin_permissions = false
