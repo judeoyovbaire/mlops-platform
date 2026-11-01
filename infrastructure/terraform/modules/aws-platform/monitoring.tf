@@ -46,10 +46,14 @@ resource "helm_release" "prometheus_stack" {
   timeout = 1200
   wait    = true
 
-  set {
-    name  = "grafana.adminPassword"
-    value = var.grafana_admin_password
-  }
+  # set_sensitive keeps the password out of the release's metadata.values in
+  # state (a plain `set` entry is stored there in clear text).
+  set_sensitive = [
+    {
+      name  = "grafana.adminPassword"
+      value = var.grafana_admin_password
+    },
+  ]
 
   depends_on = [
     kubernetes_namespace.monitoring,

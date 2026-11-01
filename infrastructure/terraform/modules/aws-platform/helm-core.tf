@@ -8,35 +8,32 @@ resource "helm_release" "aws_load_balancer_controller" {
   version    = var.helm_aws_lb_controller_version
   namespace  = "kube-system"
 
-  set {
-    name  = "clusterName"
-    value = var.eks.cluster_name
-  }
-
-  set {
-    name  = "serviceAccount.create"
-    value = "true"
-  }
-
-  set {
-    name  = "serviceAccount.name"
-    value = "aws-load-balancer-controller"
-  }
-
-  set {
-    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = var.eks.aws_lb_controller_irsa_role_arn
-  }
-
-  set {
-    name  = "region"
-    value = var.aws_region
-  }
-
-  set {
-    name  = "vpcId"
-    value = var.eks.vpc_id
-  }
+  set = [
+    {
+      name  = "clusterName"
+      value = var.eks.cluster_name
+    },
+    {
+      name  = "serviceAccount.create"
+      value = "true"
+    },
+    {
+      name  = "serviceAccount.name"
+      value = "aws-load-balancer-controller"
+    },
+    {
+      name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+      value = var.eks.aws_lb_controller_irsa_role_arn
+    },
+    {
+      name  = "region"
+      value = var.aws_region
+    },
+    {
+      name  = "vpcId"
+      value = var.eks.vpc_id
+    },
+  ]
 }
 
 # Wait for ALB Controller webhook to be ready
@@ -56,12 +53,14 @@ resource "helm_release" "cert_manager" {
   namespace        = "cert-manager"
   create_namespace = true
 
-  # crds.enabled replaces the deprecated installCRDs; set only one.
-  # crds.keep defaults to true (CRDs survive helm uninstall).
-  set {
-    name  = "crds.enabled"
-    value = "true"
-  }
+  set = [
+    # crds.enabled replaces the deprecated installCRDs; set only one.
+    # crds.keep defaults to true (CRDs survive helm uninstall).
+    {
+      name  = "crds.enabled"
+      value = "true"
+    },
+  ]
 
   depends_on = [time_sleep.alb_controller_ready]
 }
@@ -104,46 +103,42 @@ resource "helm_release" "kserve_controller" {
   version    = var.helm_kserve_version # Note: KServe OCI charts require 'v' prefix
   namespace  = kubernetes_namespace.kserve.metadata[0].name
 
-  # Standard is KServe's current name for RawDeployment (a deprecated alias it
-  # still parses). The kserve-resources default is Knative, so this is required.
-  set {
-    name  = "kserve.controller.deploymentMode"
-    value = "Standard"
-  }
-
-  # kserve-resources defaults to Always from v0.19; the tag is pinned, so do
-  # not re-pull from Docker Hub (anonymous rate limit via NAT) on each restart.
-  set {
-    name  = "kserve.controller.imagePullPolicy"
-    value = "IfNotPresent"
-  }
-
-  # Disable KServe's built-in ingress creation - no Ingress is created; access via port-forward
-  set {
-    name  = "kserve.controller.gateway.disableIngressCreation"
-    value = "true"
-  }
-
-  set {
-    name  = "kserve.controller.gateway.disableIstioVirtualHost"
-    value = "true"
-  }
-
-  # Configure ingress gateway settings
-  set {
-    name  = "kserve.controller.gateway.ingressGateway.gateway"
-    value = "kserve/kserve-ingress-gateway"
-  }
-
-  set {
-    name  = "kserve.controller.gateway.ingressGateway.className"
-    value = "alb"
-  }
-
-  set {
-    name  = "kserve.controller.gateway.domain"
-    value = var.kserve_ingress_domain
-  }
+  set = [
+    # Standard is KServe's current name for RawDeployment (a deprecated alias it
+    # still parses). The kserve-resources default is Knative, so this is required.
+    {
+      name  = "kserve.controller.deploymentMode"
+      value = "Standard"
+    },
+    # kserve-resources defaults to Always from v0.19; the tag is pinned, so do
+    # not re-pull from Docker Hub (anonymous rate limit via NAT) on each restart.
+    {
+      name  = "kserve.controller.imagePullPolicy"
+      value = "IfNotPresent"
+    },
+    # Disable KServe's built-in ingress creation - no Ingress is created; access via port-forward
+    {
+      name  = "kserve.controller.gateway.disableIngressCreation"
+      value = "true"
+    },
+    {
+      name  = "kserve.controller.gateway.disableIstioVirtualHost"
+      value = "true"
+    },
+    # Configure ingress gateway settings
+    {
+      name  = "kserve.controller.gateway.ingressGateway.gateway"
+      value = "kserve/kserve-ingress-gateway"
+    },
+    {
+      name  = "kserve.controller.gateway.ingressGateway.className"
+      value = "alb"
+    },
+    {
+      name  = "kserve.controller.gateway.domain"
+      value = var.kserve_ingress_domain
+    },
+  ]
 
   depends_on = [helm_release.kserve]
 }
@@ -159,19 +154,20 @@ resource "helm_release" "kserve_runtime_configs" {
   version    = var.helm_kserve_version
   namespace  = kubernetes_namespace.kserve.metadata[0].name
 
-  set {
-    name  = "kserve.servingruntime.enabled"
-    value = "true"
-  }
-
-  # Marks the vLLM ClusterServingRuntime spec.disabled (KServe never selects
-  # it). It ships with image tag `latest`; the repo's vLLM InferenceServices
-  # bring their own pinned container (examples/llm-inference), and
-  # disallow-latest-tag would reject pods using this runtime anyway.
-  set {
-    name  = "kserve.servingruntime.vllmserver.disabled"
-    value = "true"
-  }
+  set = [
+    {
+      name  = "kserve.servingruntime.enabled"
+      value = "true"
+    },
+    # Marks the vLLM ClusterServingRuntime spec.disabled (KServe never selects
+    # it). It ships with image tag `latest`; the repo's vLLM InferenceServices
+    # bring their own pinned container (examples/llm-inference), and
+    # disallow-latest-tag would reject pods using this runtime anyway.
+    {
+      name  = "kserve.servingruntime.vllmserver.disabled"
+      value = "true"
+    },
+  ]
 
   # The controller serves the ServingRuntime validating webhook
   # (failurePolicy Fail); give cert-manager's cainjector time to write the
@@ -223,12 +219,14 @@ resource "helm_release" "argo_workflows" {
 
   values = [file("${path.module}/../../../helm/aws/argo-workflows-values.yaml")]
 
-  # IRSA for workflow pods - MLflow artifact uploads go straight to S3 from
-  # the pipeline containers, so the argo-workflow SA needs the role annotation.
-  set {
-    name  = "workflow.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = module.argo_workflow_irsa.arn
-  }
+  set = [
+    # IRSA for workflow pods - MLflow artifact uploads go straight to S3 from
+    # the pipeline containers, so the argo-workflow SA needs the role annotation.
+    {
+      name  = "workflow.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+      value = module.argo_workflow_irsa.arn
+    },
+  ]
 
   depends_on = [time_sleep.alb_controller_ready]
 }
@@ -247,109 +245,93 @@ resource "helm_release" "minio" {
   # container that tripped the resource-limits policy.
   values = [yamlencode({ users = [] })]
 
-  set {
-    name  = "mode"
-    value = var.minio.mode
-  }
-
-  set {
-    name  = "replicas"
-    value = tostring(var.minio.replicas)
-  }
-
-  set {
-    name  = "persistence.size"
-    value = var.minio.storage_size
-  }
-
-  set {
-    name  = "persistence.storageClass"
-    value = "gp3"
-  }
-
-  set {
-    name  = "resources.requests.memory"
-    value = var.minio.memory_request
-  }
-
-  set {
-    name  = "resources.requests.cpu"
-    value = var.minio.cpu_request
-  }
-
-  # Limits are mandatory: the platform's Kyverno require-resource-limits
-  # policy admission-blocks limit-less pods in the argo namespace.
-  set {
-    name  = "resources.limits.memory"
-    value = var.minio.memory_limit
-  }
-
-  set {
-    name  = "resources.limits.cpu"
-    value = var.minio.cpu_limit
-  }
-
-  # Use ExternalSecret-managed credentials (avoids secrets in Helm release metadata)
-  set {
-    name  = "existingSecret"
-    value = "minio-credentials"
-  }
-
-  # The post-install bucket job must satisfy the platform's own Kyverno
-  # require-resource-limits policy (Enforce). NOTE: the chart keys the job
-  # container's resources under makeBucketJob.resources - postJob has no
-  # resources field (a previous fix targeted it and silently did nothing).
-  set {
-    name  = "makeBucketJob.resources.requests.cpu"
-    value = "50m"
-  }
-
-  set {
-    name  = "makeBucketJob.resources.requests.memory"
-    value = "64Mi"
-  }
-
-  set {
-    name  = "makeBucketJob.resources.limits.cpu"
-    value = "200m"
-  }
-
-  set {
-    name  = "makeBucketJob.resources.limits.memory"
-    value = "128Mi"
-  }
-
-  # Same treatment for the user-provisioning container, should users ever
-  # be configured again.
-  set {
-    name  = "makeUserJob.resources.requests.cpu"
-    value = "50m"
-  }
-
-  set {
-    name  = "makeUserJob.resources.requests.memory"
-    value = "64Mi"
-  }
-
-  set {
-    name  = "makeUserJob.resources.limits.cpu"
-    value = "200m"
-  }
-
-  set {
-    name  = "makeUserJob.resources.limits.memory"
-    value = "128Mi"
-  }
-
-  set {
-    name  = "buckets[0].name"
-    value = "mlpipeline"
-  }
-
-  set {
-    name  = "buckets[0].policy"
-    value = "none"
-  }
+  set = [
+    {
+      name  = "mode"
+      value = var.minio.mode
+    },
+    {
+      name  = "replicas"
+      value = tostring(var.minio.replicas)
+    },
+    {
+      name  = "persistence.size"
+      value = var.minio.storage_size
+    },
+    {
+      name  = "persistence.storageClass"
+      value = "gp3"
+    },
+    {
+      name  = "resources.requests.memory"
+      value = var.minio.memory_request
+    },
+    {
+      name  = "resources.requests.cpu"
+      value = var.minio.cpu_request
+    },
+    # Limits are mandatory: the platform's Kyverno require-resource-limits
+    # policy admission-blocks limit-less pods in the argo namespace.
+    {
+      name  = "resources.limits.memory"
+      value = var.minio.memory_limit
+    },
+    {
+      name  = "resources.limits.cpu"
+      value = var.minio.cpu_limit
+    },
+    # Use ExternalSecret-managed credentials (avoids secrets in Helm release metadata)
+    {
+      name  = "existingSecret"
+      value = "minio-credentials"
+    },
+    # The post-install bucket job must satisfy the platform's own Kyverno
+    # require-resource-limits policy (Enforce). NOTE: the chart keys the job
+    # container's resources under makeBucketJob.resources - postJob has no
+    # resources field (a previous fix targeted it and silently did nothing).
+    {
+      name  = "makeBucketJob.resources.requests.cpu"
+      value = "50m"
+    },
+    {
+      name  = "makeBucketJob.resources.requests.memory"
+      value = "64Mi"
+    },
+    {
+      name  = "makeBucketJob.resources.limits.cpu"
+      value = "200m"
+    },
+    {
+      name  = "makeBucketJob.resources.limits.memory"
+      value = "128Mi"
+    },
+    # Same treatment for the user-provisioning container, should users ever
+    # be configured again.
+    {
+      name  = "makeUserJob.resources.requests.cpu"
+      value = "50m"
+    },
+    {
+      name  = "makeUserJob.resources.requests.memory"
+      value = "64Mi"
+    },
+    {
+      name  = "makeUserJob.resources.limits.cpu"
+      value = "200m"
+    },
+    {
+      name  = "makeUserJob.resources.limits.memory"
+      value = "128Mi"
+    },
+    {
+      name  = "buckets[0].name"
+      value = "mlpipeline"
+    },
+    {
+      name  = "buckets[0].policy"
+      value = "none"
+    },
+  ]
 
   # Network and admission policies first (ADR-017 decision 6).
   depends_on = [time_sleep.alb_controller_ready, terraform_data.platform_baseline_ready]

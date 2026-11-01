@@ -28,50 +28,45 @@ resource "helm_release" "kyverno" {
   # Increase timeout for CRD installation
   timeout = 600
 
-  # Admission controller configuration
-  set {
-    name  = "admissionController.replicas"
-    value = "2"
-  }
-
-  # Background controller for report generation
-  set {
-    name  = "backgroundController.replicas"
-    value = "1"
-  }
-
-  # Reports controller
-  set {
-    name  = "reportsController.replicas"
-    value = "1"
-  }
-
-  # Cleanup controller
-  set {
-    name  = "cleanupController.replicas"
-    value = "1"
-  }
-
-  # Resource limits for admission controller
-  set {
-    name  = "admissionController.container.resources.requests.cpu"
-    value = "100m"
-  }
-
-  set {
-    name  = "admissionController.container.resources.requests.memory"
-    value = "256Mi"
-  }
-
-  set {
-    name  = "admissionController.container.resources.limits.cpu"
-    value = "500m"
-  }
-
-  set {
-    name  = "admissionController.container.resources.limits.memory"
-    value = "512Mi"
-  }
+  set = [
+    # Admission controller configuration
+    {
+      name  = "admissionController.replicas"
+      value = "2"
+    },
+    # Background controller for report generation
+    {
+      name  = "backgroundController.replicas"
+      value = "1"
+    },
+    # Reports controller
+    {
+      name  = "reportsController.replicas"
+      value = "1"
+    },
+    # Cleanup controller
+    {
+      name  = "cleanupController.replicas"
+      value = "1"
+    },
+    # Resource limits for admission controller
+    {
+      name  = "admissionController.container.resources.requests.cpu"
+      value = "100m"
+    },
+    {
+      name  = "admissionController.container.resources.requests.memory"
+      value = "256Mi"
+    },
+    {
+      name  = "admissionController.container.resources.limits.cpu"
+      value = "500m"
+    },
+    {
+      name  = "admissionController.container.resources.limits.memory"
+      value = "512Mi"
+    },
+  ]
 
   depends_on = [
     kubernetes_namespace.kyverno,

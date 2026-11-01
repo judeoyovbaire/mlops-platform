@@ -71,7 +71,7 @@
   ],
   "packageRules": [
     {
-      "description": "Group Terraform provider minor/patch updates; majors (e.g. helm 3.x, which drops set {} blocks) get their own PR",
+      "description": "Group Terraform provider minor/patch updates; majors get their own PR (they usually change resource or block syntax)",
       "matchManagers": [
         "terraform"
       ],
