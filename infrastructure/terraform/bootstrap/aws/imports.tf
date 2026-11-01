@@ -42,30 +42,10 @@ import {
   id = "mlops-platform-github-actions"
 }
 import {
-  to = aws_iam_role_policy.terraform_state_access
-  id = "mlops-platform-github-actions:terraform-state-access"
-}
-import {
-  to = aws_iam_role_policy.terraform_eks_ec2
-  id = "mlops-platform-github-actions:terraform-eks-ec2"
-}
-import {
-  to = aws_iam_role_policy.terraform_iam
-  id = "mlops-platform-github-actions:terraform-iam"
-}
-import {
-  to = aws_iam_role_policy.terraform_storage
-  id = "mlops-platform-github-actions:terraform-storage"
-}
-import {
-  to = aws_iam_role_policy.secretsmanager_rds_managed
-  id = "mlops-platform-github-actions:secretsmanager-rds-managed"
-}
-import {
-  to = aws_iam_role_policy.terraform_services
-  id = "mlops-platform-github-actions:terraform-services"
-}
-import {
   to = aws_iam_service_linked_role.spot
   id = "arn:aws:iam::183590992229:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"
 }
+
+# The six inline role policies imported here in July 2026 became
+# customer-managed policies on 2026-11-01; their import blocks were removed so
+# the next apply deletes the inline versions and creates the managed ones.

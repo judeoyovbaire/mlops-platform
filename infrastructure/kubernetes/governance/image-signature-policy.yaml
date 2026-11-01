@@ -14,7 +14,7 @@ metadata:
     policies.kyverno.io/description: >-
       Verifies that all container images in the mlops and argo namespaces
       are signed using Cosign keyless signing via Sigstore. Images must be
-      signed by the repository's GitHub Actions workflow using OIDC identity.
+      signed by judeoyovbaire/mlops-platform's build-sign-publish workflow on main (GitHub OIDC).
 spec:
   validationFailureAction: Enforce
   background: true
@@ -36,13 +36,17 @@ spec:
                 - mlops
                 - argo
       verifyImages:
+        # Trust root pinned to THIS repo's signing workflow on main. The old
+        # values (ghcr.io/*/mlops-platform/* + a .* subject regex) admitted an
+        # image signed by any GitHub account with a repo of the same name.
+        # tests/unit/test_supply_chain_policy.py keeps these pinned.
         - imageReferences:
-            - "ghcr.io/*/mlops-platform/*"
+            - "ghcr.io/judeoyovbaire/mlops-platform/*"
           attestors:
             - entries:
                 - keyless:
                     issuer: "https://token.actions.githubusercontent.com"
-                    subjectRegExp: "https://github.com/.*/.github/workflows/.*"
+                    subject: "https://github.com/judeoyovbaire/mlops-platform/.github/workflows/build-sign-publish.yaml@refs/heads/main"
                     rekor:
                       url: "https://rekor.sigstore.dev"
                     # NOTE: kyverno also defaults signatureAlgorithm=sha256
@@ -84,7 +88,7 @@ spec:
       validate:
         message: >-
           Container image {{ request.object.spec.containers[].image }} is not from
-          the trusted GHCR registry. Consider using signed images from ghcr.io.
+          this repository's signed images (ghcr.io/judeoyovbaire/mlops-platform/*).
         foreach:
           - list: "request.object.spec.containers[]"
             deny:
@@ -92,4 +96,4 @@ spec:
                 all:
                   - key: "{{ element.image }}"
                     operator: NotEquals
-                    value: "ghcr.io/*"
+                    value: "ghcr.io/judeoyovbaire/mlops-platform/*"

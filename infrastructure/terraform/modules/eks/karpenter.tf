@@ -56,14 +56,37 @@ resource "aws_iam_policy" "karpenter_controller" {
           "ec2:CreateFleet",
           "ec2:CreateLaunchTemplate",
           "ec2:CreateTags",
-          "ec2:DeleteLaunchTemplate",
-          "ec2:RunInstances",
-          "ec2:TerminateInstances"
+          "ec2:RunInstances"
         ]
         Resource = "*"
         Condition = {
           StringEquals = {
             "aws:RequestedRegion" = data.aws_region.current.region
+          }
+        }
+      },
+      {
+        # Destructive actions only on resources Karpenter launched for this
+        # cluster (Karpenter v1 tags them kubernetes.io/cluster/<name>=owned
+        # and karpenter.sh/nodepool), per the upstream reference policy.
+        # Previously TerminateInstances applied to every instance in the region.
+        Sid    = "KarpenterScopedDeleteActions"
+        Effect = "Allow"
+        Action = [
+          "ec2:TerminateInstances",
+          "ec2:DeleteLaunchTemplate"
+        ]
+        Resource = [
+          "arn:aws:ec2:${data.aws_region.current.region}:*:instance/*",
+          "arn:aws:ec2:${data.aws_region.current.region}:*:launch-template/*"
+        ]
+        Condition = {
+          StringEquals = {
+            "aws:RequestedRegion"                                       = data.aws_region.current.region
+            "aws:ResourceTag/kubernetes.io/cluster/${var.cluster_name}" = "owned"
+          }
+          StringLike = {
+            "aws:ResourceTag/karpenter.sh/nodepool" = "*"
           }
         }
       },

@@ -332,7 +332,11 @@ jobs:
           format: "sarif"
           output: "trivy-results.sarif"
           severity: "HIGH,CRITICAL"
+          # Without this the action unsets the severity filter for SARIF output
+          # and exit-code 1 would trip on every LOW/MEDIUM finding too.
+          limit-severities-for-sarif: true
           trivyignores: ".trivyignore"
+          exit-code: "1"
           skip-dirs: "**/.terraform"
 
       - name: Upload Trivy scan results
@@ -340,6 +344,25 @@ jobs:
         if: always()
         with:
           sarif_file: "trivy-results.sarif"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+
+      # Known-vulnerability audit of the three image lockfiles (hashed, so no
+      # resolution needed). Report-only until JDH-406 lands the Renovate wave:
+      # on 2026-11-01 all three had open advisories (urllib3, sqlparse,
+      # werkzeug, protobuf, oauthlib, ...). Then remove continue-on-error.
+      - name: Audit image dependencies (pip-audit)
+        continue-on-error: true
+        run: |
+          rc=0
+          for req in pipelines/training pipelines/pretrained components/kserve-transformer; do
+            echo "::group::${req}"
+            uvx pip-audit==2.10.1 --disable-pip --no-deps --progress-spinner off \
+              -r "${req}/requirements.txt" || rc=1
+            echo "::endgroup::"
+          done
+          exit $rc
 
       - name: Scan Dockerfiles with Trivy
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
@@ -349,6 +372,7 @@ jobs:
           format: "table"
           severity: "HIGH,CRITICAL"
           skip-dirs: "**/.terraform"
+          exit-code: "1"
 
   checkov-scan:
     name: Checkov IaC Scan
@@ -365,7 +389,10 @@ jobs:
         uses: bridgecrewio/checkov-action@9201a8e6eaa919e3444d7c4ca691896efde4f033 # v12.3101.0
         with:
           directory: infrastructure/terraform/
-          soft_fail: true
+          soft_fail: false
+          # Pre-existing findings are recorded in the baseline; anything new fails.
+          # Regenerate deliberately: checkov -d infrastructure/terraform --skip-check CKV_TF_1,CKV_TF_2 --create-baseline
+          baseline: infrastructure/terraform/.checkov.baseline
           output_format: sarif
           output_file_path: checkov-results.sarif
           skip_check: CKV_TF_1,CKV_TF_2
@@ -454,6 +481,18 @@ jobs:
           ignore-unfixed: true
           exit-code: "0"
 
+      - name: Gate on fixable CRITICAL CVEs (training pipeline)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: "mlops-platform/ml-training:test"
+          format: "table"
+          severity: "CRITICAL"
+          ignore-unfixed: true
+          trivyignores: ".trivyignore"
+          exit-code: "1"
+        # Report-only until JDH-406 refreshes the image lockfiles; then drop this.
+        continue-on-error: true
+
       - name: Scan pretrained pipeline image
         if: ${{ !cancelled() && !(github.event_name == 'workflow_dispatch' && inputs.action == 'deploy-model') }}
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
@@ -465,6 +504,19 @@ jobs:
           ignore-unfixed: true
           exit-code: "0"
 
+      - name: Gate on fixable CRITICAL CVEs (pretrained pipeline)
+        if: ${{ !cancelled() && !(github.event_name == 'workflow_dispatch' && inputs.action == 'deploy-model') }}
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: "mlops-platform/hf-pretrained:test"
+          format: "table"
+          severity: "CRITICAL"
+          ignore-unfixed: true
+          trivyignores: ".trivyignore"
+          exit-code: "1"
+        # Report-only until JDH-406 refreshes the image lockfiles; then drop this.
+        continue-on-error: true
+
       - name: Scan kserve-transformer image
         if: ${{ !cancelled() }}
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
@@ -475,6 +527,19 @@ jobs:
           severity: "HIGH,CRITICAL"
           ignore-unfixed: true
           exit-code: "0"
+
+      - name: Gate on fixable CRITICAL CVEs (kserve-transformer)
+        if: ${{ !cancelled() }}
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: "mlops-platform/kserve-transformer:test"
+          format: "table"
+          severity: "CRITICAL"
+          ignore-unfixed: true
+          trivyignores: ".trivyignore"
+          exit-code: "1"
+        # Report-only until JDH-406 refreshes the image lockfiles; then drop this.
+        continue-on-error: true
 
       - name: Upload training image scan results
         uses: github/codeql-action/upload-sarif@e46ed2cbd01164d986452f91f178727624ae40d7 # v4

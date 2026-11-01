@@ -26,8 +26,8 @@ verification. For additional supply-chain hardening in production:
 
 - Pin to exact commit SHAs instead of version tags:
   `actions/checkout@<full-sha>` (use Dependabot or Renovate to auto-update)
-- Enable GitHub's artifact attestation for published container images
-- Consider adding SLSA provenance generation to the build pipeline
+- Container images already carry GitHub artifact attestations (SLSA v1
+  Build L2) and keyless signatures verified by digest; see ADR-008
 
 ## GKE Cluster Topology (F9)
 

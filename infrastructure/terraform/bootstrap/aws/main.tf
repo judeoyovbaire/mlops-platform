@@ -274,9 +274,8 @@ resource "aws_iam_role" "github_actions" {
 }
 
 # Policy for Terraform state access
-resource "aws_iam_role_policy" "terraform_state_access" {
-  name = "terraform-state-access"
-  role = aws_iam_role.github_actions.id
+resource "aws_iam_policy" "terraform_state_access" {
+  name = "${var.project_name}-gha-terraform-state-access"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -296,6 +295,14 @@ resource "aws_iam_role_policy" "terraform_state_access" {
         ]
       },
       {
+        # The state bucket uses SSE-KMS with this CMK; without these the role
+        # can list state objects but not read or write them.
+        Sid      = "StateKeyUse"
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt", "kms:GenerateDataKey", "kms:DescribeKey"]
+        Resource = aws_kms_key.terraform_state.arn
+      },
+      {
         Sid    = "DynamoDBLocking"
         Effect = "Allow"
         Action = [
@@ -309,11 +316,17 @@ resource "aws_iam_role_policy" "terraform_state_access" {
   })
 }
 
-# Split policies to stay under 10KB limit per inline policy
+resource "aws_iam_role_policy_attachment" "terraform_state_access" {
+  role       = aws_iam_role.github_actions.name
+  policy_arn = aws_iam_policy.terraform_state_access.arn
+}
+
+# Customer-managed policies attached to the role (6,144 chars each, 10 per
+# role by default). These were inline policies until 2026-11-01, when their
+# aggregate size reached ~9,000 of the 10,240-char per-role inline limit.
 # Policy 1: EKS and EC2/VPC networking
-resource "aws_iam_role_policy" "terraform_eks_ec2" {
-  name = "terraform-eks-ec2"
-  role = aws_iam_role.github_actions.id
+resource "aws_iam_policy" "terraform_eks_ec2" {
+  name = "${var.project_name}-gha-terraform-eks-ec2"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -371,10 +384,14 @@ resource "aws_iam_role_policy" "terraform_eks_ec2" {
   })
 }
 
+resource "aws_iam_role_policy_attachment" "terraform_eks_ec2" {
+  role       = aws_iam_role.github_actions.name
+  policy_arn = aws_iam_policy.terraform_eks_ec2.arn
+}
+
 # Policy 2: IAM permissions
-resource "aws_iam_role_policy" "terraform_iam" {
-  name = "terraform-iam"
-  role = aws_iam_role.github_actions.id
+resource "aws_iam_policy" "terraform_iam" {
+  name = "${var.project_name}-gha-terraform-iam"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -449,10 +466,14 @@ resource "aws_iam_role_policy" "terraform_iam" {
   })
 }
 
+resource "aws_iam_role_policy_attachment" "terraform_iam" {
+  role       = aws_iam_role.github_actions.name
+  policy_arn = aws_iam_policy.terraform_iam.arn
+}
+
 # Policy 3: Storage and data services (S3, ECR, RDS)
-resource "aws_iam_role_policy" "terraform_storage" {
-  name = "terraform-storage"
-  role = aws_iam_role.github_actions.id
+resource "aws_iam_policy" "terraform_storage" {
+  name = "${var.project_name}-gha-terraform-storage"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -501,14 +522,18 @@ resource "aws_iam_role_policy" "terraform_storage" {
   })
 }
 
+resource "aws_iam_role_policy_attachment" "terraform_storage" {
+  role       = aws_iam_role.github_actions.name
+  policy_arn = aws_iam_policy.terraform_storage.arn
+}
+
 # Policy 4: Other services (KMS, CloudWatch, Backup, SSM)
 # Secrets Manager: RDS manage_master_user_password creates/rotates a secret
 # under the rds! prefix AS THE CALLER, and the platform layer manages its own
 # secrets under the project prefix. Discovered on first real deploy - the
 # scoped role's initial policy set predated RDS-managed master passwords.
-resource "aws_iam_role_policy" "secretsmanager_rds_managed" {
-  name = "secretsmanager-rds-managed"
-  role = aws_iam_role.github_actions.id
+resource "aws_iam_policy" "secretsmanager_rds_managed" {
+  name = "${var.project_name}-gha-secretsmanager-rds-managed"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -548,25 +573,70 @@ resource "aws_iam_role_policy" "secretsmanager_rds_managed" {
   })
 }
 
-resource "aws_iam_role_policy" "terraform_services" {
-  name = "terraform-services"
-  role = aws_iam_role.github_actions.id
+resource "aws_iam_role_policy_attachment" "secretsmanager_rds_managed" {
+  role       = aws_iam_role.github_actions.name
+  policy_arn = aws_iam_policy.secretsmanager_rds_managed.arn
+}
+
+resource "aws_iam_policy" "terraform_services" {
+  name = "${var.project_name}-gha-terraform-services"
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      # KMS: key-management actions only on keys tagged Project=<project>
+      # (provider default_tags put that tag on every key the env roots
+      # create). Previously PutKeyPolicy/ScheduleKeyDeletion applied to every
+      # key in the account. The state-bucket key carries the same Project tag
+      # (bootstrap default_tags), so it is protected by the explicit Deny below.
       {
-        Sid    = "KMSFullAccess"
+        Sid    = "DenyStateKeyAdministration"
+        Effect = "Deny"
+        Action = [
+          "kms:PutKeyPolicy", "kms:ScheduleKeyDeletion", "kms:DisableKey",
+          "kms:UntagResource", "kms:TagResource"
+        ]
+        Resource = aws_kms_key.terraform_state.arn
+      },
+      {
+        Sid      = "KMSCreateProjectKeys"
+        Effect   = "Allow"
+        Action   = ["kms:CreateKey", "kms:TagResource"]
+        Resource = "*"
+        Condition = {
+          StringEquals = { "aws:RequestTag/Project" = var.project_name }
+        }
+      },
+      {
+        Sid    = "KMSManageProjectKeys"
         Effect = "Allow"
         Action = [
-          "kms:CreateKey", "kms:DescribeKey", "kms:GetKeyPolicy",
-          "kms:GetKeyRotationStatus", "kms:ListResourceTags",
-          "kms:TagResource", "kms:UntagResource",
-          "kms:EnableKeyRotation", "kms:CreateAlias",
-          "kms:DeleteAlias", "kms:ListAliases",
+          "kms:DescribeKey", "kms:GetKeyPolicy", "kms:GetKeyRotationStatus",
+          "kms:ListResourceTags", "kms:TagResource", "kms:UntagResource",
+          "kms:EnableKeyRotation", "kms:CreateAlias", "kms:DeleteAlias",
           "kms:CreateGrant", "kms:ListGrants", "kms:RetireGrant",
-          "kms:ScheduleKeyDeletion", "kms:PutKeyPolicy"
+          "kms:ScheduleKeyDeletion", "kms:PutKeyPolicy",
+          # CreateBackupVault with a CMK needs these on the key (AWS Backup docs).
+          "kms:Decrypt", "kms:GenerateDataKey"
         ]
+        Resource = "arn:aws:kms:${var.aws_region}:${data.aws_caller_identity.current.account_id}:key/*"
+        Condition = {
+          StringEquals = { "aws:ResourceTag/Project" = var.project_name }
+        }
+      },
+      {
+        Sid    = "KMSProjectAliases"
+        Effect = "Allow"
+        Action = ["kms:CreateAlias", "kms:DeleteAlias"]
+        Resource = [
+          "arn:aws:kms:${var.aws_region}:${data.aws_caller_identity.current.account_id}:alias/${var.project_name}*",
+          "arn:aws:kms:${var.aws_region}:${data.aws_caller_identity.current.account_id}:alias/eks/${var.project_name}*"
+        ]
+      },
+      {
+        Sid      = "KMSList"
+        Effect   = "Allow"
+        Action   = ["kms:ListAliases", "kms:ListKeys"]
         Resource = "*"
       },
       {
@@ -585,10 +655,37 @@ resource "aws_iam_role_policy" "terraform_services" {
         Action   = "logs:DescribeLogGroups"
         Resource = "*"
       },
+      # Backup: the actions Terraform needs for the vault, plan and selection
+      # in modules/eks/backup.tf. No restore, recovery-point deletion or
+      # vault-lock actions: teardown runs locally as an admin, never in CI.
       {
-        Sid      = "BackupFullAccess"
+        Sid    = "BackupProjectVault"
+        Effect = "Allow"
+        Action = [
+          "backup:CreateBackupVault", "backup:DeleteBackupVault", "backup:DescribeBackupVault",
+          "backup:PutBackupVaultAccessPolicy", "backup:GetBackupVaultAccessPolicy",
+          "backup:DeleteBackupVaultAccessPolicy", "backup:ListRecoveryPointsByBackupVault"
+        ]
+        Resource = "arn:aws:backup:${var.aws_region}:${data.aws_caller_identity.current.account_id}:backup-vault:${var.project_name}*"
+      },
+      {
+        # Plan ARNs carry a generated id, not the name, so these stay on "*".
+        Sid    = "BackupPlansAndSelections"
+        Effect = "Allow"
+        Action = [
+          "backup:CreateBackupPlan", "backup:UpdateBackupPlan", "backup:DeleteBackupPlan",
+          "backup:GetBackupPlan", "backup:ListBackupPlans", "backup:ListBackupPlanVersions",
+          "backup:CreateBackupSelection", "backup:DeleteBackupSelection",
+          "backup:GetBackupSelection", "backup:ListBackupSelections",
+          "backup:ListBackupVaults", "backup:TagResource", "backup:UntagResource", "backup:ListTags"
+        ]
+        Resource = "*"
+      },
+      {
+        # Required by CreateBackupVault.
+        Sid      = "BackupStorageMount"
         Effect   = "Allow"
-        Action   = ["backup:*", "backup-storage:*"]
+        Action   = "backup-storage:MountCapsule"
         Resource = "*"
       },
       {
@@ -628,6 +725,11 @@ resource "aws_iam_role_policy" "terraform_services" {
       }
     ]
   })
+}
+
+resource "aws_iam_role_policy_attachment" "terraform_services" {
+  role       = aws_iam_role.github_actions.name
+  policy_arn = aws_iam_policy.terraform_services.arn
 }
 
 # Outputs

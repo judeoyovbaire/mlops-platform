@@ -18,13 +18,13 @@ Key requirements:
 
 ## Decision
 
-We will adopt **Sigstore Cosign keyless signing** with **SLSA Level 3 provenance** for all container images.
+We will adopt **Sigstore Cosign keyless signing** with **SLSA v1 Build Level 2 provenance** (GitHub artifact attestations) for all container images.
 
 1. **Cosign keyless signing** via GitHub Actions OIDC — no static keys, certificates tied to workflow identity
-2. **SLSA provenance attestations** attached to images using `cosign attest`
-3. **GitHub native build attestations** via `actions/attest-build-provenance@v2`
+2. **SLSA provenance** (v1, Build L2) via `actions/attest-build-provenance` on the pushed digest
+3. **Signature verification in CI** by digest, against the same exact identity the cluster enforces
 4. **Kyverno ClusterPolicy** enforcing signature verification at admission time
-5. **SBOMs** generated with Trivy and attached to images via `cosign attach sbom`
+5. **SBOMs** generated with Trivy and attested to images via `cosign attest --type spdxjson`
 
 ## Consequences
 
@@ -32,7 +32,7 @@ We will adopt **Sigstore Cosign keyless signing** with **SLSA Level 3 provenance
 
 - Zero key management overhead — Sigstore keyless uses ephemeral certificates from Fulcio CA
 - Cryptographic proof that images were built by GitHub Actions from this repository
-- SLSA Level 3 provenance provides build integrity guarantees
+- SLSA Build L2 provenance: signed, service-generated provenance tied to the exact digest (L3 would need an isolated reusable builder such as slsa-github-generator; not adopted)
 - Kyverno blocks unsigned/tampered images before they reach the cluster
 - SBOMs enable vulnerability scanning of deployed images
 - Transparent log (Rekor) provides public audit trail
@@ -45,7 +45,7 @@ We will adopt **Sigstore Cosign keyless signing** with **SLSA Level 3 provenance
 
 ### Neutral
 
-- Kyverno policy runs in Enforce mode for GHCR images, Audit mode for third-party images
+- Kyverno policy runs in Enforce mode for `ghcr.io/judeoyovbaire/mlops-platform/*`, Audit mode for everything else
 - Can be extended to verify Helm chart provenance in the future
 
 ## Alternatives Considered
@@ -82,3 +82,13 @@ We will adopt **Sigstore Cosign keyless signing** with **SLSA Level 3 provenance
 - [SLSA Framework](https://slsa.dev/)
 - [Kyverno Image Verification](https://kyverno.io/docs/writing-policies/verify-images/)
 - [GitHub Artifact Attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations)
+
+## Amendment (2026-11-01)
+
+The original claim of SLSA Level 3 was not met: provenance was a hand-written
+predicate signed by the build job itself, and `release.yaml` attested
+`@sha256:latest` because the digests it referenced were never produced. The
+admission policy also trusted any GitHub repository named `mlops-platform`.
+Corrected in JDH-404: the Kyverno keyless attestor is pinned to
+`https://github.com/judeoyovbaire/mlops-platform/.github/workflows/build-sign-publish.yaml@refs/heads/main` and `ghcr.io/judeoyovbaire/mlops-platform/*`; the build job verifies that same identity by
+digest and attaches a GitHub artifact attestation (SLSA v1 Build L2).
