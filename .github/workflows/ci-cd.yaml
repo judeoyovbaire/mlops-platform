@@ -1,6 +1,6 @@
-# Multi-cloud CI/CD pipeline for AWS EKS, Azure AKS, and GCP GKE
+# CI/CD pipeline for the AWS EKS platform (ADR-017: single cloud)
 # - Push/PR: Validates code and shows terraform plan
-# - Manual: Deploy infrastructure or models to selected cloud
+# - Manual: Deploy infrastructure or models
 
 name: CI/CD
 
@@ -21,8 +21,6 @@ on:
         type: choice
         options:
           - aws
-          - azure
-          - gcp
       environment:
         description: "Environment to deploy"
         required: true
@@ -45,12 +43,7 @@ env:
   PYTHON_VERSION: "3.12"
   # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.*)$
   TERRAFORM_VERSION: "1.14.5"
-  # renovate: datasource=github-releases depName=Azure/kubelogin extractVersion=^v(?<version>.*)$
-  KUBELOGIN_VERSION: "0.2.10"
   AWS_REGION: "eu-west-1"
-  AZURE_LOCATION: "westeurope"
-  GCP_REGION: "europe-west4"
-  GCP_ZONE: "europe-west4-a"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -166,56 +159,6 @@ jobs:
           terraform init -backend=false
           terraform validate
 
-      # Azure Validation
-      - name: Validate AKS Module
-        working-directory: infrastructure/terraform/modules/aks
-        run: |
-          terraform init -backend=false
-          terraform validate
-
-      - name: Validate Azure Bootstrap
-        working-directory: infrastructure/terraform/bootstrap/azure
-        run: |
-          terraform init -backend=false
-          terraform validate
-
-      - name: Validate Azure Dev Environment
-        working-directory: infrastructure/terraform/environments/azure/dev
-        run: |
-          terraform init -backend=false
-          terraform validate
-
-      - name: Validate Azure Prod Environment
-        working-directory: infrastructure/terraform/environments/azure/prod
-        run: |
-          terraform init -backend=false
-          terraform validate
-
-      # GCP Validation
-      - name: Validate GKE Module
-        working-directory: infrastructure/terraform/modules/gke
-        run: |
-          terraform init -backend=false
-          terraform validate
-
-      - name: Validate GCP Bootstrap
-        working-directory: infrastructure/terraform/bootstrap/gcp
-        run: |
-          terraform init -backend=false
-          terraform validate
-
-      - name: Validate GCP Dev Environment
-        working-directory: infrastructure/terraform/environments/gcp/dev
-        run: |
-          terraform init -backend=false
-          terraform validate
-
-      - name: Validate GCP Prod Environment
-        working-directory: infrastructure/terraform/environments/gcp/prod
-        run: |
-          terraform init -backend=false
-          terraform validate
-
   validate-kubernetes:
     name: Validate Kubernetes
     runs-on: ubuntu-latest
@@ -304,7 +247,7 @@ jobs:
 
       - name: Validate Helm values (YAML syntax)
         run: |
-          for f in infrastructure/helm/{aws,azure,gcp,common}/*.yaml; do
+          for f in infrastructure/helm/{aws,common}/*.yaml; do
             echo "Checking $f..."
             # Strip Terraform %{ } template directives before YAML parsing
             sed '/%{.*}/d' "$f" | python3 -c "import sys, yaml; yaml.safe_load(sys.stdin)"
@@ -856,8 +799,7 @@ jobs:
 
       # Prod is planned only once it has real state: an unconditional plan
       # of a never-applied environment is a full-create wall of noise on
-      # every PR. Azure/GCP plan jobs adopt this pattern when those clouds
-      # are bootstrapped (ADR-014: AWS-first verification).
+      # every PR.
       - name: Check if prod state exists
         if: steps.aws-creds.outcome == 'success'
         id: prod-state
@@ -952,245 +894,6 @@ jobs:
           echo "## AWS Terraform Plan: Skipped" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "AWS credentials not configured. Add \`AWS_ROLE_ARN\` secret after running bootstrap." >> $GITHUB_STEP_SUMMARY
-
-  # Terraform Plan - Azure
-  terraform-plan-azure:
-    name: Terraform Plan (Azure)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      id-token: write
-      pull-requests: write
-    needs:
-      [
-        scan-container-images,
-        validate-terraform,
-        validate-kubernetes,
-        validate-helm,
-        test-policies,
-        security-scan,
-        test-python,
-      ]
-    outputs:
-      has_changes: ${{ steps.plan.outputs.has_changes }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
-      - name: Azure Login (OIDC)
-        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-        continue-on-error: true
-        id: azure-creds
-
-      - name: Setup Terraform
-        if: steps.azure-creds.outcome == 'success'
-        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
-
-      - name: Cache Terraform plugins
-        if: steps.azure-creds.outcome == 'success'
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
-        with:
-          path: |
-            ~/.terraform.d/plugin-cache
-            infrastructure/terraform/**/.terraform
-          key: terraform-${{ runner.os }}-${{ hashFiles('infrastructure/terraform/**/.terraform.lock.hcl') }}
-          restore-keys: |
-            terraform-${{ runner.os }}-
-
-      - name: Configure Terraform plugin cache
-        if: steps.azure-creds.outcome == 'success'
-        run: |
-          mkdir -p ~/.terraform.d/plugin-cache
-          echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
-
-      - name: Terraform Init
-        if: steps.azure-creds.outcome == 'success'
-        working-directory: infrastructure/terraform/environments/azure/dev
-        env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_USE_OIDC: true
-        run: terraform init
-
-      - name: Check if AKS cluster exists
-        if: steps.azure-creds.outcome == 'success'
-        id: aks-check
-        run: |
-          if az aks show --resource-group mlops-platform-dev-rg --name mlops-platform-dev &>/dev/null; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Terraform Plan
-        if: steps.azure-creds.outcome == 'success'
-        id: plan
-        working-directory: infrastructure/terraform/environments/azure/dev
-        env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_USE_OIDC: true
-        run: |
-          # If AKS cluster doesn't exist, only plan the AKS module to avoid K8s provider errors
-          if [ "${{ steps.aks-check.outputs.exists }}" == "false" ]; then
-            echo "AKS cluster not found - planning infrastructure only (module.aks)"
-            terraform plan -no-color -target=module.aks -out=tfplan 2>&1 | tee plan.txt
-          else
-            terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
-          fi
-
-          if grep -q "No changes" plan.txt; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-            echo "## Azure Terraform Plan: No Changes" >> $GITHUB_STEP_SUMMARY
-            echo "Infrastructure is up to date." >> $GITHUB_STEP_SUMMARY
-          else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "## Azure Terraform Plan" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            if [ "${{ steps.aks-check.outputs.exists }}" == "false" ]; then
-              echo "> **Note:** AKS cluster doesn't exist yet. Showing plan for infrastructure only." >> $GITHUB_STEP_SUMMARY
-              echo "> After deploying, run again to see full plan including Kubernetes resources." >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-            fi
-            echo "<details><summary>Click to expand plan</summary>" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            head -500 plan.txt >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            echo "</details>" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Skip notice (no Azure credentials)
-        if: steps.azure-creds.outcome != 'success'
-        run: |
-          echo "## Azure Terraform Plan: Skipped" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Azure credentials not configured. Add \`AZURE_CLIENT_ID\`, \`AZURE_TENANT_ID\`, and \`AZURE_SUBSCRIPTION_ID\` secrets after running bootstrap." >> $GITHUB_STEP_SUMMARY
-
-  # Terraform Plan - GCP
-  terraform-plan-gcp:
-    name: Terraform Plan (GCP)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      id-token: write
-      pull-requests: write
-    needs:
-      [
-        scan-container-images,
-        validate-terraform,
-        validate-kubernetes,
-        validate-helm,
-        test-policies,
-        security-scan,
-        test-python,
-      ]
-    outputs:
-      has_changes: ${{ steps.plan.outputs.has_changes }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
-      - name: Authenticate to Google Cloud (OIDC)
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-        continue-on-error: true
-        id: gcp-creds
-
-      - name: Setup Terraform
-        if: steps.gcp-creds.outcome == 'success'
-        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
-
-      - name: Cache Terraform plugins
-        if: steps.gcp-creds.outcome == 'success'
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
-        with:
-          path: |
-            ~/.terraform.d/plugin-cache
-            infrastructure/terraform/**/.terraform
-          key: terraform-${{ runner.os }}-${{ hashFiles('infrastructure/terraform/**/.terraform.lock.hcl') }}
-          restore-keys: |
-            terraform-${{ runner.os }}-
-
-      - name: Configure Terraform plugin cache
-        if: steps.gcp-creds.outcome == 'success'
-        run: |
-          mkdir -p ~/.terraform.d/plugin-cache
-          echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
-
-      - name: Set up Cloud SDK
-        if: steps.gcp-creds.outcome == 'success'
-        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
-
-      - name: Terraform Init
-        if: steps.gcp-creds.outcome == 'success'
-        working-directory: infrastructure/terraform/environments/gcp/dev
-        run: terraform init
-
-      - name: Check if GKE cluster exists
-        if: steps.gcp-creds.outcome == 'success'
-        id: gke-check
-        run: |
-          if gcloud container clusters describe mlops-platform-dev --zone ${{ env.GCP_ZONE }} --project ${{ secrets.GCP_PROJECT_ID }} &>/dev/null; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Terraform Plan
-        if: steps.gcp-creds.outcome == 'success'
-        id: plan
-        working-directory: infrastructure/terraform/environments/gcp/dev
-        run: |
-          # If GKE cluster doesn't exist, only plan the GKE module to avoid K8s provider errors
-          if [ "${{ steps.gke-check.outputs.exists }}" == "false" ]; then
-            echo "GKE cluster not found - planning infrastructure only (module.gke)"
-            terraform plan -no-color -target=module.gke -out=tfplan 2>&1 | tee plan.txt
-          else
-            terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
-          fi
-
-          if grep -q "No changes" plan.txt; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-            echo "## GCP Terraform Plan: No Changes" >> $GITHUB_STEP_SUMMARY
-            echo "Infrastructure is up to date." >> $GITHUB_STEP_SUMMARY
-          else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "## GCP Terraform Plan" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            if [ "${{ steps.gke-check.outputs.exists }}" == "false" ]; then
-              echo "> **Note:** GKE cluster doesn't exist yet. Showing plan for infrastructure only." >> $GITHUB_STEP_SUMMARY
-              echo "> After deploying, run again to see full plan including Kubernetes resources." >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-            fi
-            echo "<details><summary>Click to expand plan</summary>" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            head -500 plan.txt >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            echo "</details>" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Skip notice (no GCP credentials)
-        if: steps.gcp-creds.outcome != 'success'
-        run: |
-          echo "## GCP Terraform Plan: Skipped" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "GCP credentials not configured. Add \`GCP_WORKLOAD_IDENTITY_PROVIDER\` and \`GCP_SERVICE_ACCOUNT\` secrets after running bootstrap." >> $GITHUB_STEP_SUMMARY
 
   # Deploy Infrastructure - AWS (manual trigger only)
   deploy-infra-aws:
@@ -1296,243 +999,6 @@ jobs:
           kubectl get nodes >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Cluster provisioning..."
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
-  # Deploy Infrastructure - Azure (manual trigger only)
-  deploy-infra-azure:
-    name: Deploy Infrastructure (Azure)
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    permissions:
-      contents: read
-      id-token: write
-    needs: [terraform-plan-azure]
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'azure' && github.event.inputs.action == 'deploy-infra'
-    environment: ${{ github.event.inputs.environment }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
-      - name: Azure Login (OIDC)
-        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
-
-      - name: Cache Terraform plugins
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
-        with:
-          path: |
-            ~/.terraform.d/plugin-cache
-            infrastructure/terraform/**/.terraform
-          key: terraform-${{ runner.os }}-${{ hashFiles('infrastructure/terraform/**/.terraform.lock.hcl') }}
-          restore-keys: |
-            terraform-${{ runner.os }}-
-
-      - name: Configure Terraform plugin cache
-        run: |
-          mkdir -p ~/.terraform.d/plugin-cache
-          echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
-
-      - name: Install kubelogin
-        run: |
-          curl -LO https://github.com/Azure/kubelogin/releases/download/v${{ env.KUBELOGIN_VERSION }}/kubelogin-linux-amd64.zip
-          # Verify download integrity
-          curl -sL https://github.com/Azure/kubelogin/releases/download/v${{ env.KUBELOGIN_VERSION }}/kubelogin-linux-amd64.zip.sha256 -o kubelogin.sha256
-          echo "$(cat kubelogin.sha256)  kubelogin-linux-amd64.zip" | sha256sum -c -
-          unzip kubelogin-linux-amd64.zip -d kubelogin
-          sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
-          kubelogin --version
-      - name: Terraform Init
-        working-directory: infrastructure/terraform/environments/azure/${{ github.event.inputs.environment }}
-        env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_USE_OIDC: true
-        run: terraform init
-
-      - name: Backup Terraform State
-        working-directory: infrastructure/terraform/environments/azure/${{ github.event.inputs.environment }}
-        env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_USE_OIDC: true
-        run: |
-          terraform state pull > terraform.tfstate.backup
-          echo "State backed up before apply"
-
-      - name: Upload State Backup
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: terraform-state-backup-azure-${{ github.event.inputs.environment }}-${{ github.run_id }}
-          path: infrastructure/terraform/environments/azure/${{ github.event.inputs.environment }}/terraform.tfstate.backup
-          retention-days: 30
-
-      - name: Terraform Apply - Stage 1 (AKS Infrastructure)
-        working-directory: infrastructure/terraform/environments/azure/${{ github.event.inputs.environment }}
-        env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_USE_OIDC: true
-        run: |
-          echo "Stage 1: Deploying AKS cluster and infrastructure..."
-          terraform apply -auto-approve -target=module.aks
-
-      - name: Terraform Apply - Stage 2 (Kubernetes Resources)
-        working-directory: infrastructure/terraform/environments/azure/${{ github.event.inputs.environment }}
-        env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_USE_OIDC: true
-        run: |
-          echo "Stage 2: Deploying Helm releases and Kubernetes resources..."
-          # Plan to a file and apply exactly that plan: applying a fresh
-          # auto-approved plan would act on whatever state exists at apply
-          # time rather than what was just reviewed (TOCTOU).
-          terraform plan -input=false -out=tfplan
-          terraform apply -input=false tfplan
-
-      - name: Get Outputs
-        working-directory: infrastructure/terraform/environments/azure/${{ github.event.inputs.environment }}
-        env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARM_USE_OIDC: true
-        run: |
-          echo "## Azure Infrastructure Deployed (${{ github.event.inputs.environment }})" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Output | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-          terraform output -json | jq -r 'to_entries[] | "| \(.key) | \(.value.value // "N/A") |"' >> $GITHUB_STEP_SUMMARY
-
-      - name: Configure kubectl
-        run: |
-          az aks get-credentials \
-            --resource-group mlops-platform-${{ github.event.inputs.environment }}-rg \
-            --name mlops-platform-${{ github.event.inputs.environment }} \
-            --overwrite-existing
-          kubelogin convert-kubeconfig -l azurecli
-
-      - name: Verify Cluster
-        run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Cluster Status" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          kubectl get nodes >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Cluster provisioning..."
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-
-  # Deploy Infrastructure - GCP (manual trigger only)
-  deploy-infra-gcp:
-    name: Deploy Infrastructure (GCP)
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    permissions:
-      contents: read
-      id-token: write
-    needs: [terraform-plan-gcp]
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'gcp' && github.event.inputs.action == 'deploy-infra'
-    environment: ${{ github.event.inputs.environment }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
-      - name: Authenticate to Google Cloud (OIDC)
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
-
-      - name: Cache Terraform plugins
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
-        with:
-          path: |
-            ~/.terraform.d/plugin-cache
-            infrastructure/terraform/**/.terraform
-          key: terraform-${{ runner.os }}-${{ hashFiles('infrastructure/terraform/**/.terraform.lock.hcl') }}
-          restore-keys: |
-            terraform-${{ runner.os }}-
-
-      - name: Configure Terraform plugin cache
-        run: |
-          mkdir -p ~/.terraform.d/plugin-cache
-          echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
-
-      - name: Install gke-gcloud-auth-plugin
-        run: gcloud components install gke-gcloud-auth-plugin --quiet
-
-      - name: Terraform Init
-        working-directory: infrastructure/terraform/environments/gcp/${{ github.event.inputs.environment }}
-        run: terraform init
-
-      - name: Backup Terraform State
-        working-directory: infrastructure/terraform/environments/gcp/${{ github.event.inputs.environment }}
-        run: |
-          terraform state pull > terraform.tfstate.backup
-          echo "State backed up before apply"
-
-      - name: Upload State Backup
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: terraform-state-backup-gcp-${{ github.event.inputs.environment }}-${{ github.run_id }}
-          path: infrastructure/terraform/environments/gcp/${{ github.event.inputs.environment }}/terraform.tfstate.backup
-          retention-days: 30
-
-      - name: Terraform Apply - Stage 1 (GKE Infrastructure)
-        working-directory: infrastructure/terraform/environments/gcp/${{ github.event.inputs.environment }}
-        run: |
-          echo "Stage 1: Deploying GKE cluster and infrastructure..."
-          terraform apply -auto-approve -target=module.gke
-
-      - name: Terraform Apply - Stage 2 (Kubernetes Resources)
-        working-directory: infrastructure/terraform/environments/gcp/${{ github.event.inputs.environment }}
-        run: |
-          echo "Stage 2: Deploying Helm releases and Kubernetes resources..."
-          # Plan to a file and apply exactly that plan: applying a fresh
-          # auto-approved plan would act on whatever state exists at apply
-          # time rather than what was just reviewed (TOCTOU).
-          terraform plan -input=false -out=tfplan
-          terraform apply -input=false tfplan
-
-      - name: Get Outputs
-        working-directory: infrastructure/terraform/environments/gcp/${{ github.event.inputs.environment }}
-        run: |
-          echo "## GCP Infrastructure Deployed (${{ github.event.inputs.environment }})" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Output | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-          terraform output -json | jq -r 'to_entries[] | "| \(.key) | \(.value.value // "N/A") |"' >> $GITHUB_STEP_SUMMARY
-
-      - name: Configure kubectl
-        run: |
-          gcloud container clusters get-credentials mlops-platform-${{ github.event.inputs.environment }} \
-            --zone ${{ env.GCP_ZONE }} \
-            --project ${{ secrets.GCP_PROJECT_ID }}
-
-      - name: Verify Cluster
-        run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Cluster Status" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          kubectl get nodes >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Cluster provisioning..."
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-
   # Deploy Model - AWS (manual trigger only).
   # Cluster authentication happens INSIDE the reusable workflow: it runs as a
   # separate job on a fresh runner, so auth configured here would not carry
@@ -1553,43 +1019,6 @@ jobs:
       # Keep in sync with env.AWS_REGION (env context is unavailable in
       # reusable-workflow `with` blocks).
       region: eu-west-1
-
-  # Deploy Model - Azure (manual trigger only). Auth inside reusable workflow.
-  deploy-model-azure:
-    name: Deploy Model (Azure)
-    needs: [terraform-plan-azure]
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'azure' && github.event.inputs.action == 'deploy-model'
-    permissions:
-      contents: read
-      id-token: write
-    uses: ./.github/workflows/reusable-deploy-model.yaml
-    secrets: inherit
-    with:
-      cloud: azure
-      environment: ${{ github.event.inputs.environment }}
-      cluster-name: mlops-platform-${{ github.event.inputs.environment }}
-      resource-group: mlops-platform-${{ github.event.inputs.environment }}-rg
-      # Keep in sync with env.KUBELOGIN_VERSION.
-      # renovate: datasource=github-releases depName=Azure/kubelogin extractVersion=^v(?<version>.*)$
-      kubelogin-version: "0.2.10"
-
-  # Deploy Model - GCP (manual trigger only). Auth inside reusable workflow.
-  deploy-model-gcp:
-    name: Deploy Model (GCP)
-    needs: [terraform-plan-gcp]
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.cloud == 'gcp' && github.event.inputs.action == 'deploy-model'
-    permissions:
-      contents: read
-      id-token: write
-    uses: ./.github/workflows/reusable-deploy-model.yaml
-    secrets: inherit
-    with:
-      cloud: gcp
-      environment: ${{ github.event.inputs.environment }}
-      cluster-name: mlops-platform-${{ github.event.inputs.environment }}
-      # Keep in sync with env.GCP_ZONE (env context is unavailable in
-      # reusable-workflow `with` blocks).
-      region: europe-west4-a
 
   # E2E Tests (nightly schedule, manual trigger, or PR label)
   e2e-test:
@@ -1675,29 +1104,20 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-    needs: [terraform-plan-aws, terraform-plan-azure, terraform-plan-gcp]
+    needs: [terraform-plan-aws]
     if: always() && (github.event_name == 'push' || github.event_name == 'pull_request')
     steps:
       - name: Summary
         run: |
           echo "## CI/CD Pipeline Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Multi-Cloud Platform Ready**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Deploy to Dev Environment" >> $GITHUB_STEP_SUMMARY
-          echo "Actions → CI/CD → Run workflow → Select cloud + Environment: \`dev\` + Action: \`deploy-infra\`" >> $GITHUB_STEP_SUMMARY
+          echo "Actions → CI/CD → Run workflow → Environment: \`dev\` + Action: \`deploy-infra\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Deploy to Prod Environment" >> $GITHUB_STEP_SUMMARY
-          echo "Actions → CI/CD → Run workflow → Select cloud + Environment: \`prod\` + Action: \`deploy-infra\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Available Clouds" >> $GITHUB_STEP_SUMMARY
-          echo "- \`aws\` - AWS EKS" >> $GITHUB_STEP_SUMMARY
-          echo "- \`azure\` - Azure AKS" >> $GITHUB_STEP_SUMMARY
-          echo "- \`gcp\` - GCP GKE" >> $GITHUB_STEP_SUMMARY
+          echo "Actions → CI/CD → Run workflow → Environment: \`prod\` + Action: \`deploy-infra\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**To destroy** (local only for safety):" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           echo "make destroy-aws    # Destroy AWS" >> $GITHUB_STEP_SUMMARY
-          echo "make destroy-azure  # Destroy Azure" >> $GITHUB_STEP_SUMMARY
-          echo "make destroy-gcp    # Destroy GCP" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

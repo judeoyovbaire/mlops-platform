@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted (2026-07-05)
+Accepted (2026-07-05). The "freeze, don't delete" guidance below was reversed by
+[ADR-017](017-pivot-to-llm-inference-on-eks.md) (2026-11-01), which removed Azure and GCP.
 
 ## Context
 

@@ -165,15 +165,6 @@ spec:
 EOF
 ```
 
-**Azure (KEDA)**
-```bash
-# Check KEDA scaler status
-kubectl get scaledobject -n mlops
-
-# View KEDA metrics
-kubectl logs -n keda -l app=keda-operator
-```
-
 ### Cluster Autoscaler Status
 
 ```bash
@@ -200,23 +191,6 @@ aws rds create-db-snapshot \
 
 # List snapshots
 aws rds describe-db-snapshots --db-instance-identifier mlops-platform-dev-mlflow
-```
-
-**Azure (PostgreSQL Flexible)**
-```bash
-# Backups are automatic, but you can create on-demand
-az postgres flexible-server backup create \
-  --resource-group rg-mlops-platform-dev \
-  --name mlops-platform-dev-mlflow \
-  --backup-name manual-backup-$(date +%Y%m%d)
-```
-
-**GCP (Cloud SQL)**
-```bash
-# Create backup
-gcloud sql backups create \
-  --instance=mlops-platform-dev-mlflow \
-  --description="Manual backup $(date +%Y%m%d)"
 ```
 
 ### Artifact Storage Backup
@@ -289,9 +263,6 @@ velero backup create mlops-backup --include-namespaces mlops,mlflow,argo
    ```bash
    # AWS
    kubectl exec -n mlflow deploy/mlflow -- aws s3 ls s3://mlops-bucket/
-
-   # Azure
-   kubectl exec -n mlflow deploy/mlflow -- az storage blob list --container-name mlflow
    ```
 
 4. **Restart if needed**

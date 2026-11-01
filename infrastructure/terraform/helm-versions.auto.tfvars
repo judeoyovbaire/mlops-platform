@@ -1,6 +1,6 @@
 # Shared Helm Chart Versions
 # Single source of truth — symlinked into each environment directory.
-# Cloud-specific versions (AWS LB Controller, Karpenter, KEDA, NGINX Ingress)
+# AWS-specific versions (AWS LB Controller, Karpenter, Argo Rollouts/Events, OpenCost, DCGM)
 # remain in their respective environment variables.tf files.
 
 # renovate: datasource=helm depName=cert-manager registryUrl=https://charts.jetstack.io

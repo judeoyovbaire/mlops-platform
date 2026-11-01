@@ -3,8 +3,7 @@
 # The champion InferenceService (examples/kserve) runs its predictor under
 # the kserve-inference SA. The KServe storage-initializer pulls the model
 # artifacts straight from the MLflow S3 bucket, so this SA needs read
-# access - the GKE side wires the equivalent through Workload Identity
-# (modules/gke/workload-identity.tf).
+# access.
 module "kserve_inference_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "6.8.2"

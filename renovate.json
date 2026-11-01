@@ -167,7 +167,7 @@
       "automerge": false
     },
     {
-      "description": "Tool pins in workflows (terraform, kubelogin, kubeconform, kustomize)",
+      "description": "Tool pins in workflows (terraform, kubeconform, kustomize)",
       "matchManagers": [
         "custom.regex"
       ],

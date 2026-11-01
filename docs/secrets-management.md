@@ -6,20 +6,20 @@ This document describes the secrets management strategy for the MLOps platform.
 
 The platform uses a multi-layered approach to secrets management:
 
-1. **Cloud Secret Stores**: AWS Secrets Manager, Azure Key Vault, GCP Secret Manager
+1. **Cloud Secret Store**: AWS Secrets Manager
 2. **External Secrets Operator**: Syncs cloud secrets to Kubernetes
 3. **Auto-generated Secrets**: Passwords generated at deployment time
-4. **IRSA/Workload Identity**: No static credentials for cloud access
+4. **IRSA**: No static credentials for cloud access
 
 ## Secret Types
 
 | Secret | Storage | Rotation | Notes |
 |--------|---------|----------|-------|
-| MLflow DB Password | Secrets Manager/Key Vault/Secret Manager | Manual | Auto-generated at deploy |
-| MinIO Root Password | Secrets Manager/Key Vault/Secret Manager | Manual | Auto-generated, username: `minio` |
-| ArgoCD Admin Password | Secrets Manager/Key Vault/Secret Manager | Manual | Bcrypt hashed |
+| MLflow DB Password | Secrets Manager | Manual | Auto-generated at deploy |
+| MinIO Root Password | Secrets Manager | Manual | Auto-generated, username: `minio` |
+| ArgoCD Admin Password | Secrets Manager | Manual | Bcrypt hashed |
 | Grafana Admin Password | External Secrets | Manual | Via cloud secret store |
-| AWS/Azure/GCP Credentials | IRSA/Workload Identity | Automatic | No static credentials |
+| AWS Credentials | IRSA | Automatic | No static credentials |
 
 ## Secret Rotation
 
@@ -38,15 +38,6 @@ The platform uses a multi-layered approach to secrets management:
    aws secretsmanager put-secret-value \
      --secret-id "mlops-platform-dev/mlflow/db-password" \
      --secret-string "{\"username\":\"mlflow\",\"password\":\"$NEW_PASSWORD\"}"
-
-   # Azure
-   az keyvault secret set \
-     --vault-name mlops-platform-kv \
-     --name mlflow-db-password \
-     --value "$NEW_PASSWORD"
-
-   # GCP
-   echo -n "$NEW_PASSWORD" | gcloud secrets versions add mlflow-db-password --data-file=-
    ```
 
 3. Update database password:
@@ -97,7 +88,7 @@ The platform uses a multi-layered approach to secrets management:
 | Database Passwords | 90 days | Manual with script |
 | ArgoCD Admin | 90 days | Manual |
 | TLS Certificates | Auto-renewed | cert-manager |
-| Cloud Credentials | Automatic | IRSA/Workload Identity |
+| Cloud Credentials | Automatic | IRSA |
 
 ## Monitoring Secret Expiry
 
@@ -119,7 +110,7 @@ Add Prometheus alerts for certificate expiration:
 2. **Use External Secrets Operator** instead of Kubernetes secrets directly
 3. **Enable audit logging** for secret access in cloud providers
 4. **Implement least privilege** - pods only access secrets they need
-5. **Use IRSA/Workload Identity** - avoid static cloud credentials
+5. **Use IRSA** - avoid static cloud credentials
 6. **Rotate secrets on breach** - have a documented incident response
 
 ## Automated Rotation (Future Enhancement)
@@ -127,5 +118,4 @@ Add Prometheus alerts for certificate expiration:
 For fully automated rotation, consider:
 
 - AWS Secrets Manager with Lambda rotation
-- Azure Key Vault with automatic rotation
 - HashiCorp Vault with dynamic secrets

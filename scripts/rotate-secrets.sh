@@ -1,11 +1,15 @@
 #!/bin/bash
 # Automated secret rotation script for MLOps Platform
-# Usage: ./rotate-secrets.sh [aws|azure|gcp] [dev|prod] [secret-type]
+# Usage: ./rotate-secrets.sh [aws] [dev|prod] [secret-type]
 # Secret types: mlflow-db, grafana-admin, argocd-admin, minio-root
 
 set -euo pipefail
 
 CLOUD="${1:-aws}"
+if [[ "${CLOUD}" != "aws" ]]; then
+  echo "Only aws is supported (ADR-017); got: ${CLOUD}" >&2
+  exit 1
+fi
 ENV="${2:-dev}"
 SECRET_TYPE="${3:-all}"
 CLUSTER_NAME="mlops-platform-${ENV}"
@@ -37,50 +41,7 @@ rotate_mlflow_db() {
       
       echo "✅ MLflow DB password rotated. Triggering External Secrets sync..."
       ;;
-      
-    azure)
-      NEW_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
-      RESOURCE_GROUP="${CLUSTER_NAME}-rg"
-      DB_SERVER="${CLUSTER_NAME}-mlflow-pg"
-      
-      # Update Key Vault
-      az keyvault secret set \
-        --vault-name "mlops-kv-${CLUSTER_NAME}" \
-        --name "mlflow-db-password" \
-        --value "${NEW_PASSWORD}" \
-        --output none
-      
-      # Update PostgreSQL password
-      az postgres flexible-server update \
-        --resource-group "${RESOURCE_GROUP}" \
-        --name "${DB_SERVER}" \
-        --admin-password "${NEW_PASSWORD}" \
-        --output none
-      
-      echo "✅ MLflow DB password rotated"
-      ;;
-      
-    gcp)
-      NEW_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
-      PROJECT_ID=$(gcloud config get-value project)
-      INSTANCE_NAME=$(gcloud sql instances list \
-        --filter="name~${CLUSTER_NAME}-mlflow" \
-        --format="value(name)" \
-        --limit=1)
-      
-      # Update Secret Manager
-      echo -n "${NEW_PASSWORD}" | gcloud secrets versions add mlflow-db-password \
-        --data-file=- \
-        --project="${PROJECT_ID}"
-      
-      # Update Cloud SQL password
-      gcloud sql users set-password mlflow \
-        --instance="${INSTANCE_NAME}" \
-        --password="${NEW_PASSWORD}" \
-        --quiet
-      
-      echo "✅ MLflow DB password rotated"
-      ;;
+
   esac
   
   # Trigger External Secrets sync
@@ -107,18 +68,6 @@ rotate_grafana_admin() {
         --type SecureString \
         --overwrite \
         --no-cli-pager
-      ;;
-    azure)
-      az keyvault secret set \
-        --vault-name "mlops-kv-${CLUSTER_NAME}" \
-        --name "grafana-admin-password" \
-        --value "${NEW_PASSWORD}" \
-        --output none
-      ;;
-    gcp)
-      echo -n "${NEW_PASSWORD}" | gcloud secrets versions add grafana-admin-password \
-        --data-file=- \
-        --project=$(gcloud config get-value project)
       ;;
   esac
   
@@ -153,18 +102,6 @@ rotate_argocd_admin() {
         --overwrite \
         --no-cli-pager
       ;;
-    azure)
-      az keyvault secret set \
-        --vault-name "mlops-kv-${CLUSTER_NAME}" \
-        --name "argocd-admin-password" \
-        --value "${NEW_PASSWORD}" \
-        --output none
-      ;;
-    gcp)
-      echo -n "${NEW_PASSWORD}" | gcloud secrets versions add argocd-admin-password \
-        --data-file=- \
-        --project=$(gcloud config get-value project)
-      ;;
   esac
   
   echo "✅ ArgoCD admin password rotated"
@@ -188,7 +125,7 @@ case "${SECRET_TYPE}" in
     ;;
   *)
     echo "❌ Unknown secret type: ${SECRET_TYPE}"
-    echo "Usage: $0 [aws|azure|gcp] [dev|prod] [mlflow-db|grafana-admin|argocd-admin|all]"
+    echo "Usage: $0 [aws] [dev|prod] [mlflow-db|grafana-admin|argocd-admin|all]"
     exit 1
     ;;
 esac

@@ -26,9 +26,7 @@ Common issues and their solutions for the MLOps platform.
 terraform providers
 
 # Verify credentials
-aws sts get-caller-identity  # AWS
-az account show              # Azure
-gcloud auth list             # GCP
+aws sts get-caller-identity
 ```
 
 **Solutions**:
@@ -272,12 +270,12 @@ mlflow.set_experiment("test")
 
 **Diagnosis**:
 ```bash
-kubectl logs -n mlflow -l app=mlflow | grep -i "s3\|blob\|storage"
+kubectl logs -n mlflow -l app=mlflow | grep -i "s3\|storage"
 ```
 
 **Solutions**:
 
-1. **IRSA/Workload Identity not configured**
+1. **IRSA not configured**
    ```bash
    # Check service account annotation
    kubectl get sa mlflow -n mlflow -o yaml | grep -A5 annotations
@@ -374,9 +372,6 @@ kubectl describe ingress <name> -n <namespace>
 
 # AWS - check ALB
 aws elbv2 describe-load-balancers --query 'LoadBalancers[*].[LoadBalancerName,State.Code]'
-
-# Azure - check nginx
-kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx
 ```
 
 **Solutions**:

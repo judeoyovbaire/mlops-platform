@@ -2,8 +2,8 @@
 # =============================================================================
 # MLOps Platform Cost Report Generator
 # =============================================================================
-# Generates cost reports for AWS, Azure, or GCP deployments
-# Usage: ./cost-report-generator.sh [aws|azure|gcp] [--days N]
+# Generates cost reports for the AWS deployment
+# Usage: ./cost-report-generator.sh [aws] [--days N]
 
 set -euo pipefail
 
@@ -15,7 +15,7 @@ REPORT_DATE=$(date +%Y-%m-%d)
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        aws|azure|gcp) CLOUD_PROVIDER="$1"; shift ;;
+        aws)           CLOUD_PROVIDER="$1"; shift ;;
         --days)        DAYS="${2:-30}"; shift 2 ;;
         *)             shift ;;
     esac
@@ -112,125 +112,6 @@ generate_aws_report() {
 }
 
 # =============================================================================
-# Azure Cost Report
-# =============================================================================
-generate_azure_report() {
-    log_info "Generating Azure cost report for the last $DAYS days..."
-
-    # Check Azure CLI
-    if ! command -v az &> /dev/null; then
-        log_error "Azure CLI not found. Please install it first."
-        exit 1
-    fi
-
-    START_DATE=$(date -v-${DAYS}d +%Y-%m-%d 2>/dev/null || date -d "-$DAYS days" +%Y-%m-%d)
-    END_DATE=$(date +%Y-%m-%d)
-
-    REPORT_FILE="$OUTPUT_DIR/azure-cost-report-$REPORT_DATE.json"
-
-    log_info "Fetching cost data from $START_DATE to $END_DATE..."
-
-    # Get subscription ID
-    SUBSCRIPTION_ID=$(az account show --query id -o tsv 2>/dev/null)
-
-    if [ -z "$SUBSCRIPTION_ID" ]; then
-        log_error "Not logged into Azure. Run 'az login' first."
-        exit 1
-    fi
-
-    # Query cost management API
-    az consumption usage list \
-        --start-date "$START_DATE" \
-        --end-date "$END_DATE" \
-        --output json > "$REPORT_FILE" 2>/dev/null || {
-        log_warn "Could not fetch detailed usage. Trying budget summary..."
-
-        # Fallback to budget info
-        az consumption budget list --output json > "$REPORT_FILE" 2>/dev/null || {
-            log_error "Failed to generate Azure cost report"
-            return 1
-        }
-    }
-
-    # Get AKS-specific costs via resource tags
-    log_info "Fetching AKS resource costs..."
-    AKS_REPORT="$OUTPUT_DIR/azure-aks-costs-$REPORT_DATE.json"
-
-    az resource list \
-        --tag Environment=prod \
-        --query "[?contains(type, 'Microsoft.ContainerService') || contains(type, 'Microsoft.DBforPostgreSQL') || contains(type, 'Microsoft.Storage')]" \
-        --output json > "$AKS_REPORT" 2>/dev/null || log_warn "Could not fetch AKS-specific resources"
-
-    log_info "Azure cost report generated: $REPORT_FILE"
-}
-
-# =============================================================================
-# GCP Cost Report
-# =============================================================================
-generate_gcp_report() {
-    log_info "Generating GCP cost report for the last $DAYS days..."
-
-    # Check gcloud CLI
-    if ! command -v gcloud &> /dev/null; then
-        log_error "gcloud CLI not found. Please install it first."
-        exit 1
-    fi
-
-    START_DATE=$(date -v-${DAYS}d +%Y-%m-%d 2>/dev/null || date -d "-$DAYS days" +%Y-%m-%d)
-    END_DATE=$(date +%Y-%m-%d)
-
-    REPORT_FILE="$OUTPUT_DIR/gcp-cost-report-$REPORT_DATE.json"
-    PROJECT_ID=$(gcloud config get-value project 2>/dev/null)
-
-    if [ -z "$PROJECT_ID" ]; then
-        log_error "No GCP project set. Run 'gcloud config set project PROJECT_ID' first."
-        exit 1
-    fi
-
-    log_info "Project: $PROJECT_ID"
-    log_info "Fetching cost data from $START_DATE to $END_DATE..."
-
-    # Note: Billing export to BigQuery is recommended for detailed cost analysis
-    # This uses the basic billing API
-    BILLING_ACCOUNT=$(gcloud billing projects describe "$PROJECT_ID" --format="value(billingAccountName)" 2>/dev/null | cut -d'/' -f2)
-
-    if [ -n "$BILLING_ACCOUNT" ]; then
-        log_info "Billing Account: $BILLING_ACCOUNT"
-
-        # Get GKE clusters for cost attribution
-        GKE_REPORT="$OUTPUT_DIR/gcp-gke-resources-$REPORT_DATE.json"
-        gcloud container clusters list --format=json > "$GKE_REPORT" 2>/dev/null
-
-        # Get Cloud SQL instances
-        SQL_REPORT="$OUTPUT_DIR/gcp-sql-resources-$REPORT_DATE.json"
-        gcloud sql instances list --format=json > "$SQL_REPORT" 2>/dev/null
-
-        # Get GCS buckets
-        GCS_REPORT="$OUTPUT_DIR/gcp-storage-resources-$REPORT_DATE.json"
-        gsutil ls -L -b 2>/dev/null | head -50 > "$GCS_REPORT" || true
-
-        log_info "GCP resource reports generated in $OUTPUT_DIR"
-    else
-        log_warn "Could not determine billing account"
-    fi
-
-    # Create summary file
-    cat > "$REPORT_FILE" << EOF
-{
-    "project_id": "$PROJECT_ID",
-    "report_date": "$REPORT_DATE",
-    "period": {
-        "start": "$START_DATE",
-        "end": "$END_DATE"
-    },
-    "note": "For detailed cost analysis, enable BigQuery billing export"
-}
-EOF
-
-    log_info "GCP cost report generated: $REPORT_FILE"
-}
-
-# =============================================================================
 # Kubernetes Resource Cost Estimation
 # =============================================================================
 estimate_k8s_costs() {
@@ -306,22 +187,11 @@ generate_recommendations() {
 - Enable auto-pause for development databases
 - Use reserved instances for production (up to 60% savings)
 
-## Cloud-Specific Recommendations
+## AWS-Specific Recommendations
 
-### AWS
 - Use Savings Plans for consistent workloads
 - Enable S3 Intelligent-Tiering for artifacts
 - Use Graviton instances where possible
-
-### Azure
-- Use Reserved Instances for AKS nodes
-- Enable Azure Hybrid Benefit if applicable
-- Use Azure Spot VMs for training jobs
-
-### GCP
-- Use Committed Use Discounts
-- Enable Recommender API for right-sizing
-- Use Preemptible VMs for batch workloads
 
 ## Monitoring Actions
 - Set up billing alerts at 50%, 80%, 100% of budget
@@ -349,15 +219,9 @@ main() {
         aws)
             generate_aws_report
             ;;
-        azure)
-            generate_azure_report
-            ;;
-        gcp)
-            generate_gcp_report
-            ;;
         *)
             log_error "Unknown cloud provider: $CLOUD_PROVIDER"
-            echo "Usage: $0 [aws|azure|gcp] [--days N]"
+            echo "Usage: $0 [aws] [--days N]"
             exit 1
             ;;
     esac

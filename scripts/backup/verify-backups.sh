@@ -1,6 +1,6 @@
 #!/bin/bash
-# Verify database backups across all cloud providers
-# Usage: ./verify-backups.sh [aws|azure|gcp] [dev|prod]
+# Verify AWS database backups (RDS and AWS Backup)
+# Usage: ./verify-backups.sh [aws] [dev|prod]
 
 set -euo pipefail
 
@@ -62,97 +62,10 @@ case "${CLOUD}" in
       echo "⚠️  AWS Backup plan not found"
     fi
     ;;
-    
-  azure)
-    echo "Checking Azure PostgreSQL backups..."
-    
-    RESOURCE_GROUP="${CLUSTER_NAME}-rg"
-    DB_SERVER="${CLUSTER_NAME}-mlflow-pg"
-    
-    # Check backup retention
-    BACKUP_RETENTION=$(az postgres flexible-server show \
-      --resource-group "${RESOURCE_GROUP}" \
-      --name "${DB_SERVER}" \
-      --query "backup.backupRetentionDays" \
-      --output tsv 2>/dev/null || echo "0")
-    
-    if [ "${BACKUP_RETENTION}" -gt 0 ]; then
-      echo "✅ Backup retention: ${BACKUP_RETENTION} days"
-    else
-      echo "⚠️  Backup retention not configured"
-    fi
-    
-    # Check geo-redundant backup
-    GEO_BACKUP=$(az postgres flexible-server show \
-      --resource-group "${RESOURCE_GROUP}" \
-      --name "${DB_SERVER}" \
-      --query "backup.geoRedundantBackup" \
-      --output tsv 2>/dev/null || echo "Disabled")
-    
-    if [ "${GEO_BACKUP}" = "Enabled" ]; then
-      echo "✅ Geo-redundant backup enabled"
-    else
-      echo "⚠️  Geo-redundant backup disabled"
-    fi
-    
-    # List recent backups
-    echo "Recent backups:"
-    az postgres flexible-server backup list \
-      --resource-group "${RESOURCE_GROUP}" \
-      --server-name "${DB_SERVER}" \
-      --output table 2>/dev/null || echo "Unable to list backups"
-    ;;
-    
-  gcp)
-    echo "Checking GCP Cloud SQL backups..."
-    
-    PROJECT_ID=$(gcloud config get-value project)
-    DB_INSTANCE="${CLUSTER_NAME}-mlflow-*"
-    
-    # Find the actual instance name
-    INSTANCE_NAME=$(gcloud sql instances list \
-      --filter="name~${DB_INSTANCE}" \
-      --format="value(name)" \
-      --limit=1 2>/dev/null || echo "")
-    
-    if [ -z "${INSTANCE_NAME}" ]; then
-      echo "❌ Database instance not found"
-      exit 1
-    fi
-    
-    # Check backup configuration
-    BACKUP_ENABLED=$(gcloud sql instances describe "${INSTANCE_NAME}" \
-      --format="value(settings.backupConfiguration.enabled)" 2>/dev/null || echo "False")
-    
-    if [ "${BACKUP_ENABLED}" = "True" ]; then
-      echo "✅ Automated backups enabled"
-      
-      BACKUP_RETENTION=$(gcloud sql instances describe "${INSTANCE_NAME}" \
-        --format="value(settings.backupConfiguration.backupRetentionSettings.retainedBackups)" 2>/dev/null || echo "0")
-      
-      echo "✅ Backup retention: ${BACKUP_RETENTION} backups"
-      
-      PITR_ENABLED=$(gcloud sql instances describe "${INSTANCE_NAME}" \
-        --format="value(settings.backupConfiguration.pointInTimeRecoveryEnabled)" 2>/dev/null || echo "False")
-      
-      if [ "${PITR_ENABLED}" = "True" ]; then
-        echo "✅ Point-in-time recovery enabled"
-      fi
-    else
-      echo "⚠️  Automated backups disabled"
-    fi
-    
-    # List recent backups
-    echo "Recent backups:"
-    gcloud sql backups list \
-      --instance="${INSTANCE_NAME}" \
-      --limit=5 \
-      --format="table(id,windowStartTime,status)" 2>/dev/null || echo "Unable to list backups"
-    ;;
-    
+
   *)
     echo "❌ Unknown cloud provider: ${CLOUD}"
-    echo "Usage: $0 [aws|azure|gcp] [dev|prod]"
+    echo "Usage: $0 [aws] [dev|prod]"
     exit 1
     ;;
 esac

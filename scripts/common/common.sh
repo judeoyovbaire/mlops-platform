@@ -96,44 +96,6 @@ check_aws_prerequisites() {
     print_status "AWS CLI configured (Account: ${AWS_ACCOUNT_ID})"
 }
 
-check_azure_prerequisites() {
-    check_command "az" "brew install azure-cli" || exit 1
-
-    if ! az account show &> /dev/null; then
-        print_error "Not logged in to Azure. Run 'az login' first."
-        exit 1
-    fi
-
-    AZURE_SUBSCRIPTION_NAME=$(az account show --query name -o tsv)
-    print_status "Azure CLI configured (Subscription: ${AZURE_SUBSCRIPTION_NAME})"
-
-    # Check kubelogin for AKS
-    if ! command -v kubelogin &> /dev/null; then
-        print_warning "kubelogin is not installed. Install with: brew install Azure/kubelogin/kubelogin"
-    fi
-}
-
-check_gcp_prerequisites() {
-    check_command "gcloud" "brew install google-cloud-sdk" || exit 1
-
-    if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" &> /dev/null; then
-        print_error "Not logged in to GCP. Run 'gcloud auth login' first."
-        exit 1
-    fi
-
-    GCP_PROJECT=$(gcloud config get-value project 2>/dev/null)
-    if [[ -z "$GCP_PROJECT" ]]; then
-        print_error "No GCP project configured. Run 'gcloud config set project <PROJECT_ID>' first."
-        exit 1
-    fi
-    print_status "GCP CLI configured (Project: ${GCP_PROJECT})"
-
-    # Check gke-gcloud-auth-plugin
-    if ! gcloud components list 2>/dev/null | grep -q "gke-gcloud-auth-plugin.*Installed"; then
-        print_warning "gke-gcloud-auth-plugin may not be installed. Install with: gcloud components install gke-gcloud-auth-plugin"
-    fi
-}
-
 # =============================================================================
 # Terraform Functions
 # =============================================================================

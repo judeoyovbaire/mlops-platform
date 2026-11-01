@@ -1,10 +1,10 @@
 # Database Restore Procedures
 
-This runbook provides step-by-step procedures for restoring MLflow database backups across AWS, Azure, and GCP.
+This runbook provides step-by-step procedures for restoring MLflow database backups on AWS.
 
 ## Prerequisites
 
-- Cloud provider CLI tools installed and authenticated
+- AWS CLI installed and authenticated
 - Appropriate IAM permissions for database restore operations
 - Backup verification completed (run `scripts/backup/verify-backups.sh`)
 
@@ -65,96 +65,6 @@ aws backup start-restore-job \
   --metadata dbInstanceIdentifier=mlops-platform-prod-mlflow-restored
 ```
 
-## Azure PostgreSQL Restore
-
-### From Point-in-Time Backup
-
-```bash
-RESOURCE_GROUP="mlops-platform-prod-rg"
-SOURCE_SERVER="mlops-platform-prod-mlflow-pg"
-TARGET_SERVER="mlops-platform-prod-mlflow-restored"
-RESTORE_TIME="2024-01-15T10:00:00Z"
-
-# Restore to point in time
-az postgres flexible-server restore \
-  --resource-group "${RESOURCE_GROUP}" \
-  --name "${TARGET_SERVER}" \
-  --source-server "${SOURCE_SERVER}" \
-  --restore-time "${RESTORE_TIME}"
-
-# Wait for restore
-az postgres flexible-server wait \
-  --resource-group "${RESOURCE_GROUP}" \
-  --name "${TARGET_SERVER}" \
-  --created
-
-# Update MLflow connection string
-kubectl set env deployment/mlflow \
-  -n mlflow \
-  MLFLOW_BACKEND_STORE_URI="postgresql://mlflow:${PASSWORD}@${TARGET_SERVER}.postgres.database.azure.com:5432/mlflow"
-```
-
-### From Backup
-
-```bash
-# List available backups
-az postgres flexible-server backup list \
-  --resource-group "${RESOURCE_GROUP}" \
-  --server-name "${SOURCE_SERVER}"
-
-# Restore from backup
-az postgres flexible-server restore \
-  --resource-group "${RESOURCE_GROUP}" \
-  --name "${TARGET_SERVER}" \
-  --source-server "${SOURCE_SERVER}" \
-  --backup-name "backup-name"
-```
-
-## GCP Cloud SQL Restore
-
-### From Point-in-Time Backup
-
-```bash
-INSTANCE_NAME="mlops-platform-prod-mlflow-xxxx"
-RESTORE_INSTANCE="mlops-platform-prod-mlflow-restored"
-RESTORE_TIME="2024-01-15T10:00:00Z"
-
-# Restore to point in time
-gcloud sql backups restore "${BACKUP_ID}" \
-  --backup-instance="${INSTANCE_NAME}" \
-  --restore-instance="${RESTORE_INSTANCE}"
-
-# Or restore to specific time
-gcloud sql instances clone "${INSTANCE_NAME}" "${RESTORE_INSTANCE}" \
-  --point-in-time="${RESTORE_TIME}"
-
-# Wait for restore
-gcloud sql operations wait \
-  --project="${PROJECT_ID}" \
-  $(gcloud sql operations list \
-    --instance="${RESTORE_INSTANCE}" \
-    --limit=1 \
-    --format="value(name)")
-
-# Update MLflow connection
-kubectl set env deployment/mlflow \
-  -n mlflow \
-  MLFLOW_BACKEND_STORE_URI="postgresql://mlflow:${PASSWORD}@${RESTORE_INSTANCE_IP}:5432/mlflow"
-```
-
-### From Backup
-
-```bash
-# List backups
-gcloud sql backups list \
-  --instance="${INSTANCE_NAME}"
-
-# Restore from backup
-gcloud sql backups restore "${BACKUP_ID}" \
-  --backup-instance="${INSTANCE_NAME}" \
-  --restore-instance="${RESTORE_INSTANCE}"
-```
-
 ## Post-Restore Steps
 
 1. **Verify database connectivity:**
@@ -184,16 +94,12 @@ gcloud sql backups restore "${BACKUP_ID}" \
 | Cloud Provider | RTO Target | Actual Capability |
 |----------------|------------|-------------------|
 | AWS RDS | < 15 minutes | 5-10 minutes (automated), 10-30 minutes (manual) |
-| Azure PostgreSQL | < 20 minutes | 10-15 minutes (automated), 15-30 minutes (manual) |
-| GCP Cloud SQL | < 15 minutes | 5-10 minutes (automated), 10-25 minutes (manual) |
 
 ## Recovery Point Objectives (RPO)
 
 | Cloud Provider | RPO Target | Actual Capability |
 |----------------|------------|-------------------|
 | AWS RDS | < 5 minutes | 1-5 minutes (point-in-time recovery) |
-| Azure PostgreSQL | < 5 minutes | 1-5 minutes (point-in-time recovery) |
-| GCP Cloud SQL | < 5 minutes | 1-5 minutes (point-in-time recovery) |
 
 ## Testing Restores
 

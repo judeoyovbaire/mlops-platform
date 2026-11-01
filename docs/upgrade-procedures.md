@@ -239,7 +239,7 @@ helm rollback argo-workflows -n argo
 
 1. **Update version constraints:**
    ```hcl
-   # versions.tf (example — current platform uses AWS ~>6.0, Azure ~>4.0)
+   # versions.tf (example — current platform uses AWS ~>6.0)
    required_providers {
      aws = {
        source  = "hashicorp/aws"

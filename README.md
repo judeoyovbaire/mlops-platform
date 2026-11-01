@@ -1,6 +1,8 @@
-# MLOps Platform on Kubernetes
+# MLOps Platform on AWS EKS
 
-A multi-cloud MLOps **reference platform** for model training, versioning, and deployment on **AWS EKS**, **Azure AKS**, or **GCP GKE**. Designed around a self-service path from experiment to production — end-to-end verification is in progress (see [Design Targets](#design-targets) and [Roadmap](#roadmap)).
+An MLOps **reference platform** for model training, versioning, and deployment on **AWS EKS**. Designed around a self-service path from experiment to production — end-to-end verification is in progress (see [Design Targets](#design-targets) and [Roadmap](#roadmap)).
+
+Azure and GCP implementations were removed by [ADR-017](docs/adr/017-pivot-to-llm-inference-on-eks.md); the multi-cloud version is preserved at tag [`v1-classic-mlops`](https://github.com/judeoyovbaire/mlops-platform/tree/v1-classic-mlops).
 
 [![CI/CD](https://github.com/judeoyovbaire/mlops-platform/actions/workflows/ci-cd.yaml/badge.svg)](https://github.com/judeoyovbaire/mlops-platform/actions/workflows/ci-cd.yaml)
 
@@ -44,20 +46,9 @@ This is a **reference architecture** — the numbers below are design targets an
 | Failed deployment recovery | 30+ min manual | <2 min auto-rollback | Canary analysis + automated rollback |
 | Experiment reproducibility | Ad-hoc | 100% tracked | MLflow autologging + model registry |
 
-## Multi-Cloud Architecture
+## Verification Status
 
-Deploy to **AWS**, **Azure**, or **GCP** — same MLOps capabilities, cloud-native implementations.
-
-### Per-Cloud Verification Status
-
-Verification is deliberately AWS-first (see [ADR-014](docs/adr/014-aws-first-verification.md)) —
-one demonstrated loop beats three theoretical ones:
-
-| Cloud | Status |
-|-------|--------|
-| **AWS (EKS)** | 🔄 End-to-end verification in progress: CI deploy → registry → canary → auto-rollback (evidence will be linked here) |
-| **Azure (AKS)** | ⚙️ Architecture complete; `terraform validate` + plan + Checkov + Infracost in CI; not e2e verified |
-| **GCP (GKE)** | ⚙️ Architecture complete; `terraform validate` + plan + Checkov + Infracost in CI; not e2e verified |
+**AWS (EKS)**: 🔄 End-to-end verification in progress: CI deploy → registry → canary → auto-rollback (evidence will be linked here).
 
 ## Architecture Diagrams
 
@@ -98,8 +89,6 @@ graph TB
 
     subgraph K8s["☸️ Kubernetes"]
         EKS[AWS EKS]
-        AKS[Azure AKS]
-        GKE[GCP GKE]
     end
 
     DS --> GH
@@ -166,8 +155,6 @@ graph TB
     subgraph CloudInfra["Layer 1: Cloud Infrastructure"]
         direction LR
         AWS["AWS<br/>EKS + Karpenter<br/>S3 + RDS<br/>IRSA"]
-        AZURE["Azure<br/>AKS + KEDA<br/>Blob + PostgreSQL<br/>Workload Identity"]
-        GCP["GCP<br/>GKE + NAP<br/>GCS + Cloud SQL<br/>WIF"]
     end
 
     Applications --> MLPlatform
@@ -193,45 +180,39 @@ flowchart LR
 
     subgraph Plan["Plan"]
         PLAN_AWS[TF Plan<br/>AWS]
-        PLAN_AZ[TF Plan<br/>Azure]
-        PLAN_GCP[TF Plan<br/>GCP]
     end
 
     subgraph Deploy["Deploy"]
         DEP_AWS[Apply AWS]
-        DEP_AZ[Apply Azure]
-        DEP_GCP[Apply GCP]
     end
 
     PUSH --> LINT
     LINT --> TEST
     TEST --> SEC
     SEC --> VAL
-    VAL --> PLAN_AWS & PLAN_AZ & PLAN_GCP
+    VAL --> PLAN_AWS
 
     MANUAL --> DEP_AWS
-    MANUAL --> DEP_AZ
-    MANUAL --> DEP_GCP
 ```
 
 ## Features
 
-| Feature | AWS | Azure | GCP |
-|---------|-----|-------|-----|
-| **Pipeline Orchestration** | Argo Workflows | Argo Workflows | Argo Workflows |
-| **Experiment Tracking** | MLflow + S3 + RDS | MLflow + Blob + PostgreSQL | MLflow + GCS + Cloud SQL |
-| **Model Serving** | KServe (RawDeployment) | KServe (RawDeployment) | KServe (RawDeployment) |
-| **GitOps** | ArgoCD | ArgoCD | ArgoCD |
-| **GPU Autoscaling** | Karpenter | KEDA + Cluster Autoscaler | Node Auto-provisioning |
-| **Ingress** | AWS ALB Controller | NGINX Ingress | NGINX Ingress |
-| **Pod Identity** | IRSA | Workload Identity | Workload Identity Federation |
-| **Secrets** | External Secrets + SSM | External Secrets + Key Vault | External Secrets + Secret Manager |
-| **Security** | PSA, Kyverno, Tetragon | PSA, Kyverno, Tetragon | PSA, Kyverno, Tetragon |
-| **Monitoring** | Prometheus + Grafana + Loki + Alloy + Tempo | Prometheus + Grafana + Loki + Alloy + Tempo | Prometheus + Grafana + Loki + Alloy + Tempo |
-| **Network Observability** | VPC Flow Logs | NSG Flow Logs + Traffic Analytics | VPC Flow Logs |
-| **Backup** | AWS Backup (RDS) | Built-in PostgreSQL Backup | Cloud SQL Backup |
-| **Cost Management** | Cost Dashboard (Grafana) | Cost Dashboard (Grafana) | Cost Dashboard (Grafana) |
-| **Resilience Testing** | Chaos Mesh | Chaos Mesh | Chaos Mesh |
+| Feature | AWS |
+|---------|-----|
+| **Pipeline Orchestration** | Argo Workflows |
+| **Experiment Tracking** | MLflow + S3 + RDS |
+| **Model Serving** | KServe (RawDeployment) |
+| **GitOps** | ArgoCD |
+| **GPU Autoscaling** | Karpenter |
+| **Ingress** | AWS ALB Controller |
+| **Pod Identity** | IRSA |
+| **Secrets** | External Secrets + SSM |
+| **Security** | PSA, Kyverno, Tetragon |
+| **Monitoring** | Prometheus + Grafana + Loki + Alloy + Tempo |
+| **Network Observability** | VPC Flow Logs |
+| **Backup** | AWS Backup (RDS) |
+| **Cost Management** | Cost Dashboard (Grafana) |
+| **Resilience Testing** | Chaos Mesh |
 
 ## Tech Stack
 
@@ -241,11 +222,8 @@ flowchart LR
 | Experiment Tracking | MLflow | 3.16.0 (chart 1.11.7) | Model versioning & metrics |
 | Model Serving | KServe | 0.16.0 | Production inference (CNCF) |
 | GPU Autoscaling (AWS) | Karpenter | 1.8.3 | Dynamic GPU node provisioning |
-| Event Autoscaling (Azure) | KEDA | 2.19.0 | Event-driven pod scaling |
-| GPU Autoscaling (GCP) | GKE NAP | - | Node Auto-provisioning |
 | GitOps | ArgoCD | 10.11.6 | Declarative deployments |
 | Ingress (AWS) | AWS ALB Controller | 1.17.1 | Installed; no public endpoints (port-forward) |
-| Ingress (Azure/GCP) | NGINX Ingress | 4.14.3 | External load balancing |
 | TLS | cert-manager | 1.19.3 | Certificate management |
 | Monitoring | Prometheus + Grafana | 81.6.9 | Observability |
 | Log Aggregation | Loki | 6.24.0 | Centralized logging |
@@ -256,14 +234,14 @@ flowchart LR
 | Runtime Security | Tetragon | 1.6.0 | eBPF runtime monitoring |
 | Secrets | External Secrets Operator | 1.2.1 | Cloud secrets sync |
 | Resilience Testing | Chaos Mesh | 2.8.1 | Chaos engineering |
-| Infrastructure | Terraform | >= 1.5.7 | IaC for EKS/AKS/GKE |
+| Infrastructure | Terraform | >= 1.5.7 | IaC for EKS |
 | CI/CD | GitHub Actions | - | Automated testing |
 
 ## Project Structure
 
 ```
 mlops-platform/
-├── .github/workflows/          # CI/CD pipeline (multi-cloud)
+├── .github/workflows/          # CI/CD pipeline
 ├── components/
 │   └── drift-detection/        # Statistical drift library (showcase; see ADR-013)
 ├── docs/
@@ -286,22 +264,14 @@ mlops-platform/
 │   │   └── governance/         # Kyverno model registry policies
 │   ├── terraform/
 │   │   ├── bootstrap/
-│   │   │   ├── aws/            # AWS prerequisites (S3, GitHub OIDC)
-│   │   │   ├── azure/          # Azure prerequisites (Storage, GitHub OIDC)
-│   │   │   └── gcp/            # GCP prerequisites (GCS, Workload Identity)
+│   │   │   └── aws/            # AWS prerequisites (S3, GitHub OIDC)
 │   │   ├── modules/
-│   │   │   ├── eks/            # AWS EKS module
-│   │   │   ├── aks/            # Azure AKS module
-│   │   │   └── gke/            # GCP GKE module
+│   │   │   └── eks/            # AWS EKS module
 │   │   └── environments/
-│   │       ├── aws/{dev,prod}/ # AWS deployment configurations
-│   │       ├── azure/{dev,prod}/ # Azure deployment configurations
-│   │       └── gcp/{dev,prod}/ # GCP deployment configurations
+│   │       └── aws/{dev,prod}/ # AWS deployment configurations
 │   └── helm/
 │       ├── common/             # Shared Helm values
-│       ├── aws/                # AWS-specific Helm values
-│       ├── azure/              # Azure-specific Helm values
-│       └── gcp/                # GCP-specific Helm values
+│       └── aws/                # AWS-specific Helm values
 ├── pipelines/
 │   ├── training/               # Iris training pipeline (Argo Workflow)
 │   │   ├── src/                # Pipeline Python scripts
@@ -313,8 +283,8 @@ mlops-platform/
 ├── scripts/
 │   ├── common/                 # Shared script utilities
 │   ├── cost-optimization/      # Cost analysis and reporting scripts
-│   ├── deploy-{aws,azure,gcp}.sh
-│   └── destroy-{aws,azure,gcp}.sh
+│   ├── deploy-aws.sh
+│   └── destroy-aws.sh
 ├── tests/                      # Unit and integration tests
 └── Makefile                    # Common operations
 ```
@@ -326,15 +296,6 @@ mlops-platform/
 **For AWS:**
 - AWS account with appropriate permissions
 - AWS CLI configured (`aws configure`)
-
-**For Azure:**
-- Azure subscription
-- Azure CLI configured (`az login`)
-
-**For GCP:**
-- GCP project with billing enabled
-- Google Cloud SDK configured (`gcloud auth login && gcloud config set project <PROJECT_ID>`)
-- gke-gcloud-auth-plugin (`gcloud components install gke-gcloud-auth-plugin`)
 
 **Common:**
 - Terraform >= 1.5.7
@@ -348,13 +309,13 @@ mlops-platform/
 git clone https://github.com/judeoyovbaire/mlops-platform.git
 cd mlops-platform
 
-# 1. Bootstrap cloud resources (run once per cloud)
-cd infrastructure/terraform/bootstrap/aws    # or azure/ or gcp/
+# 1. Bootstrap cloud resources (run once)
+cd infrastructure/terraform/bootstrap/aws
 terraform init && terraform apply
 cd -
 
 # 2. Deploy the platform (~15-25 minutes)
-make deploy-aws     # or deploy-azure, deploy-gcp
+make deploy-aws
 
 # 3. Access dashboards
 make port-forward-mlflow   # http://localhost:5000
@@ -368,14 +329,12 @@ Run `make help` for all available commands.
 
 ## CI/CD Pipeline
 
-Single unified pipeline with OIDC authentication for all clouds (no static credentials):
+Single unified pipeline with OIDC authentication (no static credentials):
 
 | Trigger | What Happens |
 |---------|--------------|
-| **Push/PR** | Validate code, run tests, security scan, show terraform plan for all clouds |
+| **Push/PR** | Validate code, run tests, security scan, show terraform plan |
 | **Manual: `aws` + `deploy-infra`** | Deploy AWS EKS infrastructure via Terraform |
-| **Manual: `azure` + `deploy-infra`** | Deploy Azure AKS infrastructure via Terraform |
-| **Manual: `gcp` + `deploy-infra`** | Deploy GCP GKE infrastructure via Terraform |
 | **Manual: `deploy-model`** | Deploy example InferenceServices to KServe |
 | **Local: `make destroy-*`** | Destroy infrastructure (safety - not in pipeline) |
 
@@ -385,18 +344,6 @@ Single unified pipeline with OIDC authentication for all clouds (no static crede
 ```bash
 terraform -chdir=infrastructure/terraform/bootstrap/aws output github_actions_role_arn
 # Add to GitHub: Settings > Secrets > AWS_ROLE_ARN
-```
-
-**For Azure:**
-```bash
-terraform -chdir=infrastructure/terraform/bootstrap/azure output -json
-# Add to GitHub: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
-```
-
-**For GCP:**
-```bash
-terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
-# Add to GitHub: GCP_PROJECT_ID, GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_SERVICE_ACCOUNT
 ```
 
 ## Cloud Resources
@@ -416,35 +363,6 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 | VPC Flow Logs | Network traffic logging to CloudWatch |
 | AWS Backup | Automated RDS backups (daily/weekly) |
 
-### Azure Resources
-
-| Resource | Purpose |
-|----------|---------|
-| Virtual Network | Networking with AKS and PostgreSQL subnets |
-| AKS Cluster | Managed Kubernetes (v1.34) |
-| Node Pools | System, Training (Spot), GPU (Spot) |
-| Storage Account | MLflow artifact storage (Blob) |
-| PostgreSQL Flexible Server | MLflow metadata backend |
-| Container Registry | Container images for ML models |
-| Managed Identities | Workload Identity for pod authentication |
-| Key Vault | Secrets management |
-| NSG Flow Logs | Network traffic logging with Traffic Analytics |
-| Network Watcher | Network monitoring and diagnostics |
-
-### GCP Resources
-
-| Resource | Purpose |
-|----------|---------|
-| VPC Network | Networking with Cloud NAT for egress |
-| GKE Standard Cluster | Managed Kubernetes (v1.33, Stable channel) |
-| Node Pools | System (e2-standard-4), Training (Spot), GPU (T4, Spot) |
-| GCS Bucket | MLflow artifact storage |
-| Cloud SQL PostgreSQL | MLflow metadata backend (v17) |
-| Artifact Registry | Container images for ML models |
-| Workload Identity Federation | Pod authentication |
-| Secret Manager | Secrets management |
-| Node Auto-provisioning | Dynamic GPU node scaling |
-
 ### Cost Estimation
 
 **AWS (eu-west-1):**
@@ -460,46 +378,19 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 | S3 + ALB | Minimal usage | ~$10-20 |
 | **Total** | | **~$350-450/month** |
 
-**Azure (westeurope):**
-
-| Resource | Configuration | Monthly Cost |
-|----------|---------------|--------------|
-| AKS Control Plane | Free tier | $0 |
-| System Nodes | 2x Standard_D2s_v3 | ~$140 |
-| Training Nodes | Standard_D8s_v3 (Spot, scale-to-zero) | ~$30-50 |
-| GPU Nodes | Standard_NC6s_v3 (Spot, scale-to-zero) | ~$50-100 |
-| PostgreSQL | B_Standard_B1ms | ~$15 |
-| Storage Account | Standard LRS | ~$5 |
-| Key Vault + Load Balancer | Standard | ~$23 |
-| **Total** | | **~$260-330/month** |
-
-**GCP (europe-west4):**
-
-| Resource | Configuration | Monthly Cost |
-|----------|---------------|--------------|
-| GKE Control Plane | Zonal (free tier) | $0 |
-| System Nodes | 2x e2-standard-4 | ~$100 |
-| Training Nodes | c2-standard-8 (Spot, scale-to-zero) | ~$30-50 |
-| GPU Nodes | n1-standard-8 + T4 (Spot, scale-to-zero) | ~$50-100 |
-| Cloud SQL | db-f1-micro | ~$10 |
-| GCS Storage | Standard | ~$5 |
-| Cloud NAT + Artifact Registry | Minimal | ~$10-20 |
-| **Total** | | **~$200-350/month** |
-
 **Cost Optimization:**
 - SPOT/Preemptible instances for training/GPU: 60-70% savings
 - Scale-to-zero: Training and GPU nodes only run when needed
-- Single NAT Gateway (AWS) / Standard LB (Azure) / Cloud NAT (GCP)
-- GKE Zonal cluster for dev (free control plane)
+- Single NAT Gateway
 
 ## Roadmap
 
 ### Completed
-- [x] **Multi-cloud infrastructure** — EKS, AKS, GKE with GPU autoscaling (Karpenter / KEDA / NAP)
+- [x] **Infrastructure** — EKS with GPU autoscaling (Karpenter)
 - [x] **ML platform** — MLflow, KServe, Argo Workflows, ArgoCD
 - [x] **Observability** — Prometheus, Grafana, Loki, Alloy, Tempo, cost dashboards
 - [x] **Security** — PSA, Kyverno, Tetragon, External Secrets, network policies
-- [x] **CI/CD** — GitHub Actions with OIDC auth, multi-cloud plan/deploy, Trivy scanning
+- [x] **CI/CD** — GitHub Actions with OIDC auth, plan/deploy, Trivy scanning
 - [x] **Production readiness** — dev/prod configs, backup, VPC Flow Logs, DR runbooks
 - [x] **Examples** — distributed training, data versioning, canary deploys, chaos testing, LLM inference
 - [x] **Pipelines** — Iris quickstart pipeline + [HuggingFace pretrained model pipeline](pipelines/pretrained/) with automated validation and MLflow registration
@@ -530,29 +421,27 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 
 | Feature | This Platform | Kubeflow | SageMaker | Vertex AI | Azure ML |
 |---------|--------------|----------|-----------|-----------|----------|
-| **Multi-cloud** | ✅ AWS/Azure/GCP | ❌ | ❌ AWS only | ❌ GCP only | ❌ Azure only |
 | **Open Source** | ✅ MIT License | ✅ Apache 2.0 | ❌ Proprietary | ❌ Proprietary | ❌ Proprietary |
 | **Self-hosted** | ✅ Full control | ✅ Full control | ❌ Managed only | ❌ Managed only | ❌ Managed only |
 | **Cost (dev)** | $350-450/mo | Variable | $$$ | $$$ | $$$ |
-| **GPU Autoscaling** | ✅ Karpenter/KEDA/NAP | ⚠️ Manual | ✅ Managed | ✅ Managed | ✅ Managed |
+| **GPU Autoscaling** | ✅ Karpenter | ⚠️ Manual | ✅ Managed | ✅ Managed | ✅ Managed |
 | **Model Serving** | ✅ KServe (CNCF) | ✅ KServe | ✅ Built-in | ✅ Built-in | ✅ Built-in |
 | **Experiment Tracking** | ✅ MLflow | ✅ MLflow | ✅ Built-in | ✅ Built-in | ✅ Built-in |
 | **CI/CD Integration** | ✅ GitHub Actions | ⚠️ Manual | ✅ CodePipeline | ✅ Cloud Build | ✅ DevOps |
 | **GitOps** | ⚠️ ArgoCD installed, app rollout in progress | ⚠️ Manual | ❌ | ❌ | ⚠️ Partial |
 | **Observability** | ✅ Prometheus/Grafana | ⚠️ Basic | ✅ CloudWatch | ✅ Cloud Monitoring | ✅ Monitor |
-| **Security** | ✅ IRSA/WIF/PSA | ⚠️ Basic | ✅ IAM | ✅ IAM | ✅ Managed Identity |
+| **Security** | ✅ IRSA/PSA | ⚠️ Basic | ✅ IAM | ✅ IAM | ✅ Managed Identity |
 | **Vendor Lock-in** | ✅ None | ✅ None | ❌ AWS | ❌ GCP | ❌ Azure |
 | **Customization** | ✅ Full | ✅ Full | ⚠️ Limited | ⚠️ Limited | ⚠️ Limited |
 | **Learning Curve** | Medium | High | Low | Low | Low |
-| **Best For** | Multi-cloud, OSS-first | Research, complex pipelines | AWS-native teams | GCP-native teams | Azure-native teams |
+| **Best For** | OSS-first | Research, complex pipelines | AWS-native teams | GCP-native teams | Azure-native teams |
 
 ### Key Differentiators
 
-1. **Multi-Cloud**: Deploy the same platform on AWS, Azure, or GCP without vendor lock-in
-2. **Open Source**: All components are CNCF/OSS projects with active communities
-3. **Self-Service**: Data scientists deploy models without DevOps tickets
-4. **Cost-Effective**: 60-70% cost savings with spot instances and scale-to-zero
-5. **Production-Ready**: Security, observability, and reliability built-in from day one
+1. **Open Source**: All components are CNCF/OSS projects with active communities
+2. **Self-Service**: Data scientists deploy models without DevOps tickets
+3. **Cost-Effective**: 60-70% cost savings with spot instances and scale-to-zero
+4. **Production-Ready**: Security, observability, and reliability built-in from day one
 
 ## Why These Tools?
 
@@ -567,13 +456,6 @@ terraform -chdir=infrastructure/terraform/bootstrap/gcp output -json
 - KServe is fully open source (Apache 2.0), CNCF Incubating project
 - Better PyTorch support out-of-the-box
 - Serverless inference with scale-to-zero
-
-### Multi-Cloud Architecture
-- Same MLOps capabilities on AWS, Azure, or GCP
-- Cloud-native implementations (IRSA vs Workload Identity vs WIF, Karpenter vs KEDA vs NAP)
-- Demonstrates enterprise-grade infrastructure patterns
-- Flexibility to deploy where your data resides
-- OIDC authentication throughout (no static credentials)
 
 ## Documentation
 

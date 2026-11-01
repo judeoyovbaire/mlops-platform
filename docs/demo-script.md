@@ -1,10 +1,10 @@
 # MLOps Platform Demo Script
 
-This script guides you through a 5-minute demo of the MLOps platform, showcasing multi-cloud deployment, model training, serving, and monitoring.
+This script guides you through a 5-minute demo of the MLOps platform, showcasing EKS deployment, model training, serving, and monitoring.
 
 ## Prerequisites
 
-- AWS/Azure/GCP account with credentials configured
+- AWS account with credentials configured
 - kubectl, helm, terraform installed
 - Terminal with kubectl access to deployed cluster
 
@@ -13,11 +13,10 @@ This script guides you through a 5-minute demo of the MLOps platform, showcasing
 ### 1. Introduction (30 seconds)
 
 **Script:**
-"Welcome to the MLOps Platform demo. This is a production-ready, multi-cloud MLOps platform that enables data scientists to deploy models without DevOps tickets. We'll deploy to AWS EKS, train a model, serve it with KServe, and monitor it in real-time."
+"Welcome to the MLOps Platform demo. This is a production-ready MLOps platform on AWS EKS that enables data scientists to deploy models without DevOps tickets. We'll deploy to AWS EKS, train a model, serve it with KServe, and monitor it in real-time."
 
 **Show:**
 - README.md with architecture diagram
-- Multi-cloud support (AWS/Azure/GCP)
 
 ### 2. Infrastructure Overview (1 minute)
 
@@ -118,28 +117,12 @@ kubectl get prometheusrules -n monitoring
 - Model performance graphs
 - Cost dashboards
 
-### 6. Multi-Cloud Capability (30 seconds)
-
-**Script:**
-"One of the key features is multi-cloud support. The same platform works identically on AWS EKS, Azure AKS, or GCP GKE. Let me show you the Terraform modules."
-
-**Show:**
-- `infrastructure/terraform/modules/eks/`
-- `infrastructure/terraform/modules/aks/`
-- `infrastructure/terraform/modules/gke/`
-
-**Highlight:**
-- Same Helm charts work across clouds
-- Cloud-native implementations (Karpenter vs KEDA vs NAP)
-- Unified CI/CD pipeline
-
 ## Key Talking Points
 
 1. **Self-Service**: Data scientists deploy models without DevOps tickets
-2. **Multi-Cloud**: Same capabilities on AWS, Azure, or GCP
-3. **Production-Ready**: Security, observability, and reliability built-in
-4. **Cost-Optimized**: GPU autoscaling, spot instances, scale-to-zero
-5. **Open Source**: All components are CNCF/OSS projects
+2. **Production-Ready**: Security, observability, and reliability built-in
+3. **Cost-Optimized**: GPU autoscaling, spot instances, scale-to-zero
+4. **Open Source**: All components are CNCF/OSS projects
 
 ## Demo Checklist
 

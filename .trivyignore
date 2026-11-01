@@ -12,15 +12,6 @@
 # - AVD-AWS-0031: ECR image tags set to IMMUTABLE
 # - AVD-AWS-0088: S3 state bucket now uses KMS CMK encryption
 # - AVD-AWS-0132: Security group egress restricted to VPC CIDR for RDS
-#
-# Azure/AKS:
-# - AVD-AZURE-0017: Key Vault network ACL defaults to Deny with VNet access
-# - AVD-AZURE-0013: AKS API server supports authorized_ip_ranges
-# - AVD-AZURE-0014: RBAC explicitly enabled on AKS clusters
-#
-# GCP/GKE:
-# - AVD-GCP-0027: Default network creation disabled (auto_create_network = false)
-# - AVD-GCP-0024: Cloud SQL SSL mode set to ENCRYPTED_ONLY
 
 # =============================================================================
 # Kubernetes manifest warnings - intentional for ML workloads
@@ -48,24 +39,6 @@ aws-vpc-no-public-egress-sgr
 AVD-AWS-0040
 AVD-AWS-0041
 
-# Ignore GCP Cloud SQL SSL warning - ssl_mode=ENCRYPTED_ONLY enforces SSL but Trivy may not recognize it
-# Path: infrastructure/terraform/modules/gke/storage.tf
-AVD-GCP-0015
-
-# Ignore AKS API Server IP ranges warning - configuration is intentionally flexible for dev
-# Users should set api_server_authorized_ip_ranges for production
-# Path: infrastructure/terraform/modules/aks/main.tf
-AVD-AZU-0041
-
-# Azure storage accounts allow public network access (tfstate account in
-# bootstrap/azure/main.tf, flow-logs account in modules/aks/main.tf) and the
-# MLflow account network_rules default to Allow (modules/aks/storage.tf).
-# Accepted 2026-11-01 when the IaC scan became blocking (JDH-404): the Azure
-# tree has never been deployed and leaves main with the descope (JDH-407,
-# ADR-017). Remove these lines with that tree.
-AVD-AZU-0012
-AVD-AZU-0010
-
 # =============================================================================
 # Terraform module cache (third-party code)
 # =============================================================================
@@ -85,7 +58,6 @@ AVD-AZU-0010
 # reviewed for production deployments:
 # - RDS deletion protection disabled - enable via mlflow_db_deletion_protection=true
 # - EKS public endpoint - disabled by default, enable with restricted CIDRs if needed
-# - AKS API server IP ranges - empty by default, set specific CIDRs for production
 
 # =============================================================================
 # E2E Test Infrastructure (tests/e2e/minio.yaml)

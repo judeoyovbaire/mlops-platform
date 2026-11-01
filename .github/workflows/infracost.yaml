@@ -23,10 +23,6 @@ jobs:
         cloud:
           - name: aws
             path: infrastructure/terraform/environments/aws/dev
-          - name: azure
-            path: infrastructure/terraform/environments/azure/dev
-          - name: gcp
-            path: infrastructure/terraform/environments/gcp/dev
     steps:
       - name: Checkout base branch
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6

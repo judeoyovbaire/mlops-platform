@@ -149,7 +149,7 @@ resources:
 #### 3. Data Loading Optimization
 
 - Use persistent volume caching for datasets
-- Enable GCS/S3 FUSE for large datasets
+- Enable S3 FUSE for large datasets
 - Implement data prefetching in training scripts
 
 ```python
@@ -189,7 +189,7 @@ kubectl exec -it <pod-name> -- nvidia-smi
 
 ## Database Optimization
 
-### PostgreSQL (RDS/Cloud SQL) Tuning
+### PostgreSQL (RDS) Tuning
 
 #### Connection Pooling
 
@@ -243,7 +243,7 @@ ANALYZE metrics;
 
 ## Storage Performance
 
-### Object Storage (S3/GCS/Blob)
+### Object Storage (S3)
 
 #### Transfer Optimization
 
@@ -269,11 +269,11 @@ s3_client.upload_file(
 
 #### Storage Class Selection
 
-| Workload | AWS | Azure | GCP |
-|----------|-----|-------|-----|
-| Hot data (models) | S3 Standard | Hot | Standard |
-| Warm data (artifacts) | S3 IA | Cool | Nearline |
-| Cold data (archives) | S3 Glacier | Archive | Coldline |
+| Workload | AWS |
+|----------|-----|
+| Hot data (models) | S3 Standard |
+| Warm data (artifacts) | S3 IA |
+| Cold data (archives) | S3 Glacier |
 
 ### Persistent Volume Performance
 

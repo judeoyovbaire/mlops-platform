@@ -28,7 +28,7 @@ Operational guides for day-to-day platform management:
 | [MLflow Connection Issues](runbooks/mlflow-connection-issues.md) | MLflow connectivity diagnostics |
 | [Karpenter Node Issues](runbooks/karpenter-node-not-provisioning.md) | GPU node provisioning troubleshooting |
 | [Terraform Rollback](runbooks/terraform-rollback.md) | Terraform rollback procedures |
-| [Database Restore](runbooks/database-restore.md) | RDS/PostgreSQL/Cloud SQL restore |
+| [Database Restore](runbooks/database-restore.md) | RDS PostgreSQL restore |
 
 ## Component Documentation
 
@@ -40,8 +40,8 @@ Operational guides for day-to-day platform management:
 
 ### Infrastructure
 
-- **Terraform Modules** - EKS, AKS, GKE configurations
-- **Helm Values** - Cloud-specific component configurations
+- **Terraform Modules** - EKS configuration
+- **Helm Values** - Component configurations
 
 ### Security
 
@@ -75,7 +75,7 @@ Operational guides for day-to-day platform management:
 │         │                  │                  │                  │          │
 │         ▼                  ▼                  ▼                  ▼          │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                    Kubernetes (EKS / AKS / GKE)                     │   │
+│   │                          Kubernetes (EKS)                           │   │
 │   │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────────────┐ │   │
 │   │  │ Prometheus│  │  Kyverno  │  │  Tetragon │  │ External Secrets  │ │   │
 │   │  │ + Grafana │  │  Policies │  │  Security │  │    Operator       │ │   │
@@ -85,8 +85,6 @@ Operational guides for day-to-day platform management:
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
 │   │                      Cloud Provider Layer                           │   │
 │   │  AWS: S3 + RDS + ALB + IRSA + Karpenter                             │   │
-│   │  Azure: Blob + PostgreSQL + NGINX + Workload Identity + KEDA        │   │
-│   │  GCP: GCS + Cloud SQL + NGINX + Workload Identity + NAP             │   │
 │   └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -123,11 +121,11 @@ Operational guides for day-to-day platform management:
 │  └── Network Policies - Namespace isolation                                 │
 │                                                                             │
 │  Layer 3: Identity & Access                                                 │
-│  ├── IRSA / Workload Identity - No static credentials                       │
+│  ├── IRSA - No static credentials                                           │
 │  └── External Secrets - Secure secret injection                             │
 │                                                                             │
 │  Layer 4: Data Protection                                                   │
-│  ├── Encryption at rest (RDS, S3, Cloud SQL, GCS)                           │
+│  ├── Encryption at rest (RDS, S3)                                           │
 │  └── TLS for all service communication                                      │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘

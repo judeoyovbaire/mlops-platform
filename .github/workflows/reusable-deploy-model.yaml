@@ -3,7 +3,7 @@
 #
 # Authentication happens INSIDE this workflow: a reusable workflow runs as a
 # separate job on a fresh runner, so credentials or kubeconfig prepared in a
-# caller job do not carry over. Callers pass cloud/cluster identity as inputs
+# caller job do not carry over. Callers pass cluster identity as inputs
 # and forward secrets with `secrets: inherit`.
 name: Deploy Model (Reusable)
 
@@ -11,7 +11,7 @@ on:
   workflow_call:
     inputs:
       cloud:
-        description: "Cloud provider: aws | azure | gcp"
+        description: "Cloud provider; only aws is supported (ADR-017)"
         required: true
         type: string
       environment:
@@ -23,20 +23,10 @@ on:
         required: true
         type: string
       region:
-        description: "AWS region / GCP zone (unused for Azure)"
+        description: "AWS region"
         required: false
         type: string
         default: ""
-      resource-group:
-        description: "Azure resource group (Azure only)"
-        required: false
-        type: string
-        default: ""
-      kubelogin-version:
-        description: "kubelogin version for AKS AAD auth (Azure only)"
-        required: false
-        type: string
-        default: "0.2.10"
       model-name:
         description: "Registered model to deploy from the MLflow registry"
         required: false
@@ -76,55 +66,6 @@ jobs:
             --name "${{ inputs.cluster-name }}" \
             --region "${{ inputs.region }}"
 
-      # --------------------------------------------------------------- Azure
-      - name: Azure Login (OIDC)
-        if: inputs.cloud == 'azure'
-        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Install kubelogin
-        if: inputs.cloud == 'azure'
-        run: |
-          curl -LO "https://github.com/Azure/kubelogin/releases/download/v${{ inputs.kubelogin-version }}/kubelogin-linux-amd64.zip"
-          curl -sL "https://github.com/Azure/kubelogin/releases/download/v${{ inputs.kubelogin-version }}/kubelogin-linux-amd64.zip.sha256" -o kubelogin.sha256
-          echo "$(cat kubelogin.sha256)  kubelogin-linux-amd64.zip" | sha256sum -c -
-          unzip kubelogin-linux-amd64.zip -d kubelogin
-          sudo mv kubelogin/bin/linux_amd64/kubelogin /usr/local/bin/
-          kubelogin --version
-
-      - name: Configure kubectl (AKS)
-        if: inputs.cloud == 'azure'
-        run: |
-          az aks get-credentials \
-            --resource-group "${{ inputs.resource-group }}" \
-            --name "${{ inputs.cluster-name }}" \
-            --overwrite-existing
-          kubelogin convert-kubeconfig -l azurecli
-
-      # ----------------------------------------------------------------- GCP
-      - name: Authenticate to Google Cloud (OIDC)
-        if: inputs.cloud == 'gcp'
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Set up Cloud SDK
-        if: inputs.cloud == 'gcp'
-        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
-
-      - name: Configure kubectl (GKE)
-        if: inputs.cloud == 'gcp'
-        run: |
-          gcloud components install gke-gcloud-auth-plugin --quiet
-          gcloud container clusters get-credentials "${{ inputs.cluster-name }}" \
-            --zone "${{ inputs.region }}" \
-            --project "${{ secrets.GCP_PROJECT_ID }}"
-
-      # -------------------------------------------------------------- Verify
       - name: Verify cluster access
         run: |
           kubectl version

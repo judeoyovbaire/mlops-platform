@@ -7,11 +7,7 @@ Shell scripts for deploying and destroying the MLOps platform infrastructure.
 | Script | Purpose |
 |--------|---------|
 | `deploy-aws.sh` | Deploy MLOps platform to AWS EKS |
-| `deploy-azure.sh` | Deploy MLOps platform to Azure AKS |
-| `deploy-gcp.sh` | Deploy MLOps platform to GCP GKE |
 | `destroy-aws.sh` | Tear down AWS infrastructure |
-| `destroy-azure.sh` | Tear down Azure infrastructure |
-| `destroy-gcp.sh` | Tear down GCP infrastructure |
 
 ## Prerequisites
 
@@ -20,8 +16,6 @@ All scripts check for required tools before running:
 | Cloud | Required Tools |
 |-------|---------------|
 | AWS | `aws`, `terraform`, `kubectl`, `helm` |
-| Azure | `az`, `terraform`, `kubectl`, `helm` |
-| GCP | `gcloud`, `terraform`, `kubectl`, `helm` |
 
 ## Usage
 
@@ -30,12 +24,6 @@ All scripts check for required tools before running:
 ```bash
 # AWS
 ./scripts/deploy-aws.sh
-
-# Azure
-./scripts/deploy-azure.sh
-
-# GCP
-./scripts/deploy-gcp.sh
 ```
 
 ### Destroy
@@ -45,12 +33,6 @@ All scripts check for required tools before running:
 ```bash
 # AWS - prompts for confirmation
 ./scripts/destroy-aws.sh
-
-# Azure - prompts for confirmation
-./scripts/destroy-azure.sh
-
-# GCP - prompts for confirmation
-./scripts/destroy-gcp.sh
 ```
 
 Type `destroy` when prompted to confirm.
@@ -104,9 +86,6 @@ Scripts use these environment variables (with sensible defaults):
 |----------|---------|-------------|
 | `CLUSTER_NAME` | `mlops-platform-dev` | Kubernetes cluster name |
 | `AWS_REGION` | `eu-west-1` | AWS region |
-| `AZURE_LOCATION` | `westeurope` | Azure region |
-| `GCP_REGION` | `europe-west4` | GCP region |
-| `GCP_ZONE` | `europe-west4-a` | GCP zone |
 
 ## Troubleshooting
 
@@ -117,12 +96,6 @@ Ensure you're authenticated to the cloud provider:
 ```bash
 # AWS
 aws sts get-caller-identity
-
-# Azure
-az account show
-
-# GCP
-gcloud auth list
 ```
 
 ### Terraform State Issues

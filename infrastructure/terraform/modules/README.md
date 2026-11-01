@@ -7,19 +7,14 @@ Reusable Terraform modules for deploying Kubernetes clusters with MLOps platform
 | Module | Cloud | Description |
 |--------|-------|-------------|
 | `eks/` | AWS | Amazon EKS cluster with VPC, RDS, S3, and IRSA |
-| `aks/` | Azure | Azure AKS cluster with VNet, PostgreSQL, Blob, and Workload Identity |
-| `gke/` | GCP | Google GKE cluster with VPC, Cloud SQL, GCS, and Workload Identity |
 
 ## Module Structure
 
-Each module follows the same pattern:
+Two modules, split by layer (see ADR-015):
 
 ```
-modules/<cloud>/
-  main.tf           # Core resources (cluster, networking)
-  variables.tf      # Input variables
-  outputs.tf        # Output values
-  workload-identity.tf  # Pod identity configuration (if applicable)
+modules/eks/           # Cluster layer: VPC, EKS, node groups, IRSA roles, RDS, S3, KMS, backup
+modules/aws-platform/  # Platform layer on the cluster: Helm releases, namespaces, policies, Karpenter pools
 ```
 
 ## Usage
@@ -27,13 +22,12 @@ modules/<cloud>/
 Modules are consumed by environment configurations in `environments/<cloud>/dev/`:
 
 ```hcl
-module "gke" {
-  source = "../../modules/gke"
+module "eks" {
+  source = "../../../modules/eks"
 
-  project_name = "mlops-platform"
-  environment  = "dev"
-  region       = "europe-west4"
-  zone         = "europe-west4-a"
+  cluster_name    = var.cluster_name
+  cluster_version = var.cluster_version
+  environment     = "dev"
 }
 ```
 
@@ -78,50 +72,6 @@ All modules provide these outputs:
 | `flow_logs_retention_days` | `30` | Flow logs retention in CloudWatch |
 | `enable_aws_backup` | `true` | Enable AWS Backup for RDS |
 | `backup_retention_days` | `30` | Daily backup retention period |
-
-## AKS Module (Azure)
-
-### Key Resources
-- Virtual Network with subnets
-- AKS cluster with node pools
-- Storage Account for MLflow artifacts
-- PostgreSQL Flexible Server
-- Azure Key Vault
-- Managed Identities with Workload Identity
-- NSG Flow Logs with Traffic Analytics
-- Network Watcher for diagnostics
-
-### Inputs
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `location` | `westeurope` | Azure region |
-| `kubernetes_version` | `1.32` | AKS version |
-| `node_vm_size` | `Standard_D4s_v3` | Default node size |
-| `enable_nsg_flow_logs` | `true` | Enable NSG Flow Logs |
-| `flow_logs_retention_days` | `30` | Flow logs retention period |
-| `enable_traffic_analytics` | `true` | Enable Traffic Analytics |
-
-## GKE Module (GCP)
-
-### Key Resources
-- VPC with subnets
-- GKE cluster with node pools
-- GCS bucket for MLflow artifacts
-- Cloud SQL PostgreSQL
-- Secret Manager secrets
-- Service Accounts with Workload Identity
-- VPC Flow Logs on subnets
-
-### Inputs
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `region` | `europe-west4` | GCP region |
-| `zone` | `europe-west4-a` | GCP zone |
-| `kubernetes_version` | `1.32` | GKE version |
-| `node_machine_type` | `e2-standard-4` | Default machine type |
-| `enable_vpc_flow_logs` | `true` | Enable VPC Flow Logs |
-| `flow_logs_aggregation_interval` | `INTERVAL_5_SEC` | Flow logs aggregation |
-| `flow_logs_sampling_rate` | `0.5` | Flow logs sampling rate |
 
 ## Extending Modules
 

@@ -14,8 +14,8 @@ Terraform rollbacks can be performed in several ways depending on the situation:
 ## Prerequisites
 
 - Terraform CLI installed (matching version in CI/CD)
-- Cloud provider credentials configured
-- Access to state backend (S3/Azure Storage/GCS)
+- AWS credentials configured
+- Access to state backend (S3)
 - Git access to the repository
 
 ## 1. Targeted Resource Rollback
@@ -61,12 +61,6 @@ CI/CD automatically backs up state before each apply. Find backups:
 ```bash
 # AWS S3
 aws s3 ls s3://<bucket>/mlops-platform/<env>/backups/
-
-# Azure Storage
-az storage blob list --container-name tfstate --prefix "backups/"
-
-# GCP GCS
-gsutil ls gs://<bucket>/mlops-platform/<env>/backups/
 ```
 
 ### Restore Previous State
@@ -175,29 +169,13 @@ terraform plan
 2. Update runbooks if needed
 3. Consider adding preventive measures (e.g., more restrictive plan reviews)
 
-## Cloud-Specific Considerations
+## Cluster Access
 
 ### AWS EKS
 
 ```bash
 # Verify EKS cluster access
 aws eks update-kubeconfig --name mlops-platform-<env> --region <region>
-kubectl cluster-info
-```
-
-### Azure AKS
-
-```bash
-# Verify AKS cluster access
-az aks get-credentials --resource-group mlops-platform-<env>-rg --name mlops-platform-<env>
-kubectl cluster-info
-```
-
-### GCP GKE
-
-```bash
-# Verify GKE cluster access
-gcloud container clusters get-credentials mlops-platform-<env> --zone <zone> --project <project>
 kubectl cluster-info
 ```
 

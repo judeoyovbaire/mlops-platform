@@ -4,10 +4,8 @@ Deploy the MLOps platform and serve your first model in 5 minutes (after infrast
 
 ## Prerequisites
 
-- One of the cloud environments deployed (see [Getting Started](README.md#getting-started)):
+- The AWS environment deployed (see [Getting Started](README.md#getting-started)):
   - `make deploy-aws` — AWS EKS (~15-20 min)
-  - `make deploy-azure` — Azure AKS (~15-25 min)
-  - `make deploy-gcp` — GCP GKE (~15-25 min)
 - `kubectl` configured for your cluster (deploy scripts do this automatically)
 
 ## Step 1: Access the Dashboards
@@ -100,5 +98,5 @@ argo logs -n argo @latest
 ```bash
 kubectl delete inferenceservice sklearn-iris -n mlops
 pkill -f "port-forward"
-make destroy-aws    # or destroy-azure, destroy-gcp
+make destroy-aws
 ```
