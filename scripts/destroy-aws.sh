@@ -31,6 +31,17 @@ get_cluster_config() {
     AWS_REGION=${AWS_REGION:-$DEFAULT_AWS_REGION}
 
     export CLUSTER_NAME AWS_REGION
+
+    # Pin every kubectl call in this script to THIS cluster via a throwaway
+    # kubeconfig. The cleanup deletes all ClusterPolicies and webhooks; running
+    # it against whatever context happened to be current could hit another
+    # cluster. If the cluster is gone, kubectl simply fails and cleanup skips.
+    KUBECONFIG="$(mktemp)"
+    export KUBECONFIG
+    trap 'rm -f "${KUBECONFIG}"' EXIT
+    aws eks update-kubeconfig --region "${AWS_REGION}" --name "${CLUSTER_NAME}" \
+        --kubeconfig "${KUBECONFIG}" >/dev/null 2>&1 \
+        || print_warning "Could not fetch kubeconfig for ${CLUSTER_NAME}; Kubernetes cleanup will be skipped"
 }
 
 # Pre-destroy cleanup to handle stuck Kubernetes resources
@@ -43,6 +54,18 @@ pre_destroy_cleanup() {
     if ! kubectl cluster-info &>/dev/null; then
         print_warning "Cluster not accessible, skipping Kubernetes cleanup"
         return 0
+    fi
+
+    # 0. Stop ArgoCD reconciling the baseline (ADR-017: ArgoCD owns
+    # infrastructure/kubernetes/). With self-heal on it would recreate the
+    # Kyverno policies deleted below. Remove the finalizer first so deleting
+    # the Application orphans its resources instead of cascading through
+    # Kyverno's own webhooks; namespace deletion cleans them up later.
+    if kubectl -n argocd get application platform-baseline &>/dev/null; then
+        print_info "Detaching ArgoCD platform-baseline (no cascade)..."
+        kubectl -n argocd patch application platform-baseline --type merge \
+            -p '{"spec":{"syncPolicy":null},"metadata":{"finalizers":null}}' 2>/dev/null || true
+        kubectl -n argocd delete application platform-baseline --wait=false --ignore-not-found 2>/dev/null || true
     fi
 
     # 1. Delete Kyverno webhooks first (they can block their own deletion)

@@ -12,13 +12,18 @@ actually reconciles:
 |-------------|------|----------|
 | `platform-baseline` | `infrastructure/kubernetes/` | Kyverno governance (model-registry labels, image-signature verification), SLO rules, PodDisruptionBudgets, ResourceQuotas, progressive-delivery templates (Argo Rollouts analysis), Argo Events bus, monitoring rules, Grafana dashboards |
 
-## Bootstrap (once per cluster)
+## Bootstrap
 
-After `terraform apply` has installed ArgoCD:
-
-```bash
-kubectl apply -f infrastructure/argocd/platform-baseline.yaml
-```
+Terraform applies this Application (`modules/aws-platform/gitops-baseline.tf`)
+right after ArgoCD and the CRD-providing charts, then blocks until ArgoCD
+reports it Synced and Healthy; MLflow and MinIO are only installed after
+that (the controllers that provide the baseline's CRDs necessarily come
+first). There is no manual step. The Application tracks `main`, so a fresh
+cluster syncs the current `main` baseline even when applying an older commit.
+Tear down with `scripts/destroy-aws.sh`, which detaches the Application first;
+a bare `terraform destroy` is not the supported path. ArgoCD is the only owner of `infrastructure/kubernetes/`
+(ADR-017 decision 6): Terraform no longer applies the network policies or
+dashboards itself.
 
 From then on the platform surface is pulled from Git (`main`) with automated
 sync, pruning, and self-heal. Verify with:

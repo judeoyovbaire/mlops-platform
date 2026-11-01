@@ -828,7 +828,7 @@ jobs:
   deploy-infra-aws:
     name: Deploy Infrastructure (AWS)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75  # EKS stage + Helm stage + up to 21m platform-baseline health gate
     permissions:
       contents: read
       id-token: write

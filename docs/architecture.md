@@ -260,12 +260,7 @@ Karpenter provides just-in-time node provisioning for GPU and training workloads
 
 ### 6. GitOps with ArgoCD
 
-ArgoCD is deployed as part of the platform for GitOps-readiness. Currently, deployments are performed via Terraform/Helm directly (the primary deployment path). ArgoCD provides the foundation for teams to adopt GitOps-based continuous delivery as a future enhancement — syncing Application manifests from Git to the cluster.
-
-When fully adopted, ArgoCD enables:
-- Version-controlled infrastructure
-- Automated sync and drift detection
-- Rollback capabilities
+Terraform installs the platform's controllers with Helm. ArgoCD owns everything under `infrastructure/kubernetes/` (governance policies, network policies, quotas, PDBs, SLO rules, dashboards, rollout templates, Argo Events) through the `platform-baseline` Application, with automated sync, prune and self-heal (ADR-017 decision 6). Terraform applies that Application and waits for it to be Synced and Healthy before installing MLflow and MinIO. Model deployments are still pushed by CI (`reusable-deploy-model.yaml`), not synced from Git.
 
 ## Cloud Providers
 

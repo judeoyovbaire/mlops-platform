@@ -88,9 +88,12 @@ Pivot **in place**: keep the history, change what `main` is.
    the Enforce Kyverno policies arrive late or not at all. The fix:
    - Terraform installs the controllers, ArgoCD, and the `platform-baseline`
      Application (a new `kubectl_manifest`), so bootstrap is no longer manual.
-   - The deploy script blocks until `platform-baseline` is Synced and Healthy
-     before any workload (MLflow, KServe, pipelines) is deployed, so default-deny
-     network policies and admission policies exist first.
+   - The apply blocks until `platform-baseline` is Synced and Healthy before any
+     workload starts, so default-deny network policies and admission policies
+     exist first. (Implemented in Terraform rather than the deploy script, so the
+     CI deploy job gets the same gate. MLflow and MinIO wait on it; the
+     controllers that provide the baseline's CRDs necessarily come first; model
+     InferenceServices and pipeline runs are deployed by CI after the apply.)
    - The Terraform-applied network policies and dashboards leave Terraform state
      with `removed { lifecycle { destroy = false } }`, so an apply against a live
      cluster does not delete them out from under ArgoCD.
