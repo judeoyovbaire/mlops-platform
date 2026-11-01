@@ -56,8 +56,10 @@ resource "helm_release" "cert_manager" {
   namespace        = "cert-manager"
   create_namespace = true
 
+  # crds.enabled replaces the deprecated installCRDs; set only one.
+  # crds.keep defaults to true (CRDs survive helm uninstall).
   set {
-    name  = "installCRDs"
+    name  = "crds.enabled"
     value = "true"
   }
 

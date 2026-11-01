@@ -6,6 +6,11 @@
 # owner (ADR-017 decision 6). Terraform applies this Application and waits
 # for Synced/Healthy (modules/aws-platform/gitops-baseline.tf); from then on
 # the platform surface is continuously reconciled from Git.
+#
+# Kyverno 1.19+ admits a ClusterPolicy with generate rules only if the
+# submitter can create the generated resources (generate-model-audit-log
+# makes ConfigMaps). The argo-cd chart's default application-controller
+# ClusterRole allows everything; restricting it breaks this sync.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

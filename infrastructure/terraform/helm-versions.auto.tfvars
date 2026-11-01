@@ -4,7 +4,7 @@
 # remain in their respective environment variables.tf files.
 
 # renovate: datasource=helm depName=cert-manager registryUrl=https://charts.jetstack.io
-helm_cert_manager_version = "v1.19.3"
+helm_cert_manager_version = "v1.21.3"
 # renovate: datasource=helm depName=argo-cd registryUrl=https://argoproj.github.io/argo-helm
 helm_argocd_version = "10.11.6"
 # renovate: datasource=docker depName=ghcr.io/kserve/charts/kserve
@@ -20,10 +20,13 @@ helm_argo_workflows_version = "0.47.3"
 helm_minio_version = "5.4.0"
 # renovate: datasource=helm depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
 helm_prometheus_stack_version = "81.6.9"
+# Capped below chart 3.10 in renovate.json: Kyverno 1.20 rejects create/update
+# of ClusterPolicy (removed in 1.21), so the cap stays until the policies move
+# to CEL ValidatingPolicy.
 # renovate: datasource=helm depName=kyverno registryUrl=https://kyverno.github.io/kyverno
-helm_kyverno_version = "3.6.2"
+helm_kyverno_version = "3.9.2"
 # renovate: datasource=helm depName=external-secrets registryUrl=https://charts.external-secrets.io
-helm_external_secrets_version = "1.2.1"
+helm_external_secrets_version = "2.14.0"
 # renovate: datasource=helm depName=loki registryUrl=https://grafana.github.io/helm-charts
 helm_loki_version = "6.24.0"
 # renovate: datasource=helm depName=tempo registryUrl=https://grafana.github.io/helm-charts
