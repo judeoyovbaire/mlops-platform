@@ -5,7 +5,7 @@
 # alias. MODEL_STORAGE_URI points at the 'hf_model' artifact: the raw
 # save_pretrained layout (config + safetensors weights + tokenizer in one
 # directory) that kserve/huggingfaceserver consumes directly. The runtime
-# version rides on the cluster's kserve chart (helm_kserve_version) - see
+# version rides on the cluster's KServe charts (helm_kserve_version) - see
 # pipelines/serving-runtime-contract.yaml.
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService

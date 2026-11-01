@@ -7,8 +7,11 @@
 helm_cert_manager_version = "v1.21.3"
 # renovate: datasource=helm depName=argo-cd registryUrl=https://argoproj.github.io/argo-helm
 helm_argocd_version = "10.11.6"
-# renovate: datasource=docker depName=ghcr.io/kserve/charts/kserve
-helm_kserve_version = "v0.16.0"
+# One version for the kserve-crd, kserve-resources and kserve-runtime-configs
+# charts. It also sets the huggingfaceserver image in
+# pipelines/serving-runtime-contract.yaml (test_serving_runtime_contract.py).
+# renovate: datasource=docker depName=ghcr.io/kserve/charts/kserve-resources
+helm_kserve_version = "v0.21.0"
 # Snapshot the MLflow RDS instance before bumping this version: with
 # backendStore.databaseMigration: true (mlflow-values.yaml) an init container
 # runs Alembic against RDS on first start, and those migrations are irreversible.

@@ -101,7 +101,7 @@ variable "helm_argocd_version" {
 }
 
 variable "helm_kserve_version" {
-  description = "KServe Helm chart version (CRD and controller)"
+  description = "KServe Helm chart version (kserve-crd, kserve-resources, kserve-runtime-configs)"
   type        = string
 
   validation {

@@ -21,6 +21,8 @@ The two leading options in the Kubernetes ecosystem are:
 
 We will use **KServe v0.16.0** as our model serving solution.
 
+> Update 2026-11: the platform runs KServe v0.21.0, installed as three charts (`kserve-crd`, `kserve-resources`, `kserve-runtime-configs`) after the single `kserve` chart stopped at v0.16.0.
+
 ## Consequences
 
 ### Positive
