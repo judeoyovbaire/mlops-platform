@@ -42,6 +42,10 @@ env:
   PYTHON_VERSION: "3.12"
   # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.*)$
   TERRAFORM_VERSION: "1.14.5"
+  # Argo CLI and quick-start manifest for the Kind e2e job; keep in step with
+  # the argo-workflows chart's app version (helm-versions.auto.tfvars).
+  # renovate: datasource=github-releases depName=argoproj/argo-workflows
+  ARGO_WORKFLOWS_VERSION: "v4.1.6"
   AWS_REGION: "eu-west-1"
 
 concurrency:
@@ -991,7 +995,7 @@ jobs:
 
       - name: Install Argo CLI
         run: |
-          curl -sLO --retry 3 --retry-delay 5 https://github.com/argoproj/argo-workflows/releases/download/v3.7.2/argo-linux-amd64.gz
+          curl -sLO --retry 3 --retry-delay 5 "https://github.com/argoproj/argo-workflows/releases/download/${ARGO_WORKFLOWS_VERSION}/argo-linux-amd64.gz"
           gunzip argo-linux-amd64.gz
           chmod +x argo-linux-amd64
           sudo mv argo-linux-amd64 /usr/local/bin/argo
@@ -1004,7 +1008,10 @@ jobs:
         run: |
           kubectl create namespace argo
           for i in 1 2 3; do
-            kubectl apply -n argo -f https://github.com/argoproj/argo-workflows/releases/download/v3.7.2/quick-start-minimal.yaml && break
+            # v4 ships full CRDs (>1 MB): client-side apply exceeds the 256 KB
+            # last-applied annotation, so apply server-side.
+            kubectl apply --server-side -n argo -f "https://github.com/argoproj/argo-workflows/releases/download/${ARGO_WORKFLOWS_VERSION}/quick-start-minimal.yaml" && break
+            [ "$i" = 3 ] && { echo "Argo install failed after 3 attempts"; exit 1; }
             echo "Attempt $i failed, retrying in 10s..."
             sleep 10
           done

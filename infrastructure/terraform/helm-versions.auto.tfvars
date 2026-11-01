@@ -15,7 +15,7 @@ helm_kserve_version = "v0.16.0"
 # renovate: datasource=helm depName=mlflow registryUrl=https://community-charts.github.io/helm-charts
 helm_mlflow_version = "1.11.7"
 # renovate: datasource=helm depName=argo-workflows registryUrl=https://argoproj.github.io/argo-helm
-helm_argo_workflows_version = "0.47.3"
+helm_argo_workflows_version = "2.0.15"
 # renovate: datasource=helm depName=minio registryUrl=https://charts.min.io/
 helm_minio_version = "5.4.0"
 # renovate: datasource=helm depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
