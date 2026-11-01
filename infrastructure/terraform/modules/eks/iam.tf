@@ -4,7 +4,7 @@
 # IRSA for EBS CSI Driver
 module "ebs_csi_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "~> 6.0"
+  version = "6.8.2"
 
   name                  = "${var.cluster_name}-ebs-csi"
   attach_ebs_csi_policy = true
@@ -22,7 +22,7 @@ module "ebs_csi_irsa" {
 # IRSA for AWS Load Balancer Controller
 module "aws_lb_controller_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "~> 6.0"
+  version = "6.8.2"
 
   name                                   = "${var.cluster_name}-aws-lb-controller"
   attach_load_balancer_controller_policy = true
@@ -40,7 +40,7 @@ module "aws_lb_controller_irsa" {
 # IRSA for MLflow S3 access
 module "mlflow_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "~> 6.0"
+  version = "6.8.2"
 
   name = "${var.cluster_name}-mlflow"
 
@@ -103,7 +103,7 @@ resource "aws_iam_policy" "mlflow_s3" {
 # IRSA for Loki S3 access
 module "loki_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "~> 6.0"
+  version = "6.8.2"
 
   name = "${var.cluster_name}-loki"
 
@@ -166,7 +166,7 @@ resource "aws_iam_policy" "loki_s3" {
 # IRSA for Tempo S3 access
 module "tempo_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "~> 6.0"
+  version = "6.8.2"
 
   name = "${var.cluster_name}-tempo"
 

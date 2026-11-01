@@ -7,7 +7,7 @@
 # (modules/gke/workload-identity.tf).
 module "kserve_inference_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "~> 6.0"
+  version = "6.8.2"
 
   name = "${var.cluster_name}-kserve-inference"
 

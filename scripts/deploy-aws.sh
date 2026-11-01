@@ -102,10 +102,10 @@ deploy() {
     print_info "Initializing Terraform..."
     if [[ -f "backend.conf" ]]; then
         print_info "Using backend configuration from backend.conf"
-        terraform init -upgrade -backend-config=backend.conf
+        terraform init -backend-config=backend.conf
     else
         print_warning "No backend.conf found. Terraform will ask for backend configuration."
-        terraform init -upgrade
+        terraform init
     fi
 
     # Plan

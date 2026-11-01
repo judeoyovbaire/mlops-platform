@@ -30,7 +30,7 @@ data "aws_region" "current" {}
 # VPC for EKS
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 6.0"
+  version = "6.7.3"
 
   name = "${var.cluster_name}-vpc"
   cidr = var.vpc_cidr
@@ -60,7 +60,7 @@ module "vpc" {
 # EKS Cluster
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 21.0"
+  version = "21.29.0"
 
   name               = var.cluster_name
   kubernetes_version = var.cluster_version

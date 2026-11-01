@@ -140,7 +140,9 @@ check_gcp_prerequisites() {
 terraform_init() {
     local tf_dir="$1"
     print_info "Initializing Terraform in ${tf_dir}..."
-    terraform -chdir="$tf_dir" init -upgrade
+    # No -upgrade: the committed .terraform.lock.hcl is the source of truth;
+    # upgrades come through Renovate or a deliberate `init -upgrade` commit.
+    terraform -chdir="$tf_dir" init
 }
 
 terraform_plan() {

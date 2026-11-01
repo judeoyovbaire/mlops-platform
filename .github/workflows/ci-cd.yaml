@@ -142,6 +142,12 @@ jobs:
           terraform init -backend=false
           terraform validate
 
+      - name: Validate AWS Platform Module
+        working-directory: infrastructure/terraform/modules/aws-platform
+        run: |
+          terraform init -backend=false
+          terraform validate
+
       - name: Validate AWS Bootstrap
         working-directory: infrastructure/terraform/bootstrap/aws
         run: |

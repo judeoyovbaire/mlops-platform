@@ -64,6 +64,8 @@ Thumbs.db
 *.tfvars
 !*.tfvars.example
 !helm-versions.auto.tfvars
+# Local backend config carries the account id; only the .example is tracked
+infrastructure/terraform/environments/**/backend.conf
 
 # Local databases
 mlflow.db

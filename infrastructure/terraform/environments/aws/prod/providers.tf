@@ -32,7 +32,8 @@ terraform {
 
   # Remote state backend - partial configuration
   # Run 'terraform init -backend-config=backend.conf'
-  # Production state should be in a separate bucket from dev
+  # Same bucket as dev, separate key (mlops-platform/prod/terraform.tfstate),
+  # matching ci-cd.yaml. See backend.conf.example.
   backend "s3" {}
 }
 
