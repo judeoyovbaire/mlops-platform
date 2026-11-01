@@ -56,6 +56,17 @@ dev = [
     "hypothesis>=6.100.0",
 ]
 
+# Image lockfiles (pipelines/*/requirements.txt, components/kserve-transformer/
+# requirements.txt) are compiled for the linux/amd64 images, never for the
+# machine running the compile. Kept here rather than as --python-platform in
+# the lockfile header because Renovate's pip-compile manager rejects that flag
+# and re-runs the header command verbatim. Applies to every `uv pip` command
+# run from this repo, so `uv pip install`/`uv pip sync` here would also pick
+# linux/amd64 wheels: use `uv sync` for the local venv (or pass --no-config).
+# `uv sync`/`uv lock`/`uv run` ignore [tool.uv.pip].
+[tool.uv.pip]
+python-platform = "x86_64-unknown-linux-gnu"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

@@ -1,8 +1,8 @@
 # Direct dependencies for the KServe transformer image.
 # Human-edited. The installable lockfile (requirements.txt) is GENERATED:
-#   uv pip compile components/kserve-transformer/requirements.in \
-#     --python-version 3.10 --python-platform x86_64-unknown-linux-gnu \
-#     --generate-hashes --emit-index-url -o components/kserve-transformer/requirements.txt
+#   uv pip compile --python-version=3.10 --generate-hashes --emit-index-url \
+#     --output-file=components/kserve-transformer/requirements.txt components/kserve-transformer/requirements.in
+#   (run from the repo root; the linux/amd64 target comes from [tool.uv.pip] in pyproject.toml)
 # CI fails if requirements.txt is stale relative to this file.
 kserve==0.14.1
 joblib==1.4.2

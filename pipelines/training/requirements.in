@@ -1,8 +1,8 @@
 # Direct dependencies for the training pipeline image.
 # Human-edited. The installable lockfile (requirements.txt) is GENERATED:
-#   uv pip compile pipelines/training/requirements.in \
-#     --python-version 3.10 --python-platform x86_64-unknown-linux-gnu \
-#     --generate-hashes --emit-index-url -o pipelines/training/requirements.txt
+#   uv pip compile --python-version=3.10 --generate-hashes --emit-index-url \
+#     --output-file=pipelines/training/requirements.txt pipelines/training/requirements.in
+#   (run from the repo root; the linux/amd64 target comes from [tool.uv.pip] in pyproject.toml)
 # CI fails if requirements.txt is stale relative to this file.
 # pandas/scikit-learn/cloudpickle track the KServe serving runtime image.
 # Source of truth: pipelines/serving-runtime-contract.yaml (drift fails CI).

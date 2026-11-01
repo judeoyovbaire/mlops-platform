@@ -724,12 +724,11 @@ jobs:
             echo "deploy-model dispatch: skipping pipelines/pretrained (torch CDN)"
           fi
           for dir in $dirs; do
-            uv pip compile "$dir/requirements.in" \
-              --python-version 3.10 \
-              --python-platform x86_64-unknown-linux-gnu \
-              --generate-hashes \
-              --emit-index-url \
-              -o "$dir/requirements.txt" \
+            # Same argv as the lockfile header (Renovate re-runs that header
+            # verbatim); the linux/amd64 target comes from [tool.uv.pip] in
+            # pyproject.toml.
+            uv pip compile --python-version=3.10 --generate-hashes --emit-index-url \
+              --output-file="$dir/requirements.txt" "$dir/requirements.in" \
               --quiet
           done
           if ! git diff --exit-code -- '**/requirements.txt'; then

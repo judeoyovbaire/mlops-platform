@@ -1,8 +1,8 @@
 # Direct dependencies for the HuggingFace pretrained pipeline image.
 # Human-edited. The installable lockfile (requirements.txt) is GENERATED:
-#   uv pip compile pipelines/pretrained/requirements.in \
-#     --python-version 3.10 --python-platform x86_64-unknown-linux-gnu \
-#     --generate-hashes --emit-index-url -o pipelines/pretrained/requirements.txt
+#   uv pip compile --python-version=3.10 --generate-hashes --emit-index-url \
+#     --output-file=pipelines/pretrained/requirements.txt pipelines/pretrained/requirements.in
+#   (run from the repo root; the linux/amd64 target comes from [tool.uv.pip] in pyproject.toml)
 # CI fails if requirements.txt is stale relative to this file.
 --extra-index-url https://download.pytorch.org/whl/cpu
 transformers==4.51.3
