@@ -1,5 +1,5 @@
 # Shared AWS platform layer (Karpenter, core Helm releases, security policies,
-# monitoring, namespaces, storage, multi-tenancy). Environment differences are
+# monitoring, namespaces, storage). Environment differences are
 # explicit module inputs - see modules/aws-platform/variables.tf.
 module "platform" {
   source = "../../../modules/aws-platform"
@@ -38,5 +38,4 @@ module "platform" {
   helm_otel_collector_version       = var.helm_otel_collector_version
   helm_prometheus_stack_version     = var.helm_prometheus_stack_version
   helm_tempo_version                = var.helm_tempo_version
-  helm_tetragon_version             = var.helm_tetragon_version
 }

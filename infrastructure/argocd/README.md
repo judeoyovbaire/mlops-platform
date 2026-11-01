@@ -10,7 +10,7 @@ actually reconciles:
 
 | Application | Path | Contents |
 |-------------|------|----------|
-| `platform-baseline` | `infrastructure/kubernetes/` | Kyverno governance (model-registry labels, image-signature verification), SLO rules, PodDisruptionBudgets, ResourceQuotas, VPA, progressive-delivery templates (Argo Rollouts analysis), Argo Events bus, monitoring rules, Grafana dashboards |
+| `platform-baseline` | `infrastructure/kubernetes/` | Kyverno governance (model-registry labels, image-signature verification), SLO rules, PodDisruptionBudgets, ResourceQuotas, progressive-delivery templates (Argo Rollouts analysis), Argo Events bus, monitoring rules, Grafana dashboards |
 
 ## Bootstrap (once per cluster)
 

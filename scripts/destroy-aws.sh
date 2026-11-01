@@ -89,10 +89,6 @@ pre_destroy_cleanup() {
     kubectl delete nodepools --all --ignore-not-found 2>/dev/null || true
     kubectl delete ec2nodeclasses --all --ignore-not-found 2>/dev/null || true
 
-    # 6. Delete other webhook configurations that might block
-    print_info "Removing other webhooks that might block deletion..."
-    kubectl delete validatingwebhookconfiguration -l app.kubernetes.io/name=tetragon --ignore-not-found 2>/dev/null || true
-
     # Give resources time to clean up
     print_info "Waiting for resources to terminate..."
     sleep 10

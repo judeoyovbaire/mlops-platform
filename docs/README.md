@@ -47,7 +47,7 @@ Operational guides for day-to-day platform management:
 
 - **Pod Security Admission** - Namespace-level security enforcement
 - **Kyverno** - Policy-as-code validation
-- **Tetragon** - Runtime security monitoring
+- **Cosign** - Keyless image signatures, verified at admission
 
 ## Examples
 
@@ -56,8 +56,6 @@ Operational guides for day-to-day platform management:
 | KServe Basic | sklearn model with production config | [examples/kserve/](../examples/kserve/) |
 | Canary Deployment | Progressive rollout with traffic splitting | [examples/canary-deployment/](../examples/canary-deployment/) |
 | LLM Inference | Mistral-7B with vLLM on GPU | [examples/llm-inference/](../examples/llm-inference/) |
-| Distributed Training | PyTorch DDP with Kubeflow | [examples/distributed-training/](../examples/distributed-training/) |
-| Chaos Testing | Resilience testing with Chaos Mesh | [examples/chaos-testing/](../examples/chaos-testing/) |
 
 ## Architecture Diagrams
 
@@ -77,8 +75,8 @@ Operational guides for day-to-day platform management:
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
 │   │                          Kubernetes (EKS)                           │   │
 │   │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────────────┐ │   │
-│   │  │ Prometheus│  │  Kyverno  │  │  Tetragon │  │ External Secrets  │ │   │
-│   │  │ + Grafana │  │  Policies │  │  Security │  │    Operator       │ │   │
+│   │  │ Prometheus│  │  Kyverno  │  │   Cosign  │  │ External Secrets  │ │   │
+│   │  │ + Grafana │  │  Policies │  │ Signatures│  │    Operator       │ │   │
 │   │  └───────────┘  └───────────┘  └───────────┘  └───────────────────┘ │   │
 │   └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
@@ -116,9 +114,9 @@ Operational guides for day-to-day platform management:
 │  ├── Pod Security Admission (PSA) - Namespace-level enforcement             │
 │  └── Kyverno Policies - Resource validation and mutation                    │
 │                                                                             │
-│  Layer 2: Runtime Security                                                  │
-│  ├── Tetragon - eBPF-based process and file monitoring                      │
-│  └── Network Policies - Namespace isolation                                 │
+│  Layer 2: Network & Supply Chain                                            │
+│  ├── Network Policies - Namespace isolation                                 │
+│  └── Cosign - Keyless signatures, repo-pinned identity                      │
 │                                                                             │
 │  Layer 3: Identity & Access                                                 │
 │  ├── IRSA - No static credentials                                           │

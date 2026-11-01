@@ -9,7 +9,7 @@
 # - mlops: baseline (KServe runtime images don't set seccompProfile)
 # - mlflow: baseline (MLflow chart doesn't set seccompProfile)
 # - argo: baseline (workflow executor needs some elevated permissions)
-# - monitoring, kyverno, tetragon: privileged (system components)
+# - monitoring, kyverno: privileged (system components)
 
 resource "kubernetes_namespace" "mlops" {
   metadata {

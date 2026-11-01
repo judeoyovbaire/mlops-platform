@@ -28,7 +28,6 @@ flowchart TB
     subgraph Security["Security Layer"]
         PSA[Pod Security Admission]
         Kyverno[Kyverno Policies]
-        Tetragon[Tetragon Runtime]
     end
 
     subgraph Observability["Observability"]
@@ -59,7 +58,6 @@ flowchart TB
 
     PSA -.->|enforce| MLPlatform
     Kyverno -.->|validate| MLPlatform
-    Tetragon -.->|monitor| MLPlatform
 
     Prometheus -->|scrape| MLPlatform
     Prometheus -->|scrape| K8s
@@ -82,8 +80,8 @@ The platform uses a layered architecture that separates cloud-agnostic component
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                         Platform Layer (Cloud-Agnostic)                     │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │  Prometheus  │  │   Kyverno    │  │   Tetragon   │  │ cert-manager │     │
-│  │   Grafana    │  │   Policies   │  │   Security   │  │     TLS      │     │
+│  │  Prometheus  │  │   Kyverno    │  │   External   │  │ cert-manager │     │
+│  │   Grafana    │  │   Policies   │  │   Secrets    │  │     TLS      │     │
 │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                         Infrastructure Layer (AWS)                          │
@@ -332,7 +330,6 @@ The platform deploys these components:
 | OpenTelemetry Collector      | open-telemetry/opentelemetry-collector   |
 | External Secrets             | external-secrets/external-secrets        |
 | Kyverno                      | kyverno/kyverno                          |
-| Tetragon                     | cilium/tetragon                          |
 | GPU Autoscaling              | karpenter/karpenter                      |
 
 ## Data Flow
@@ -376,7 +373,6 @@ The platform deploys these components:
 ### Layer 4: Applications
 - Training pipelines
 - Inference services
-- Feature stores
 - Monitoring dashboards
 
 ## Security Architecture
@@ -389,14 +385,14 @@ The platform implements defense-in-depth security across multiple layers:
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌─────────────────┐  ┌──────────────────┐  ┌────────────────────────────┐  │
-│  │ Pod Security    │  │ Policy Engine    │  │ Runtime Security           │  │
-│  │ Standards (PSA) │  │ (Kyverno)        │  │ (Tetragon)                 │  │
+│  │ Pod Security    │  │ Policy Engine    │  │ Supply Chain               │  │
+│  │ Standards (PSA) │  │ (Kyverno)        │  │ (Cosign + Kyverno)         │  │
 │  ├─────────────────┤  ├──────────────────┤  ├────────────────────────────┤  │
-│  │ Enforces:       │  │ Validates:       │  │ Monitors:                  │  │
-│  │ - baseline mode │  │ - Resource limits│  │ - Sensitive file access    │  │
-│  │ - restricted    │  │ - Image tags     │  │ - Container escapes        │  │
-│  │   (audit/warn)  │  │ - Registries     │  │ - Network connections      │  │
-│  │                 │  │ - Labels         │  │ - Process execution        │  │
+│  │ Enforces:       │  │ Validates:       │  │ Verifies at admission:     │  │
+│  │ - baseline mode │  │ - Resource limits│  │ - Keyless signature        │  │
+│  │ - restricted    │  │ - Image tags     │  │ - Repo-pinned identity     │  │
+│  │   (audit/warn)  │  │ - Registries     │  │ - Immutable image tags     │  │
+│  │                 │  │ - Labels         │  │ - Signed by digest in CI   │  │
 │  └─────────────────┘  └──────────────────┘  └────────────────────────────┘  │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -414,7 +410,6 @@ Native Kubernetes pod security using namespace labels:
 | `argo` | baseline | restricted | restricted | Pipeline executor needs elevated perms |
 | `monitoring` | privileged | - | - | Node-exporter needs hostPath |
 | `kyverno` | privileged | - | - | Admission controller |
-| `tetragon` | privileged | - | - | eBPF runtime security |
 
 ### Kyverno Policy Engine
 
@@ -429,19 +424,6 @@ Kubernetes-native policy engine (CNCF Incubating) providing policy-as-code:
 | `require-mlops-labels` | mlops | Audit | Model traceability |
 | `restrict-image-registries` | mlops, kserve | Audit | Supply chain security |
 | `add-default-networkpolicy` | New namespaces | Generate | Zero-trust networking |
-
-### Tetragon Runtime Security
-
-eBPF-based runtime security from the Cilium project:
-
-**Tracing Policies:**
-
-| Policy | Detection | Namespaces |
-|--------|-----------|------------|
-| `sensitive-file-access` | Access to /etc/shadow, SSH keys, K8s secrets | mlops, argo, kserve |
-| `container-escape-detection` | ptrace, setns syscalls | mlops, argo, kserve |
-| `ml-network-connections` | Outbound TCP connections | mlops, kserve |
-| `suspicious-process-execution` | wget, curl, nc in inference pods | kserve |
 
 ### Pod Identity
 
@@ -463,12 +445,12 @@ eBPF-based runtime security from the Cilium project:
 │  - VPC security groups │  - Capabilities  │  - Least          │
 │  - Kyverno auto-gen    │  - PSA labels    │    privilege      │
 ├───────────────────────────────────────────────────────────────┤
-│  Pod Identity          │  Image Security  │  Runtime          │
-│  ─────────────────     │  ──────────────  │  ─────────        │
-│  - IRSA (AWS)          │  - Kyverno       │  - Tetragon       │
-│                        │    registry      │  - eBPF tracing   │
-│  - No static creds     │    allowlist     │  - Prometheus     │
-│                        │  - No :latest    │    metrics        │
+│  Pod Identity          │  Image Security  │  Supply Chain     │
+│  ─────────────────     │  ──────────────  │  ─────────────    │
+│  - IRSA (AWS)          │  - Kyverno       │  - Cosign keyless │
+│                        │    registry      │  - Repo-pinned    │
+│  - No static creds     │    allowlist     │    identity       │
+│                        │  - No :latest    │  - SLSA Build L2  │
 └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -521,7 +503,6 @@ The dashboard uses node labels and resource pricing to estimate costs:
 All observability components run with hardened security contexts:
 - **Loki, Tempo, OTel Collector**: `runAsNonRoot`, `readOnlyRootFilesystem`, `drop ALL` capabilities
 - **Alloy (log shipper)**: Runs as root (`runAsUser: 0`) — required for reading host log files as a DaemonSet, but `privileged: false`
-- **Chaos Mesh daemon**: Runs privileged — required by design for fault injection (iptables, tc, process signals). Deploy only in test/staging namespaces
 
 ### Prometheus Monitoring
 
@@ -645,72 +626,6 @@ make port-forward-argocd   # ArgoCD at localhost:8080
 make port-forward-grafana  # Grafana at localhost:3000
 ```
 
-## Resilience Testing
-
-### Chaos Mesh
-
-The platform includes Chaos Mesh for chaos engineering and resilience testing. Chaos Mesh is a CNCF Incubating project that provides comprehensive fault injection capabilities.
-
-**Installation:**
-```bash
-helm install chaos-mesh chaos-mesh/chaos-mesh \
-  -n chaos-testing --create-namespace \
-  --version 2.8.1 \
-  -f infrastructure/helm/common/chaos-mesh-values.yaml
-```
-
-**Experiment Types:**
-
-| Experiment | Kind | Purpose |
-|------------|------|---------|
-| Pod Failure | `PodChaos` | Test pod restart and recovery |
-| Network Delay | `NetworkChaos` | Simulate latency issues |
-| Network Partition | `NetworkChaos` | Test isolation handling |
-| CPU Stress | `StressChaos` | Trigger autoscaling |
-| Memory Stress | `StressChaos` | Test OOM handling |
-
-**Example Experiments:**
-
-```yaml
-# Pod failure test for inference services
-apiVersion: chaos-mesh.org/v1alpha1
-kind: PodChaos
-metadata:
-  name: inference-pod-failure
-  namespace: chaos-testing
-spec:
-  action: pod-kill
-  mode: one
-  selector:
-    namespaces:
-      - kserve
-    labelSelectors:
-      component: predictor
-  duration: "30s"
-```
-
-**Pre-built Experiments:**
-- `examples/chaos-testing/pod-failure.yaml` - Pod kill and failure tests
-- `examples/chaos-testing/network-delay.yaml` - Latency injection
-- `examples/chaos-testing/network-partition.yaml` - Network isolation
-- `examples/chaos-testing/cpu-stress.yaml` - CPU load testing
-- `examples/chaos-testing/memory-stress.yaml` - Memory pressure testing
-
-**Chaos Dashboard:**
-
-Access the Chaos Mesh dashboard for visual experiment management:
-```bash
-kubectl port-forward -n chaos-testing svc/chaos-dashboard 2333:2333
-# Open http://localhost:2333
-```
-
-**Best Practices:**
-- Always run experiments in non-production first
-- Use `mode: one` to limit blast radius
-- Set appropriate `duration` limits
-- Monitor metrics during experiments
-- Have rollback procedures ready
-
 ## Model Governance
 
 The platform enforces model governance through Kyverno policies that ensure:
@@ -760,9 +675,7 @@ Current versions deployed by the platform:
 | OpenTelemetry Collector | 0.108.0 | Unified telemetry pipeline (hardened securityContext) |
 | External Secrets | 1.2.1 | SSM integration |
 | Kyverno | 3.6.2 | Policy engine |
-| Tetragon | 1.6.0 | Runtime security |
 | MinIO | 5.4.0 | S3-compatible object storage |
-| Chaos Mesh | 2.8.1 | Chaos engineering and resilience testing |
 | vLLM | 0.8.0 | High-throughput LLM inference |
 
 ## Design Decisions I'd Revisit

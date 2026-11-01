@@ -1,7 +1,7 @@
 # ArgoCD Application: the platform's Kubernetes baseline.
 #
 # Manages everything under infrastructure/kubernetes/ (governance policies,
-# SLOs, PDBs, quotas, VPA, progressive-delivery templates, Argo Events,
+# SLOs, PDBs, quotas, progressive-delivery templates, Argo Events,
 # monitoring rules, dashboards) as a GitOps-synced unit. Terraform installs
 # ArgoCD itself; this Application is the one manual bootstrap step per
 # cluster (see README.md in this directory), after which the platform

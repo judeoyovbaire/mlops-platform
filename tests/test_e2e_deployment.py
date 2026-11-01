@@ -43,11 +43,6 @@ class TestSecurityConfiguration:
         assert "helm_release" in tf_content and "kyverno" in tf_content
         assert "ClusterPolicy" in tf_content
 
-    def test_tetragon_configured(self, tf_content):
-        """Verify Tetragon runtime security is configured."""
-        assert "helm_release" in tf_content and "tetragon" in tf_content
-        assert "TracingPolicy" in tf_content
-
 
 @pytest.mark.skipif(not CLUSTER_TEST, reason="Cluster tests disabled")
 class TestClusterHealth:
@@ -57,7 +52,6 @@ class TestClusterHealth:
         """Verify security components are running."""
         components = [
             ("kyverno", "app.kubernetes.io/name=kyverno"),
-            ("tetragon", "app.kubernetes.io/name=tetragon"),
         ]
 
         for namespace, label in components:

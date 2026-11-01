@@ -77,7 +77,6 @@ graph TB
     subgraph Security["🔒 Security"]
         PSA[Pod Security Admission]
         KYVERNO[Kyverno Policies]
-        TETRAGON[Tetragon Runtime]
         EXTSEC[External Secrets]
     end
 
@@ -149,7 +148,6 @@ graph TB
         ING[Ingress Controller]
         CERT[cert-manager]
         PROM[Prometheus Stack]
-        CHAOS[Chaos Mesh]
     end
 
     subgraph CloudInfra["Layer 1: Cloud Infrastructure"]
@@ -207,12 +205,11 @@ flowchart LR
 | **Ingress** | AWS ALB Controller |
 | **Pod Identity** | IRSA |
 | **Secrets** | External Secrets + SSM |
-| **Security** | PSA, Kyverno, Tetragon |
+| **Security** | PSA, Kyverno, Cosign signature verification |
 | **Monitoring** | Prometheus + Grafana + Loki + Alloy + Tempo |
 | **Network Observability** | VPC Flow Logs |
 | **Backup** | AWS Backup (RDS) |
 | **Cost Management** | Cost Dashboard (Grafana) |
-| **Resilience Testing** | Chaos Mesh |
 
 ## Tech Stack
 
@@ -231,9 +228,7 @@ flowchart LR
 | Log Shipping | Grafana Alloy | 0.12.0 | Pod log collection to Loki |
 | Telemetry | OpenTelemetry Collector | 0.108.0 | Unified telemetry pipeline |
 | Security Policy | Kyverno | 3.6.2 | Policy-as-code engine |
-| Runtime Security | Tetragon | 1.6.0 | eBPF runtime monitoring |
 | Secrets | External Secrets Operator | 1.2.1 | Cloud secrets sync |
-| Resilience Testing | Chaos Mesh | 2.8.1 | Chaos engineering |
 | Infrastructure | Terraform | >= 1.5.7 | IaC for EKS |
 | CI/CD | GitHub Actions | - | Automated testing |
 
@@ -253,9 +248,6 @@ mlops-platform/
 ├── examples/
 │   ├── kserve/                 # Basic KServe inference examples
 │   ├── canary-deployment/      # Progressive rollout with traffic splitting
-│   ├── data-versioning/        # DVC integration examples
-│   ├── distributed-training/   # PyTorch DDP with Kubeflow
-│   ├── chaos-testing/          # Resilience testing with Chaos Mesh
 │   └── llm-inference/          # LLM serving with vLLM
 ├── infrastructure/
 │   ├── grafana/dashboards/     # Grafana dashboard configurations
@@ -389,17 +381,16 @@ terraform -chdir=infrastructure/terraform/bootstrap/aws output github_actions_ro
 - [x] **Infrastructure** — EKS with GPU autoscaling (Karpenter)
 - [x] **ML platform** — MLflow, KServe, Argo Workflows, ArgoCD
 - [x] **Observability** — Prometheus, Grafana, Loki, Alloy, Tempo, cost dashboards
-- [x] **Security** — PSA, Kyverno, Tetragon, External Secrets, network policies
+- [x] **Security** — PSA, Kyverno, Cosign, External Secrets, network policies
 - [x] **CI/CD** — GitHub Actions with OIDC auth, plan/deploy, Trivy scanning
 - [x] **Operational baseline** — backup, VPC Flow Logs, DR runbooks
-- [x] **Examples** — distributed training, data versioning, canary deploys, chaos testing, LLM inference
+- [x] **Examples** — canary deploys, LLM inference
 - [x] **Pipelines** — Iris quickstart pipeline + [HuggingFace pretrained model pipeline](pipelines/pretrained/) with automated validation and MLflow registration
 
 ### In Progress / Future Enhancements
 - [ ] End-to-end verification — deploy → canary → auto-rollback demonstrated on a live cluster
 - [ ] LLM inference verified on live GPUs with committed throughput/latency/cost benchmarks
 - [ ] A/B testing framework for model comparison
-- [ ] Feature store integration (Feast)
 - [ ] Model explainability dashboards (SHAP/LIME)
 - [ ] Auto-generated Terraform module docs via `terraform-docs`
 
@@ -409,11 +400,8 @@ terraform -chdir=infrastructure/terraform/bootstrap/aws output github_actions_ro
 |---------|-------------|------------|
 | [KServe Basic](examples/kserve/) | sklearn model with production config | Beginner |
 | [Canary Deployment](examples/canary-deployment/) | Progressive rollout with traffic splitting | Intermediate |
-| [Data Versioning](examples/data-versioning/) | DVC integration for dataset management | Intermediate |
-| [Distributed Training](examples/distributed-training/) | PyTorch DDP with Kubeflow Training Operator | Advanced |
 | [LLM Inference](examples/llm-inference/) | Mistral-7B with vLLM on GPU | Advanced |
 | [HuggingFace Sentiment](examples/kserve/huggingface-sentiment.yaml) | Pretrained HF model via KServe | Intermediate |
-| [Chaos Testing](examples/chaos-testing/) | Resilience testing with Chaos Mesh | Advanced |
 | [Load Testing](examples/load-testing/) | k6 and Locust load testing examples | Intermediate |
 
 ## Comparison with Alternatives

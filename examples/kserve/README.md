@@ -95,4 +95,3 @@ curl -X POST http://localhost:8080/v1/models/sentiment:predict \
 ## Related Examples
 
 - `examples/llm-inference/` - LLM serving with vLLM
-- `examples/distributed-training/` - Multi-GPU training
