@@ -1,5 +1,8 @@
 # Network Policies for MLOps Platform
-# Implements namespace isolation and controlled traffic flow
+# Namespace isolation and controlled traffic flow.
+# NOT enforced on EKS until the VPC CNI network policy agent is enabled
+# (modules/eks/main.tf vpc-cni configuration_values: enableNetworkPolicy is
+# unset). ArgoCD syncs these objects, but they have no effect today.
 
 ---
 # Default deny all ingress traffic in mlops namespace
@@ -38,9 +41,9 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Allows HTTPS egress to any destination — required for cloud storage
-    # (S3/GCS/Blob Storage) whose IP ranges vary by region and cloud provider.
-    # Network-level restriction to specific CIDRs is not portable across clouds.
+    # Allows HTTPS egress to any destination - required for S3, whose IP
+    # ranges vary by region. Restricting to S3 CIDRs (or a VPC endpoint
+    # prefix list) is not done here.
     - to: []
       ports:
         - protocol: TCP
@@ -56,7 +59,8 @@ spec:
 
 
 ---
-# Allow ingress to inference services from kube-system (AWS ALB Controller)
+# Allow ingress to inference services from kube-system (no Ingress objects
+# exist today; UIs and endpoints are reached by port-forward)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -144,10 +148,10 @@ spec:
     - Ingress
 
 ---
-# Allow MLflow access from external (NodePort for local development ONLY)
-# Deploy this policy ONLY in dev/local environments.
-# In production, rely on allow-mlflow-from-mlops which restricts access
-# to mlops/argo/kserve namespaces.
+# Allow MLflow access from the default namespace on port 5000.
+# Synced to the dev cluster on purpose by the platform-baseline Application
+# (this repo runs dev only, ADR-017). A production cluster would drop it and
+# rely on allow-mlflow-from-mlops (mlops/argo/kserve namespaces only).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -233,7 +237,7 @@ spec:
   policyTypes:
     - Egress
   egress:
-    # PostgreSQL (external RDS/Cloud SQL - allow any destination on 5432)
+    # PostgreSQL (external RDS - allow any destination on 5432)
     - to: []
       ports:
         - protocol: TCP
@@ -298,7 +302,8 @@ spec:
     - Ingress
 
 ---
-# Allow Argo Workflows UI access from ALB
+# Allow Argo Workflows UI access from kube-system (no Ingress objects exist;
+# the UI is reached by port-forward)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -576,7 +581,8 @@ spec:
           port: 9090
 
 ---
-# Allow Grafana access from ingress controller namespace only
+# Allow Grafana access from kube-system and monitoring (no Ingress objects
+# exist; Grafana is reached by port-forward)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -654,7 +660,8 @@ spec:
     - Ingress
 
 ---
-# Allow ArgoCD server access from ingress controller
+# Allow ArgoCD server access from kube-system (no Ingress objects exist;
+# the UI is reached by port-forward)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

@@ -14,7 +14,7 @@ DEFAULT_AWS_REGION="eu-west-1"
 
 print_header "MLOps Platform - AWS EKS Deployment"
 echo -e "${CYAN}Features:${NC}"
-echo "  • Auto-generated secrets stored in AWS SSM"
+echo "  • Auto-generated secrets (Secrets Manager, RDS-managed for MLflow, SSM for Grafana)"
 echo "  • External Secrets Operator for K8s sync"
 echo "  • No manual password configuration required"
 echo ""
@@ -71,7 +71,7 @@ setup_tfvars() {
 
         cat > "${TF_DIR}/terraform.tfvars" <<EOF
 # MLOps Platform - Terraform Variables
-# All secrets are AUTO-GENERATED and stored in AWS SSM Parameter Store
+# All secrets are AUTO-GENERATED (Secrets Manager, RDS-managed, SSM for Grafana)
 # No manual password configuration required!
 
 cluster_name = "${CLUSTER_NAME}"

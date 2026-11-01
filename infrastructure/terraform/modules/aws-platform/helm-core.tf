@@ -1,6 +1,6 @@
 # Core Helm Releases
 
-# AWS Load Balancer Controller for ALB Ingress
+# AWS Load Balancer Controller: installed; no Ingress objects (UIs via port-forward)
 resource "helm_release" "aws_load_balancer_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
@@ -105,7 +105,7 @@ resource "helm_release" "kserve_controller" {
     value = "RawDeployment"
   }
 
-  # Disable KServe's built-in ingress creation - we manage Ingress separately via ALB
+  # Disable KServe's built-in ingress creation - no Ingress is created; access via port-forward
   set {
     name  = "kserve.controller.gateway.disableIngressCreation"
     value = "true"

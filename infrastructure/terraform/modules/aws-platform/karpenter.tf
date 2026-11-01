@@ -148,10 +148,11 @@ resource "kubectl_manifest" "karpenter_gpu_nodepool" {
             kind: EC2NodeClass
             name: gpu
           requirements:
-            # JDH-375 approved GPU strategy (€100/mo cap): g5/A10G primary
-            # (eu-west-1 has NO g6/L4 - verified via spot advisor data),
-            # g4dn/T4 fallback. p3/p4d removed: a single p4d is ~$30/hr -
-            # one scheduling accident would burn the monthly budget in 4h.
+            # JDH-375 approved GPU strategy (€100/mo cap): g5/A10G only
+            # (eu-west-1 has NO g6/L4 - verified via spot advisor data).
+            # g4dn removed (vLLM 0.11 crashes on T4, see below). p3/p4d
+            # removed: a single p4d is ~$30/hr - one scheduling accident
+            # would burn the monthly budget in 4h.
             - key: karpenter.k8s.aws/instance-category
               operator: In
               values: ["g"]

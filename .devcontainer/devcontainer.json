@@ -21,7 +21,7 @@
         "ms-kubernetes-tools.vscode-kubernetes-tools"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
         "[python]": {
           "editor.defaultFormatter": "charliermarsh.ruff",
           "editor.formatOnSave": true
@@ -30,7 +30,7 @@
       }
     }
   },
-  "postCreateCommand": "pip install -e '.[dev]' && echo 'Dev environment ready!'",
+  "postCreateCommand": "pip install uv && uv sync && echo 'Dev environment ready!'",
   "forwardPorts": [5000, 8080, 2746, 3000],
   "portsAttributes": {
     "5000": { "label": "MLflow", "onAutoForward": "notify" },

@@ -280,6 +280,8 @@ resource "kubectl_manifest" "kyverno_disallow_privileged" {
 }
 
 # Policy: Add default network policy to new namespaces
+# Generates default-deny ingress; effective only once VPC CNI network policy
+# enforcement is enabled (enableNetworkPolicy is unset in modules/eks/main.tf).
 resource "kubectl_manifest" "kyverno_generate_netpol" {
   yaml_body = <<-YAML
     apiVersion: kyverno.io/v1

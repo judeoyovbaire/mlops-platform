@@ -4,7 +4,7 @@
 
 **Severity:** High
 **Service:** Karpenter
-**Related Alerts:** `KarpenterNodeProvisioningFailed`, `PodPendingTooLong`
+**Related Alerts:** none defined yet
 
 This runbook helps diagnose and resolve issues when Karpenter fails to provision nodes for pending workloads.
 
@@ -76,7 +76,7 @@ Verify:
 aws ec2 describe-instance-type-offerings \
   --region eu-west-1 \
   --location-type availability-zone \
-  --filters "Name=instance-type,Values=g4dn.xlarge" \
+  --filters "Name=instance-type,Values=g5.xlarge" \
   --query "InstanceTypeOfferings[].Location"
 ```
 
@@ -84,18 +84,23 @@ aws ec2 describe-instance-type-offerings \
 
 ### SPOT Capacity Issues
 
-If SPOT instances aren't available:
+The `gpu-workloads` pool is g5-only and spot-only (vLLM crashes on T4, see `modules/aws-platform/karpenter.tf`). Check these first:
+
+- **Spot G quota.** `All G and VT Spot Instance Requests` must be at least 4 vCPUs (8 to run both vLLM configurations at once). Fresh accounts have 0. Check it in Service Quotas.
+- **EC2 Spot service-linked role.** It must exist in the account; the bootstrap stack creates it (`aws_iam_service_linked_role.spot` in `bootstrap/aws/main.tf`).
+
+If SPOT instances still aren't available:
 
 1. **Check SPOT pricing and availability:**
    ```bash
    aws ec2 describe-spot-price-history \
-     --instance-types g4dn.xlarge \
+     --instance-types g5.xlarge \
      --product-descriptions "Linux/UNIX" \
      --start-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
      --region eu-west-1
    ```
 
-2. **Temporarily allow on-demand fallback:**
+2. **Temporarily allow on-demand fallback** (breaks the spot-only cost cap; revert afterwards):
    Edit the NodePool to include both capacity types:
    ```yaml
    requirements:
@@ -171,6 +176,6 @@ If issue persists after following these steps:
 ## Prevention
 
 - Monitor SPOT interruption rates
-- Set up alerts for `karpenter_nodepools_limit` approaching 80%
+- Gap: no alert exists yet for `karpenter_nodepools_limit` approaching 80%
 - Regularly review and update instance type lists
 - Test provisioning with manual workloads after changes

@@ -3,7 +3,7 @@
 # CI deploys the real thing: the registry champion, rendered from
 # champion-inferenceservice.template.yaml by the deploy workflow.
 
-# Basic sklearn model deployment with production-ready configuration
+# Basic sklearn model deployment - manual demo configuration
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:

@@ -10,7 +10,7 @@ actually reconciles:
 
 | Application | Path | Contents |
 |-------------|------|----------|
-| `platform-baseline` | `infrastructure/kubernetes/` | Kyverno governance (model-registry labels, image-signature verification), SLO rules, PodDisruptionBudgets, ResourceQuotas, progressive-delivery templates (Argo Rollouts analysis), Argo Events bus, monitoring rules, Grafana dashboards |
+| `platform-baseline` | `infrastructure/kubernetes/` | Kyverno governance (model-registry labels, image-signature verification), SLO rules, PodDisruptionBudgets, ResourceQuotas, progressive-delivery templates (Argo Rollouts analysis), Argo Events bus, monitoring rules, Grafana dashboards, NetworkPolicies (synced, not enforced: VPC CNI network policy agent off), Argo artifact repository and memoize RBAC |
 
 ## Bootstrap
 
@@ -41,8 +41,6 @@ argocd app get platform-baseline   # if the CLI is configured
   exceed client-side-apply annotation size limits.
 - **`CreateNamespace=false`** — namespaces are owned by Terraform; ArgoCD
   racing it caused ownership ambiguity in similar setups.
-- **Bootstrap is deliberately manual.** Having Terraform apply this manifest
-  would put a Git-reconciled object under Terraform state — two owners for
-  one resource. One `kubectl apply` per cluster keeps the ownership boundary
-  clean. If clusters multiply, promote to an ApplicationSet applied the same
-  way.
+- **Terraform applies the Application, ArgoCD owns its contents.** Terraform
+  holds only the Application object; everything under
+  `infrastructure/kubernetes/` is ArgoCD's (ADR-017 decision 6).

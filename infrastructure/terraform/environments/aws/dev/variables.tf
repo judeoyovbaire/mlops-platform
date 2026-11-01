@@ -73,7 +73,7 @@ variable "kserve_ingress_domain" {
 }
 
 # Helm Chart Versions (common defaults in helm-versions.auto.tfvars)
-# Cloud-specific versions below; shared versions via symlinked auto.tfvars
+# AWS-specific versions below; shared versions via symlinked auto.tfvars
 
 variable "helm_aws_lb_controller_version" {
   description = "AWS Load Balancer Controller Helm chart version"

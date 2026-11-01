@@ -1,5 +1,5 @@
 # Argo Rollouts for Progressive Delivery
-# Enables canary deployments with automated Prometheus-based analysis
+# Installed only as the AnalysisRun engine (ADR-016); no Rollout objects
 
 resource "helm_release" "argo_rollouts" {
   name             = "argo-rollouts"
