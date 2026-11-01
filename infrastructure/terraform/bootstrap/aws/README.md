@@ -16,7 +16,7 @@ This module creates the foundational AWS resources required **before** deploying
 ## Prerequisites
 
 - AWS CLI configured with appropriate permissions
-- Terraform >= 1.5.7 (CI uses 1.14.5)
+- Terraform >= 1.5.7 (CI uses 1.17.1)
 
 ## Usage
 

@@ -90,7 +90,7 @@ Known gaps, tracked openly:
 
 ## Run a session
 
-Prerequisites: an AWS account you control, AWS CLI, Terraform 1.14, kubectl,
+Prerequisites: an AWS account you control, AWS CLI, Terraform 1.17, kubectl,
 Helm, and a spot quota for G-family instances (see
 [`examples/llm-inference`](examples/llm-inference/README.md)).
 
