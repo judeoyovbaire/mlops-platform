@@ -2,9 +2,9 @@ terraform {
   required_version = ">= 1.5"
 
   # Constraints mirror environments/aws/*/providers.tf. The helm bound matters:
-  # helm provider 3.x replaced `set {}` blocks with a list attribute, so an
-  # unconstrained standalone init (CI validate, tflint) resolved 3.x and every
-  # helm_release in this module failed to parse.
+  # this module uses the helm provider 3.x syntax (`set = [...]` lists, and
+  # `kubernetes = {}` in the root provider), which 2.x cannot parse. Keep
+  # `~> 3.3` in step with the root providers.tf.
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -16,7 +16,7 @@ terraform {
     }
     helm = {
       source  = "hashicorp/helm"
-      version = "~> 2.11"
+      version = "~> 3.3"
     }
     kubectl = {
       source  = "gavinbunney/kubectl"

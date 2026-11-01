@@ -63,15 +63,16 @@ resource "helm_release" "external_secrets" {
   namespace        = "external-secrets"
   create_namespace = true
 
-  set {
-    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = module.external_secrets_irsa.arn
-  }
-
-  set {
-    name  = "webhook.port"
-    value = "9443"
-  }
+  set = [
+    {
+      name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+      value = module.external_secrets_irsa.arn
+    },
+    {
+      name  = "webhook.port"
+      value = "9443"
+    },
+  ]
 
   depends_on = [time_sleep.alb_controller_ready]
 }

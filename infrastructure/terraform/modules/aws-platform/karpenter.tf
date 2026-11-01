@@ -68,59 +68,52 @@ resource "helm_release" "karpenter" {
   # Increase timeout for CRD installation
   timeout = 600
 
-  set {
-    name  = "settings.clusterName"
-    value = var.eks.cluster_name
-  }
-
-  set {
-    name  = "settings.clusterEndpoint"
-    value = var.eks.cluster_endpoint
-  }
-
-  # Kept from Karpenter 1.8, which panicked on empty gate values. The values
-  # match the 1.15 chart defaults; the other gates use the chart defaults.
-  set {
-    name  = "settings.featureGates.spotToSpotConsolidation"
-    value = "false"
-  }
-
-  set {
-    name  = "settings.featureGates.nodeRepair"
-    value = "false"
-  }
-
-  set {
-    name  = "settings.featureGates.staticCapacity"
-    value = "false"
-  }
-
-  set {
-    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = var.eks.karpenter_irsa_role_arn
-  }
-
-  # Resource requests
-  set {
-    name  = "controller.resources.requests.cpu"
-    value = "200m"
-  }
-
-  set {
-    name  = "controller.resources.requests.memory"
-    value = "512Mi"
-  }
-
-  # Resource limits (sized for medium cluster)
-  set {
-    name  = "controller.resources.limits.cpu"
-    value = "2"
-  }
-
-  set {
-    name  = "controller.resources.limits.memory"
-    value = "2Gi"
-  }
+  set = [
+    {
+      name  = "settings.clusterName"
+      value = var.eks.cluster_name
+    },
+    {
+      name  = "settings.clusterEndpoint"
+      value = var.eks.cluster_endpoint
+    },
+    # Kept from Karpenter 1.8, which panicked on empty gate values. The values
+    # match the 1.15 chart defaults; the other gates use the chart defaults.
+    {
+      name  = "settings.featureGates.spotToSpotConsolidation"
+      value = "false"
+    },
+    {
+      name  = "settings.featureGates.nodeRepair"
+      value = "false"
+    },
+    {
+      name  = "settings.featureGates.staticCapacity"
+      value = "false"
+    },
+    {
+      name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+      value = var.eks.karpenter_irsa_role_arn
+    },
+    # Resource requests
+    {
+      name  = "controller.resources.requests.cpu"
+      value = "200m"
+    },
+    {
+      name  = "controller.resources.requests.memory"
+      value = "512Mi"
+    },
+    # Resource limits (sized for medium cluster)
+    {
+      name  = "controller.resources.limits.cpu"
+      value = "2"
+    },
+    {
+      name  = "controller.resources.limits.memory"
+      value = "2Gi"
+    },
+  ]
 
   depends_on = [
     kubernetes_namespace.karpenter,
