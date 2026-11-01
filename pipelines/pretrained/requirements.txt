@@ -436,9 +436,9 @@ cycler==0.12.1 \
     --hash=sha256:85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30 \
     --hash=sha256:88bb128f02ba341da8ef447245a9e138fae777f6a23943da4540077d3601eb1c
     # via matplotlib
-databricks-sdk==0.120.0 \
-    --hash=sha256:12c41492e5d6e7105cb06e6d1a0f1bdf11b76b0630f3a7da85aa8db4fe91dee8 \
-    --hash=sha256:2d8e19444df30f714123b330fb616d7775f96631f6e36b4dd252adb4f2e010e2
+databricks-sdk==0.72.0 \
+    --hash=sha256:54596db8f1f75330ddf5ec5527a9c0a6a98c4c4190870ed31449582797388d3b \
+    --hash=sha256:86f6a6c8ad5cc84a66d394f2151bfd326a207e11d83eb943cb8a447c762b905c
     # via
     #   mlflow-skinny
     #   mlflow-tracing
@@ -1594,18 +1594,16 @@ propcache==0.5.4 \
     # via
     #   aiohttp
     #   yarl
-protobuf==5.29.6 \
-    --hash=sha256:36ade6ff88212e91aef4e687a971a11d7d24d6948a66751abc1b3238648f5d05 \
-    --hash=sha256:62e8a3114992c7c647bce37dcc93647575fc52d50e48de30c6fcb28a6a291eb1 \
-    --hash=sha256:6b9edb641441b2da9fa8f428760fc136a49cf97a52076010cf22a2ff73438a86 \
-    --hash=sha256:76e07e6567f8baf827137e8d5b8204b6c7b6488bbbff1bf0a72b383f77999c18 \
-    --hash=sha256:7e6ad413275be172f67fdee0f43484b6de5a904cc1c3ea9804cb6fe2ff366eda \
-    --hash=sha256:831e2da16b6cc9d8f1654c041dd594eda43391affd3c03a91bea7f7f6da106d6 \
-    --hash=sha256:a8866b2cff111f0f863c1b3b9e7572dc7eaea23a7fae27f6fc613304046483e6 \
-    --hash=sha256:b5a169e664b4057183a34bdc424540e86eea47560f3c123a0d64de4e137f9269 \
-    --hash=sha256:cb4c86de9cd8a7f3a256b9744220d87b847371c6b2f10bde87768918ef33ba49 \
-    --hash=sha256:da9ee6a5424b6b30fd5e45c5ea663aef540ca95f9ad99d1e887e819cdf9b8723 \
-    --hash=sha256:e3387f44798ac1106af0233c04fb8abf543772ff241169946f698b3a9a3d3ab9
+protobuf==6.30.0 \
+    --hash=sha256:501810e0eba1d327e783fde47cc767a563b0f1c292f1a3546d4f2b8c3612d4d0 \
+    --hash=sha256:52d4bb6fe76005860e1d0b8bfa126f5c97c19cc82704961f60718f50be16942d \
+    --hash=sha256:7337d76d8efe65ee09ee566b47b5914c517190196f414e5418fa236dfd1aed3e \
+    --hash=sha256:7940ab4dfd60d514b2e1d3161549ea7aed5be37d53bafde16001ac470a3e202b \
+    --hash=sha256:852b675d276a7d028f660da075af1841c768618f76b90af771a8e2c29e6f5965 \
+    --hash=sha256:9b33d51cc95a7ec4f407004c8b744330b6911a37a782e2629c67e1e8ac41318f \
+    --hash=sha256:bb35ad251d222f03d6c4652c072dfee156be0ef9578373929c1a7ead2bd5492c \
+    --hash=sha256:d79bf6a202a536b192b7e8d295d7eece0c86fbd9b583d147faf8cfeff46bf598 \
+    --hash=sha256:e5ef216ea061b262b8994cb6b7d6637a4fb27b3fb4d8e216a6040c0b93bd10d7
     # via
     #   databricks-sdk
     #   mlflow-skinny
@@ -2352,7 +2350,6 @@ urllib3==1.26.13 \
     --hash=sha256:47cc05d99aaa09c9e72ed5809b60e7ba354e64b59c9c173ac3018642d8bb41fc
     # via
     #   botocore
-    #   databricks-sdk
     #   docker
     #   requests
 uvicorn==0.50.2 \
