@@ -78,8 +78,8 @@ resource "helm_release" "karpenter" {
     value = var.eks.cluster_endpoint
   }
 
-  # Fix feature gates - all must be explicitly set for Karpenter 1.8+
-  # Empty values cause panic: strconv.ParseBool parsing ""
+  # Kept from Karpenter 1.8, which panicked on empty gate values. The values
+  # match the 1.15 chart defaults; the other gates use the chart defaults.
   set {
     name  = "settings.featureGates.spotToSpotConsolidation"
     value = "false"
@@ -293,7 +293,7 @@ resource "kubectl_manifest" "karpenter_gpu_nodeclass" {
       name: gpu
     spec:
       amiSelectorTerms:
-        - alias: al2023@latest
+        - alias: al2023@v20261031 # pinned for reproducible sessions; Karpenter advises against @latest
       role: ${var.eks.karpenter_node_role_name}
       subnetSelectorTerms:
         - tags:
@@ -326,7 +326,7 @@ resource "kubectl_manifest" "karpenter_default_nodeclass" {
       name: default
     spec:
       amiSelectorTerms:
-        - alias: al2023@latest
+        - alias: al2023@v20261031 # pinned for reproducible sessions; Karpenter advises against @latest
       role: ${var.eks.karpenter_node_role_name}
       subnetSelectorTerms:
         - tags:

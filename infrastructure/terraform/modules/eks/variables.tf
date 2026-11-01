@@ -19,11 +19,12 @@ variable "environment" {
 variable "cluster_version" {
   description = "Kubernetes version for the EKS cluster"
   type        = string
-  default     = "1.34"
+  default     = "1.37"
 
   validation {
-    condition     = can(regex("^1\\.(2[89]|3[0-4])(\\.[0-9]+)?$", var.cluster_version))
-    error_message = "Cluster version must be a supported EKS version (1.28-1.34), with optional patch version (e.g., 1.34 or 1.34.0)."
+    # EKS takes a minor version only; 1.31-1.33 are extended support (2026-11).
+    condition     = can(regex("^1\\.3[1-7]$", var.cluster_version))
+    error_message = "Cluster version must be an EKS-offered minor version, 1.31-1.37 (e.g. 1.37)."
   }
 }
 

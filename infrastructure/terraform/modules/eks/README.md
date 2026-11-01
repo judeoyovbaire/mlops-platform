@@ -12,7 +12,7 @@ module "eks" {
 
   cluster_name    = "mlops-platform-dev"
   environment     = "dev"
-  cluster_version = "1.34"
+  cluster_version = "1.37"
   vpc_cidr        = "10.0.0.0/16"
 
   tags = {
@@ -28,7 +28,7 @@ module "eks" {
 |------|-------------|------|---------|----------|
 | cluster_name | Name of the EKS cluster | `string` | n/a | yes |
 | environment | Deployment environment | `string` | `"dev"` | no |
-| cluster_version | Kubernetes version for the EKS cluster | `string` | `"1.34"` | no |
+| cluster_version | Kubernetes version for the EKS cluster | `string` | `"1.37"` | no |
 | cluster_endpoint_public_access | Enable public access to EKS API endpoint | `bool` | `false` | no |
 | cluster_endpoint_public_access_cidrs | List of CIDR blocks allowed to access the EKS public endpoint | `list(string)` | `[]` | no |
 | vpc_cidr | CIDR block for the VPC | `string` | `"10.0.0.0/16"` | no |

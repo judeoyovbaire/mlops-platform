@@ -1,6 +1,6 @@
 # GPU node enablement (JDH-376).
 #
-# Karpenter's al2023@latest alias resolves to the NVIDIA AMI variant for GPU
+# Karpenter's al2023 alias (pinned in karpenter.tf) resolves to the NVIDIA AMI variant for GPU
 # instance types (drivers + container toolkit), but the DEVICE PLUGIN that
 # exposes nvidia.com/gpu to the scheduler is NOT part of the AMI - without
 # this daemonset, GPU nodes boot with working drivers and zero schedulable

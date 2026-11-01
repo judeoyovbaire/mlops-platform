@@ -13,9 +13,9 @@ variable "cluster_name" {
 }
 
 variable "cluster_version" {
-  description = "Kubernetes version"
+  description = "Kubernetes version. 1.36 is the documented fallback (untested): same pins, except the kube-proxy add-on (v1.36.0-eksbuild.58)."
   type        = string
-  default     = "1.34"
+  default     = "1.37"
 }
 
 variable "vpc_cidr" {
@@ -153,8 +153,9 @@ variable "helm_prometheus_stack_version" {
 variable "helm_karpenter_version" {
   description = "Karpenter Helm chart version"
   type        = string
+  # EKS 1.37 requires Karpenter 1.15.x (the 1.14 LTS line stops at 1.36).
   # renovate: datasource=docker depName=public.ecr.aws/karpenter/karpenter
-  default = "1.8.3"
+  default = "1.15.1"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_karpenter_version))

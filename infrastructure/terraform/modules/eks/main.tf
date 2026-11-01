@@ -97,25 +97,26 @@ module "eks" {
   # Cluster addons - versions PINNED (was most_recent = true, which made
   # every apply a potential surprise upgrade and defeated plan review).
   # Discovered for Kubernetes ${var.cluster_version} via:
-  #   aws eks describe-addon-versions --kubernetes-version 1.34 \
+  #   aws eks describe-addon-versions --kubernetes-version 1.37 \
   #     --addon-name <name> --query 'addons[0].addonVersions[0].addonVersion'
-  # Bump deliberately alongside cluster_version upgrades.
+  # Bump deliberately alongside cluster_version upgrades. On 1.36 every build
+  # below is also valid except kube-proxy (use v1.36.0-eksbuild.58).
   addons = {
     eks-pod-identity-agent = {
-      addon_version               = "v1.3.10-eksbuild.3"
+      addon_version               = "v1.4.1-eksbuild.3"
       resolve_conflicts_on_create = "OVERWRITE"
       before_compute              = true
     }
     coredns = {
-      addon_version               = "v1.13.2-eksbuild.11"
+      addon_version               = "v1.14.7-eksbuild.22"
       resolve_conflicts_on_create = "OVERWRITE"
     }
     kube-proxy = {
-      addon_version               = "v1.34.6-eksbuild.13"
+      addon_version               = "v1.37.0-eksbuild.32"
       resolve_conflicts_on_create = "OVERWRITE"
     }
     vpc-cni = {
-      addon_version               = "v1.22.3-eksbuild.1"
+      addon_version               = "v1.23.2-eksbuild.8"
       resolve_conflicts_on_create = "OVERWRITE"
       before_compute              = true
       configuration_values = jsonencode({
@@ -126,7 +127,7 @@ module "eks" {
       })
     }
     aws-ebs-csi-driver = {
-      addon_version               = "v1.62.0-eksbuild.1"
+      addon_version               = "v1.67.2-eksbuild.1"
       resolve_conflicts_on_create = "OVERWRITE"
       service_account_role_arn    = module.ebs_csi_irsa.arn
     }
@@ -174,7 +175,7 @@ module "eks" {
       name           = "gpu"
       instance_types = var.gpu_instance_types
       capacity_type  = var.gpu_capacity_type
-      ami_type       = "AL2023_x86_64_NVIDIA" # AL2023 required for EKS 1.33+ (AL2 not supported for EKS 1.34)
+      ami_type       = "AL2023_x86_64_NVIDIA" # AL2 AMIs stop at EKS 1.32; AL2023 is the only option here
 
       min_size     = var.gpu_min_size
       max_size     = var.gpu_max_size
