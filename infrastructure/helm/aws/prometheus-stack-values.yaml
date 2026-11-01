@@ -155,20 +155,10 @@ grafana:
       cpu: 500m
       memory: 1Gi
 
-  # Ingress for external access (HTTPS via ALB, matching MLflow ingress pattern)
+  # No Ingress: Grafana was on an internet-facing ALB. Reach it with
+  # `make port-forward-grafana` (localhost:3000).
   ingress:
-    enabled: true
-    ingressClassName: alb
-    annotations:
-      alb.ingress.kubernetes.io/scheme: internet-facing
-      alb.ingress.kubernetes.io/target-type: ip
-      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
-      alb.ingress.kubernetes.io/ssl-redirect: "443"
-      alb.ingress.kubernetes.io/certificate-arn: "${acm_certificate_arn}"
-      alb.ingress.kubernetes.io/healthcheck-path: /api/health
-    hosts:
-      - grafana.mlops.local
-    path: /
+    enabled: false
 
   # Sidecar for dashboard discovery
   sidecar:

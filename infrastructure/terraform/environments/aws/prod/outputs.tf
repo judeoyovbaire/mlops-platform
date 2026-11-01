@@ -90,8 +90,10 @@ output "access_info" {
   Configure kubectl:
     ${module.eks.configure_kubectl}
 
-  Services (get ALB URLs after deployment):
-    kubectl get ingress -A
+  Services (no public endpoints; port-forward from your machine):
+    make port-forward-mlflow    # localhost:5000
+    make port-forward-grafana   # localhost:3000
+    make port-forward-argocd    # localhost:8080
 
   ============================================================
   Secrets (stored in AWS Secrets Manager)

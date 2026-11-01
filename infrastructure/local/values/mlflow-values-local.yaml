@@ -5,7 +5,7 @@ replicaCount: 1
 
 image:
   repository: burakince/mlflow
-  tag: "3.9.0"
+  tag: "3.16.0" # 3.9.0 never existed on Docker Hub; 3.16.0 is current and CVE-2026-64849-free
   pullPolicy: IfNotPresent
 
 serviceAccount:

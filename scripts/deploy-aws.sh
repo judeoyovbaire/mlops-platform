@@ -158,8 +158,8 @@ status() {
     kubectl get externalsecrets -A 2>/dev/null || print_warning "External Secrets not ready yet"
 
     echo ""
-    echo -e "${BLUE}Ingresses (ALB URLs):${NC}"
-    kubectl get ingress -A 2>/dev/null || true
+    echo -e "${BLUE}Access (no public endpoints):${NC}"
+    echo "  make port-forward-mlflow | make port-forward-grafana | make port-forward-argocd"
 
     echo ""
     echo -e "${BLUE}SSM Secrets (stored securely):${NC}"

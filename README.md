@@ -238,13 +238,13 @@ flowchart LR
 | Component | Technology | Version | Purpose |
 |-----------|------------|---------|---------|
 | Pipeline Orchestration | Argo Workflows | 0.47.3 | ML workflow automation |
-| Experiment Tracking | MLflow | 3.x (chart 1.8.1) | Model versioning & metrics |
+| Experiment Tracking | MLflow | 3.16.0 (chart 1.11.7) | Model versioning & metrics |
 | Model Serving | KServe | 0.16.0 | Production inference (CNCF) |
 | GPU Autoscaling (AWS) | Karpenter | 1.8.3 | Dynamic GPU node provisioning |
 | Event Autoscaling (Azure) | KEDA | 2.19.0 | Event-driven pod scaling |
 | GPU Autoscaling (GCP) | GKE NAP | - | Node Auto-provisioning |
-| GitOps | ArgoCD | 9.4.2 | Declarative deployments |
-| Ingress (AWS) | AWS ALB Controller | 1.17.1 | External load balancing |
+| GitOps | ArgoCD | 10.11.6 | Declarative deployments |
+| Ingress (AWS) | AWS ALB Controller | 1.17.1 | Installed; no public endpoints (port-forward) |
 | Ingress (Azure/GCP) | NGINX Ingress | 4.14.3 | External load balancing |
 | TLS | cert-manager | 1.19.3 | Certificate management |
 | Monitoring | Prometheus + Grafana | 81.6.9 | Observability |

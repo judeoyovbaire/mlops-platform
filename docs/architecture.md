@@ -334,7 +334,7 @@ infrastructure/terraform/
 - S3 bucket for MLflow artifacts
 - RDS PostgreSQL for MLflow metadata
 - IAM roles with IRSA for secure pod authentication (full SA-to-role mapping: [IRSA access matrix](irsa-access-matrix.md))
-- AWS Load Balancer Controller for ALB Ingress
+- AWS Load Balancer Controller installed; no Ingress objects are created (UIs reached by port-forward)
 - VPC Flow Logs with CloudWatch integration
 - AWS Backup vault with daily/weekly backup plans
 
@@ -421,7 +421,7 @@ All environments deploy the same components with cloud-specific configurations:
 - EKS cluster with managed node groups
 - RDS PostgreSQL for MLflow
 - S3 for artifact storage
-- ALB for external access
+- No public endpoints (kubectl port-forward)
 
 **Azure:**
 - Virtual Network with subnets
@@ -760,14 +760,14 @@ Push to main
 
 ## External Access
 
-### AWS: ALB Ingress
+### AWS: no public endpoints
 
-Services are exposed via AWS Application Load Balancer:
+No platform UI is exposed through a load balancer. The internet-facing ALBs in front of MLflow, Grafana and ArgoCD were removed in November 2026 (MLflow had no authentication and sat inside CVE-2026-64849). Access is by `kubectl port-forward` through the Makefile targets:
 
-| Service | Ingress Class | Scheme |
+| Service | Ingress Class | Access |
 |---------|--------------|--------|
-| ArgoCD | alb | internet-facing |
-| MLflow | alb | internet-facing |
+| ArgoCD | none | cluster-internal, `make port-forward-argocd` |
+| MLflow | none | cluster-internal, `make port-forward-mlflow` |
 
 ### Azure: NGINX Ingress
 
@@ -890,13 +890,13 @@ Current versions deployed by the platform (aligned across all clouds):
 
 | Component | Version | Notes |
 |-----------|---------|-------|
-| MLflow | 3.x (chart 1.8.1) | Helm chart with cloud-native storage |
+| MLflow | 3.16.0 (chart 1.11.7) | Helm chart with cloud-native storage |
 | KServe | 0.16.0 | CNCF Incubating, RawDeployment mode |
 | Argo Workflows | 0.47.3 | ML pipeline execution engine |
 | Karpenter (AWS) | 1.8.3 | GPU autoscaling with SPOT support |
 | KEDA (Azure) | 2.19.0 | Event-driven pod autoscaling |
-| ArgoCD | 9.4.2 | Chart deploys ArgoCD v2.x |
-| AWS ALB Controller | 1.17.1 | Kubernetes Ingress with ALB |
+| ArgoCD | 10.11.6 | Chart deploys Argo CD v3.5.6 |
+| AWS ALB Controller | 1.17.1 | Installed; no Ingress objects created |
 | NGINX Ingress | 4.14.3 | Kubernetes Ingress (Azure/GCP) |
 | cert-manager | 1.19.3 | TLS certificate management |
 | Prometheus Stack | 81.6.9 | Monitoring and alerting |

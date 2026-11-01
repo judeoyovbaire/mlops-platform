@@ -1,6 +1,10 @@
 # ArgoCD Helm Values - Azure AKS (chart v7.x)
 global:
   domain: argocd.mlops.local
+  # Chart 10.0.0 flipped this default to true. NetworkPolicies for the argocd
+  # namespace are owned by infrastructure/kubernetes/network-policies.yaml.
+  networkPolicy:
+    create: false
 
 # Server configuration
 server:

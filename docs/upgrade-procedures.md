@@ -174,6 +174,11 @@ kubectl get deployment -n mlflow mlflow -o jsonpath='{.spec.template.spec.contai
      mlflow=ghcr.io/mlflow/mlflow:vX.Y.Z
    ```
 
+   > **Snapshot first.** The chart sets `backendStore.databaseMigration: true`, so an init container runs Alembic against RDS on the first pod start after a version bump, and MLflow migrations are not reversible. Before `terraform apply` of a new `helm_mlflow_version`:
+   > ```bash
+   > aws rds create-db-snapshot --db-instance-identifier <mlflow-db-id> --db-snapshot-identifier mlflow-pre-upgrade-$(date +%Y%m%d)
+   > ```
+
 4. **Run migrations (if required):**
    ```bash
    kubectl exec -n mlflow deploy/mlflow -- mlflow db upgrade

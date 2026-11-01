@@ -1,5 +1,10 @@
-# MLflow Helm Chart Values for AWS EKS (chart version 1.8.1, MLflow 3.9.0)
+# MLflow Helm Chart Values for AWS EKS (chart version 1.11.7, MLflow 3.16.0)
 # Uses RDS PostgreSQL and S3 for artifacts
+#
+# Reachability: cluster-internal only. There is deliberately no Ingress - the
+# previous internet-facing ALB fronted an unauthenticated MLflow 3.7.0 that sat
+# inside CVE-2026-64849 (unauthenticated SSRF, CISA KEV). Operators use
+# `make port-forward-mlflow`; CI uses kubectl port-forward (reusable-deploy-model).
 
 replicaCount: 1
 
@@ -7,7 +12,10 @@ replicaCount: 1
 # The official ghcr.io/mlflow/mlflow image does NOT include database drivers
 image:
   repository: burakince/mlflow
-  tag: "3.7.0" # pinned to a tag verified to exist on Docker Hub (3.9.0 does not)
+  # Pin explicitly (chart default follows appVersion). 3.16.0 is the newest
+  # burakince tag on Docker Hub; >= 3.15.0 fixes CVE-2026-64849, >= 3.10 the
+  # registry path-traversal fixes.
+  tag: "3.16.0"
   pullPolicy: IfNotPresent
 
 serviceAccount:
@@ -45,7 +53,7 @@ extraEnvVars:
   # SSL mode for RDS PostgreSQL - require encrypted connections
   PGSSLMODE: "require"
 
-# MLflow 3.9 security: allow connections from kubelet for health checks
+# MLflow 3.x host validation: allow in-cluster service names and localhost
 # Setting log.enabled=false prevents chart from adding --gunicorn-opts,
 # which allows uvicorn (default) to be used with security middleware flags
 extraArgs:
@@ -99,19 +107,8 @@ readinessProbe:
   timeoutSeconds: 5
   failureThreshold: 3
 
-# ALB Ingress (chart 1.8.1 requires host field)
+# No Ingress: see the header comment. If an external endpoint is ever needed
+# again it must be internal-scheme and sit behind authentication (auth.* in
+# this chart, or the oauth2Proxy sidecar), never a bare internet-facing ALB.
 ingress:
-  enabled: true
-  className: "alb"
-  annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/healthcheck-path: /health
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
-    alb.ingress.kubernetes.io/ssl-redirect: "443"
-    alb.ingress.kubernetes.io/certificate-arn: "${acm_certificate_arn}"
-  hosts:
-    - host: mlflow.local
-      paths:
-        - path: /
-          pathType: Prefix
+  enabled: false

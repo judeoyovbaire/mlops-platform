@@ -2,29 +2,19 @@
 
 global:
   domain: argocd.mlops.local
+  # Chart 10.0.0 flipped this default to true. NetworkPolicies for the argocd
+  # namespace are owned by infrastructure/kubernetes/network-policies.yaml.
+  networkPolicy:
+    create: false
 
 # Server configuration
 server:
   replicas: 1
 
+  # No Ingress: the ALB was internet-facing with an empty certificate-arn.
+  # Reach the UI with `make port-forward-argocd` (localhost:8080).
   ingress:
-    enabled: true
-    ingressClassName: alb
-    annotations:
-      alb.ingress.kubernetes.io/scheme: internet-facing
-      alb.ingress.kubernetes.io/target-type: ip
-      alb.ingress.kubernetes.io/backend-protocol: HTTPS
-      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
-      # certificate-arn: Provide ACM certificate ARN for HTTPS termination.
-      # Without this, the ALB will not terminate TLS.
-      # Example: arn:aws:acm:us-east-1:123456789:certificate/abc-123
-      alb.ingress.kubernetes.io/certificate-arn: ""
-    hosts:
-      - argocd.mlops.local
-    tls:
-      - hosts:
-          - argocd.mlops.local
-        secretName: argocd-server-tls
+    enabled: false
 
   # TLS Configuration - ArgoCD handles TLS internally
   # For production: Use cert-manager with Let's Encrypt or ACM certificates

@@ -38,12 +38,6 @@ variable "aws_region" {
   type        = string
 }
 
-variable "acm_certificate_arn" {
-  description = "ACM certificate ARN for ingress TLS"
-  type        = string
-  default     = ""
-}
-
 variable "kserve_ingress_domain" {
   description = "Ingress domain for KServe inference services"
   type        = string

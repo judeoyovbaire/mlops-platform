@@ -6,7 +6,7 @@ Example KServe InferenceService configurations for model serving.
 
 | File | Description |
 |------|-------------|
-| `inferenceservice-examples.yaml` | Complete example with sklearn model, ingress, and PDB |
+| `inferenceservice-examples.yaml` | Complete example with sklearn model, service account, and PDB |
 
 ## Quick Start
 
@@ -31,13 +31,6 @@ A production-ready sklearn model deployment:
 - Configured with resource limits
 - Pod anti-affinity for high availability
 - Autoscaling from 1-3 replicas
-
-### Ingress: sklearn-iris-ingress
-
-AWS ALB ingress for external access:
-- Internet-facing scheme
-- Health check on model endpoint
-- IP target type
 
 ### ServiceAccount: kserve-inference
 

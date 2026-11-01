@@ -31,7 +31,6 @@ resource "helm_release" "prometheus_stack" {
       templatefile("${path.module}/../../../helm/aws/prometheus-stack-values.yaml", {
         slack_notifications_enabled = var.slack_notifications_enabled
         slack_channel               = var.slack_channel
-        acm_certificate_arn         = var.acm_certificate_arn
       })
     ],
     # Durable telemetry for burst clusters (ADR-016). Off by default so the

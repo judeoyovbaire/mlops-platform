@@ -5,7 +5,7 @@ replicaCount: 1
 # Use chart's default image which includes psycopg2 for PostgreSQL
 image:
   repository: burakince/mlflow
-  tag: "3.9.0"
+  tag: "3.16.0" # 3.9.0 never existed on Docker Hub; >= 3.15.0 fixes CVE-2026-64849
   pullPolicy: IfNotPresent
 
 # Service account with Workload Identity

@@ -53,33 +53,6 @@ spec:
                   app.kubernetes.io/name: sklearn-iris
               topologyKey: kubernetes.io/hostname
 ---
-# Ingress for external access via AWS ALB
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: sklearn-iris-ingress
-  namespace: mlops
-  labels:
-    app.kubernetes.io/name: sklearn-iris
-    app.kubernetes.io/component: ingress
-    app.kubernetes.io/part-of: mlops-platform
-  annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/healthcheck-path: /v1/models/sklearn-iris
-spec:
-  ingressClassName: alb
-  rules:
-    - http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: sklearn-iris-predictor
-                port:
-                  number: 80
----
 # ServiceAccount for KServe inference workloads
 apiVersion: v1
 kind: ServiceAccount

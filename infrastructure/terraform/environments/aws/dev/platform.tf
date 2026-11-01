@@ -12,7 +12,6 @@ module "platform" {
 
   grafana_admin_password = random_password.grafana_admin.result
 
-  acm_certificate_arn         = var.acm_certificate_arn
   kserve_ingress_domain       = var.kserve_ingress_domain
   slack_notifications_enabled = var.slack_notifications_enabled
   slack_channel               = var.slack_channel
