@@ -1,40 +1,18 @@
 # Secret Generation via AWS Secrets Manager. The random_password values below
 # are also stored in Terraform state.
-
-# MLflow database password - UNUSED on EKS: MLflow reads the RDS-managed
-# master secret via the K8s secret mlflow-postgres (aws-platform/namespaces.tf).
-# ESO still syncs this one to mlflow-db-credentials, which nothing reads.
-resource "aws_secretsmanager_secret" "mlflow_db_password" {
-  name        = "${var.cluster_name}/mlflow/db-password"
-  description = "MLflow PostgreSQL database password"
-  # Uses AWS managed key if kms_key_arn is not provided
-  kms_key_id = var.kms_key_arn
-  # Dev secrets guard infrastructure that terraform destroy removes with
-  # them - skip the 30-day recovery window that left soft-deleted entries
-  # behind after the July teardown.
-  recovery_window_in_days = 0
-
-  tags = var.tags
-}
-
-resource "aws_secretsmanager_secret_version" "mlflow_db_password" {
-  secret_id = aws_secretsmanager_secret.mlflow_db_password.id
-  secret_string = jsonencode({
-    username = "mlflow"
-    password = random_password.mlflow_db.result
-  })
-
-  lifecycle {
-    ignore_changes = [secret_string]
-  }
-}
+#
+# The MLflow database password is not here: RDS manages it
+# (manage_master_user_password, modules/eks/database.tf). The ArgoCD login is
+# the chart's argocd-initial-admin-secret. See docs/secrets-management.md.
 
 # MinIO root password - generated and managed by Secrets Manager
 resource "aws_secretsmanager_secret" "minio_root_password" {
   name        = "${var.cluster_name}/minio/root-password"
   description = "MinIO root password"
   kms_key_id  = var.kms_key_arn
-  # See recovery-window note above.
+  # Dev secrets guard infrastructure that terraform destroy removes with
+  # them - skip the 30-day recovery window that left soft-deleted entries
+  # behind after the July teardown.
   recovery_window_in_days = 0
 
   tags = var.tags
@@ -52,48 +30,13 @@ resource "aws_secretsmanager_secret_version" "minio_root_password" {
   }
 }
 
-# ArgoCD admin password - UNUSED: never wired into Argo CD; the login is
-# argocd-initial-admin-secret (chart default).
-resource "aws_secretsmanager_secret" "argocd_admin_password" {
-  name        = "${var.cluster_name}/argocd/admin-password"
-  description = "ArgoCD admin password"
-  kms_key_id  = var.kms_key_arn
-  # See recovery-window note above.
-  recovery_window_in_days = 0
-
-  tags = var.tags
-}
-
-resource "aws_secretsmanager_secret_version" "argocd_admin_password" {
-  secret_id = aws_secretsmanager_secret.argocd_admin_password.id
-  secret_string = jsonencode({
-    username = "admin"
-    password = random_password.argocd_admin.result
-  })
-
-  lifecycle {
-    ignore_changes = [secret_string]
-  }
-}
-
 # Initial password generation (only used on first apply)
 # Stored in Secrets Manager (Grafana: SSM) and also in Terraform state
-
-resource "random_password" "mlflow_db" {
-  length           = 32
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
 
 resource "random_password" "minio" {
   length           = 32
   special          = true
   override_special = "!#$%&*()-_=+[]{}<>:?"
-}
-
-resource "random_password" "argocd_admin" {
-  length  = 24
-  special = false
 }
 
 resource "random_password" "grafana_admin" {
@@ -147,17 +90,7 @@ resource "aws_ssm_parameter" "cluster_name_param" {
 
 # Outputs - reference ARNs, not values (to avoid state exposure)
 
-output "mlflow_db_secret_arn" {
-  description = "ARN of the MLflow database password secret"
-  value       = aws_secretsmanager_secret.mlflow_db_password.arn
-}
-
 output "minio_secret_arn" {
   description = "ARN of the MinIO root password secret"
   value       = aws_secretsmanager_secret.minio_root_password.arn
-}
-
-output "argocd_secret_arn" {
-  description = "ARN of the ArgoCD admin password secret"
-  value       = aws_secretsmanager_secret.argocd_admin_password.arn
 }

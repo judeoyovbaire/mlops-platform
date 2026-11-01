@@ -36,15 +36,8 @@ variable "public_subnets" {
   default     = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
 }
 
-# Note: Database passwords are now auto-generated and stored in AWS Secrets Manager
-# See secrets.tf for:
-#   - aws_secretsmanager_secret resources (secure storage, not in Terraform state)
-#   - External Secrets Operator (K8s sync)
-#
-# To retrieve passwords after deployment:
-#   aws secretsmanager get-secret-value --secret-id "${cluster_name}/mlflow/db-password"
-#   aws secretsmanager get-secret-value --secret-id "${cluster_name}/minio/root-password"
-#   aws secretsmanager get-secret-value --secret-id "${cluster_name}/argocd/admin-password"
+# Passwords are generated, not passed in: see secrets.tf and
+# docs/secrets-management.md. `make secrets-aws` prints every login.
 
 variable "kms_key_arn" {
   description = "KMS key ARN for encrypting secrets. If not provided, uses AWS managed key."

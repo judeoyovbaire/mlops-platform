@@ -11,7 +11,6 @@ Shell scripts for deploying and destroying the MLOps platform infrastructure.
 | `deploy-local.sh` | Deploy the stack to a local Kind cluster |
 | `render-slos.sh` | Render the Sloth SLO sources to PrometheusRules (CI diffs the output) |
 | `test-policies.sh` | Run the Kyverno policy tests in `tests/policies/` |
-| `rotate-secrets.sh` | Broken: writes SSM parameters nothing reads and desyncs the RDS-managed MLflow password. Do not use (see [secrets management](../docs/secrets-management.md)) |
 | `backup/verify-backups.sh` | Verify RDS and AWS Backup recovery points |
 | `benchmark/llm_bench.py` | LLM serving benchmark against an OpenAI-compatible endpoint |
 | `demo/` | Rollback demo tooling ([README](demo/README.md)) |

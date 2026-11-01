@@ -24,35 +24,26 @@ Four mechanisms are in use, each for a specific secret:
 | Grafana Cloud remote write (optional) | Secrets Manager `${cluster}/grafana-cloud/remote-write` (created by hand) | ESO to `monitoring/grafana-cloud-remote-write` when `enable_grafana_cloud_remote_write` | `modules/aws-platform/monitoring.tf` |
 | AWS credentials | IRSA | Pod service accounts | `modules/eks/iam.tf`, `modules/aws-platform/*-irsa.tf` |
 
-### Generated but unused
-
-`environments/aws/dev/secrets.tf` also creates two Secrets Manager entries that nothing reads:
-
-- `${cluster}/mlflow/db-password`: ESO syncs it to `mlflow/mlflow-db-credentials`, but MLflow on EKS reads `mlflow-postgres` (the RDS-managed password). Only the Kind values use `mlflow-db-credentials`.
-- `${cluster}/argocd/admin-password`: generated, never wired into Argo CD.
-
-Do not use either to log in or to rotate anything.
-
 ### Retrieval
 
-`make secrets` (`scripts/deploy-aws.sh secrets`) currently reads all four passwords as SSM parameters. Only Grafana is in SSM, so the MLflow, MinIO and ArgoCD lookups print "Not found". Until the script is fixed, use:
+`make secrets-aws` prints all four logins from where each one lives. It reads the ArgoCD and MLflow entries through a temporary kubeconfig for this cluster, never the current kubectl context. By hand:
 
 ```bash
 # Grafana
 aws ssm get-parameter --name "/${CLUSTER}/grafana/admin-password" --with-decryption --query Parameter.Value --output text
-# ArgoCD
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+# ArgoCD (user: admin)
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 --decode
 # MinIO
 aws secretsmanager get-secret-value --secret-id "${CLUSTER}/minio/root-password" --query SecretString --output text
 # MLflow DB (RDS-managed)
-kubectl -n mlflow get secret mlflow-postgres -o jsonpath='{.data.password}' | base64 -d
+kubectl -n mlflow get secret mlflow-postgres -o jsonpath='{.data.password}' | base64 --decode
 ```
 
 ## Secret Rotation
 
 ### MLflow database password
 
-The password is owned by RDS. Do not run `ALTER USER` or `modify-db-instance --master-user-password`: that desyncs the RDS-managed secret from `mlflow-postgres` and breaks MLflow. `scripts/rotate-secrets.sh` does exactly that today and must not be used for MLflow.
+The password is owned by RDS. Do not run `ALTER USER` or `modify-db-instance --master-user-password`: that desyncs the RDS-managed secret from `mlflow-postgres` and breaks MLflow.
 
 1. Rotate through RDS:
    ```bash
