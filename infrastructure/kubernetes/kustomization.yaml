@@ -11,6 +11,7 @@ resources:
   - governance/model-registry-policies.yaml
   - governance/image-signature-policy.yaml
   - governance/immutable-image-tags-policy.yaml
+  - governance/default-networkpolicy.yaml
   # Pre-rendered Sloth SLOs (ADR-016) - sources in slo/, rendered rules ship
   - slo/
   - dashboards/mlops-overview-dashboard.yaml

@@ -1,0 +1,63 @@
+# Default-deny ingress for namespaces the baseline does not already cover.
+#
+# Applied by ArgoCD (platform-baseline), not Terraform: Kyverno 1.19 admits a
+# generate rule only if the submitting identity can create the generated kind
+# through Kubernetes RBAC. ArgoCD's application controller has that; the CI
+# deploy role is an admin through an EKS access policy, which the check does
+# not see.
+#
+# mlops, mlflow, argo, monitoring and argocd are excluded because
+# network-policies.yaml already defines default-deny-ingress there; generating
+# an object of the same name would give it two owners (Kyverno synchronize and
+# ArgoCD self-heal).
+#
+# Note: NetworkPolicies are not enforced until the VPC CNI network policy agent
+# is enabled (README, known gaps).
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: add-default-networkpolicy
+  annotations:
+    policies.kyverno.io/title: Add Default Network Policy
+    policies.kyverno.io/category: Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Generates a default-deny ingress NetworkPolicy in new namespaces that the
+      platform baseline does not already cover.
+spec:
+  rules:
+    - name: default-deny
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              # Generate rules also fire on UPDATE of the trigger; without this
+              # a label change on an existing namespace would generate here.
+              operations:
+                - CREATE
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - cert-manager
+                - mlops
+                - mlflow
+                - argo
+                - monitoring
+                - argocd
+      generate:
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        name: default-deny-ingress
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            podSelector: {}
+            policyTypes:
+              - Ingress

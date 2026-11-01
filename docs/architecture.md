@@ -410,9 +410,9 @@ Kubernetes-native policy engine (CNCF Incubating) providing policy-as-code:
 | `restrict-image-registries` | mlops, kserve | Enforce | Supply chain security |
 | `disallow-privileged-containers` | mlops, mlflow, argo, kserve | Enforce | No privileged pods |
 | `require-mlops-labels` | mlops | Audit | Model traceability |
-| `add-default-networkpolicy` | New namespaces | Generate | Default-deny ingress (no effect until enforcement is on, see below) |
+| `add-default-networkpolicy` | New namespaces not covered by the baseline | Generate | Default-deny ingress (no effect until enforcement is on, see below) |
 
-These are applied by Terraform (`modules/aws-platform/kyverno.tf`). ArgoCD syncs the governance set from `infrastructure/kubernetes/governance/`: `verify-image-signatures` (Enforce), `audit-unsigned-images` (Audit), `require-immutable-image-tags` (Enforce), and the model-registry policies (`require-model-metadata`, `require-model-lineage`, `enforce-semantic-versioning`, `require-production-approval`, `require-model-metrics`, `protect-production-models`, all Enforce; `generate-model-audit-log` generates).
+The first five are applied by Terraform (`modules/aws-platform/kyverno.tf`). ArgoCD syncs `add-default-networkpolicy` and the governance set from `infrastructure/kubernetes/governance/`. Generate policies are applied from ArgoCD because Kyverno 1.19 only admits them when the submitter can create the generated kind through Kubernetes RBAC, and the CI role is an admin through an EKS access policy instead. The governance set is `verify-image-signatures` (Enforce), `audit-unsigned-images` (Audit), `require-immutable-image-tags` (Enforce), and the model-registry policies (`require-model-metadata`, `require-model-lineage`, `enforce-semantic-versioning`, `require-production-approval`, `require-model-metrics`, `protect-production-models`, all Enforce; `generate-model-audit-log` generates).
 
 ### Pod Identity
 

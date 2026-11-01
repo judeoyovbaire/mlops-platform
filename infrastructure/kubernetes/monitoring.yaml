@@ -61,14 +61,20 @@ spec:
       regex: "(.+)"
       targetLabel: __address__
       replacement: "$1:8082"
+      # action is written out: the operator defaults it to replace, and an
+      # omitted default shows as permanent ArgoCD drift.
+      action: replace
     # Friendly label for every query surface (alerts, SLOs, gates).
     - sourceLabels:
         [__meta_kubernetes_pod_label_serving_kserve_io_inferenceservice]
       targetLabel: inference_service
+      action: replace
     - sourceLabels: [__meta_kubernetes_namespace]
       targetLabel: namespace
+      action: replace
     - sourceLabels: [__meta_kubernetes_pod_name]
       targetLabel: pod
+      action: replace
 
 ---
 # ServiceMonitor for Argo Workflows controller metrics
