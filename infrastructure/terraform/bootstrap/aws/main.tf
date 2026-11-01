@@ -479,9 +479,23 @@ resource "aws_iam_policy" "terraform_storage" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "S3BucketManagement"
-        Effect   = "Allow"
-        Action   = ["s3:*"]
+        # Enumerated instead of s3:* (Trivy AWS-0345): bucket lifecycle plus the
+        # Get/Put/Delete configuration calls the AWS provider makes for
+        # aws_s3_bucket_* resources, and object access for state and artifacts.
+        # No s3:*, no PutBucketObjectLockConfiguration bypass, no replication.
+        Sid    = "S3BucketManagement"
+        Effect = "Allow"
+        Action = [
+          "s3:CreateBucket", "s3:DeleteBucket", "s3:ListBucket", "s3:ListBucketVersions",
+          "s3:GetBucket*", "s3:PutBucket*", "s3:DeleteBucketPolicy", "s3:DeleteBucketOwnershipControls",
+          "s3:GetEncryptionConfiguration", "s3:PutEncryptionConfiguration",
+          "s3:GetLifecycleConfiguration", "s3:PutLifecycleConfiguration",
+          "s3:GetAccelerateConfiguration", "s3:GetReplicationConfiguration",
+          "s3:GetIntelligentTieringConfiguration", "s3:GetAnalyticsConfiguration",
+          "s3:GetInventoryConfiguration", "s3:GetMetricsConfiguration",
+          "s3:GetObject", "s3:GetObjectVersion", "s3:PutObject",
+          "s3:DeleteObject", "s3:DeleteObjectVersion"
+        ]
         Resource = ["arn:aws:s3:::${var.project_name}*", "arn:aws:s3:::${var.project_name}*/*"]
       },
       {
