@@ -128,7 +128,7 @@ resource "kubectl_manifest" "argo_minio_external_secret" {
 
   depends_on = [
     kubectl_manifest.cluster_secret_store,
-    kubernetes_namespace.argo
+    kubernetes_namespace_v1.argo
   ]
 }
 
@@ -158,7 +158,7 @@ resource "kubectl_manifest" "alertmanager_slack_external_secret" {
 
   depends_on = [
     kubectl_manifest.cluster_secret_store,
-    kubernetes_namespace.monitoring
+    kubernetes_namespace_v1.monitoring
   ]
 }
 
@@ -173,7 +173,7 @@ resource "kubectl_manifest" "huggingface_hub_token" {
     kind       = "ExternalSecret"
     metadata = {
       name      = "huggingface-hub-token"
-      namespace = kubernetes_namespace.argo.metadata[0].name
+      namespace = kubernetes_namespace_v1.argo.metadata[0].name
     }
     spec = {
       refreshInterval = "1h"

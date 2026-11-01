@@ -1,5 +1,6 @@
 terraform {
-  required_version = ">= 1.5"
+  # >= 1.8: moved.tf moves resources across types (kubernetes_namespace to _v1).
+  required_version = ">= 1.8"
 
   # Constraints mirror environments/aws/*/providers.tf. The helm bound matters:
   # this module uses the helm provider 3.x syntax (`set = [...]` lists, and
@@ -12,7 +13,7 @@ terraform {
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.23"
+      version = "~> 3.4"
     }
     helm = {
       source  = "hashicorp/helm"

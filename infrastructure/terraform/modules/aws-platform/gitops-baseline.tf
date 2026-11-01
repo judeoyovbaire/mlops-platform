@@ -13,7 +13,7 @@ resource "kubectl_manifest" "platform_baseline" {
 
   # Every namespace and CRD the kustomization targets must exist before the
   # first sync, or ArgoCD retries and the health wait below times out:
-  # namespaces (mlops, mlflow, argo, monitoring, kserve as kubernetes_namespace
+  # namespaces (mlops, mlflow, argo, monitoring, kserve as kubernetes_namespace_v1
   # resources; argocd, argo-events, external-secrets via create_namespace;
   # karpenter via helm_release.karpenter's namespace), the gp3 storage class
   # (EventBus volumes), and CRDs (ClusterPolicy, PrometheusRule/ServiceMonitor/ScrapeConfig,
@@ -29,12 +29,12 @@ resource "kubectl_manifest" "platform_baseline" {
     helm_release.kserve,
     helm_release.external_secrets,
     helm_release.karpenter,
-    kubernetes_namespace.mlops,
-    kubernetes_namespace.mlflow,
-    kubernetes_namespace.argo,
-    kubernetes_namespace.monitoring,
-    kubernetes_namespace.kserve,
-    kubernetes_storage_class.gp3,
+    kubernetes_namespace_v1.mlops,
+    kubernetes_namespace_v1.mlflow,
+    kubernetes_namespace_v1.argo,
+    kubernetes_namespace_v1.monitoring,
+    kubernetes_namespace_v1.kserve,
+    kubernetes_storage_class_v1.gp3,
   ]
 }
 

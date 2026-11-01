@@ -1,7 +1,7 @@
 # Karpenter - GPU Autoscaling
 
 # Karpenter namespace
-resource "kubernetes_namespace" "karpenter" {
+resource "kubernetes_namespace_v1" "karpenter" {
   metadata {
     name = "karpenter"
     labels = {
@@ -63,7 +63,7 @@ resource "helm_release" "karpenter" {
   repository = "oci://public.ecr.aws/karpenter"
   chart      = "karpenter"
   version    = var.helm_karpenter_version
-  namespace  = kubernetes_namespace.karpenter.metadata[0].name
+  namespace  = kubernetes_namespace_v1.karpenter.metadata[0].name
 
   # Increase timeout for CRD installation
   timeout = 600
@@ -116,7 +116,7 @@ resource "helm_release" "karpenter" {
   ]
 
   depends_on = [
-    kubernetes_namespace.karpenter,
+    kubernetes_namespace_v1.karpenter,
     time_sleep.alb_controller_ready,
     null_resource.karpenter_cleanup
   ]

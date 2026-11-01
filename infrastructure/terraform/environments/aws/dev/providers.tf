@@ -1,7 +1,8 @@
 # Terraform Configuration and Providers
 
 terraform {
-  required_version = ">= 1.5.7"
+  # >= 1.8 because modules/aws-platform/moved.tf moves resources across types.
+  required_version = ">= 1.8"
 
   required_providers {
     aws = {
@@ -10,7 +11,7 @@ terraform {
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.23"
+      version = "~> 3.4"
     }
     kubectl = {
       source  = "gavinbunney/kubectl"

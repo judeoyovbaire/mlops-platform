@@ -6,7 +6,7 @@ This is a single-maintainer repository. Changes go through pull requests that mu
 
 - Python 3.12 (`.python-version`; the pipeline and serving images run 3.10, enforced by a ruff per-file target)
 - [uv](https://docs.astral.sh/uv/)
-- Terraform 1.17 (CI pins 1.17.1; `required_version >= 1.5.7`)
+- Terraform 1.17 (CI pins 1.17.1; the platform needs `>= 1.8`, the bootstrap stack `>= 1.5.7`)
 - kubectl, Helm 3, AWS CLI v2, Docker
 
 ## Setup

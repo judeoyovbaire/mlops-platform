@@ -64,10 +64,10 @@ resource "aws_iam_policy" "kserve_inference_mlflow_s3_read" {
   tags = var.tags
 }
 
-resource "kubernetes_service_account" "kserve_inference" {
+resource "kubernetes_service_account_v1" "kserve_inference" {
   metadata {
     name      = "kserve-inference"
-    namespace = kubernetes_namespace.mlops.metadata[0].name
+    namespace = kubernetes_namespace_v1.mlops.metadata[0].name
     annotations = {
       "eks.amazonaws.com/role-arn" = module.kserve_inference_irsa.arn
     }
