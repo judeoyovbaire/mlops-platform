@@ -654,19 +654,21 @@ Current versions deployed by the platform:
 | Karpenter (AWS) | 1.15.1 | GPU autoscaling with SPOT support |
 | ArgoCD | 10.11.6 | Chart deploys Argo CD v3.5.6 |
 | AWS ALB Controller | 1.17.1 | Installed; no Ingress objects created |
-| cert-manager | 1.19.3 | TLS certificate management |
+| cert-manager | 1.21.3 | TLS certificate management |
 | Prometheus Stack | 81.6.9 | Monitoring and alerting |
 | Loki | 6.24.0 | Log aggregation (hardened securityContext) |
 | Tempo | 1.15.0 | Distributed tracing (hardened securityContext) |
 | OpenTelemetry Collector | 0.108.0 | Unified telemetry pipeline (hardened securityContext) |
-| External Secrets | 1.2.1 | Secrets Manager (`ClusterSecretStore aws-sm`) |
-| Kyverno | 3.6.2 | Policy engine |
+| External Secrets | 2.14.0 | Secrets Manager (`ClusterSecretStore aws-sm`) |
+| Kyverno | 3.9.2 (v1.19.2) | Policy engine; held below 1.20, which rejects new ClusterPolicy objects |
 | MinIO | 5.4.0 | S3-compatible object storage (Argo artifacts) |
 | OpenCost | 2.5.26 (chart) | Cost metrics |
 | DCGM Exporter | 3.6.1 (chart) | GPU metrics |
 | Alloy | 0.12.0 (chart) | Log shipper |
 | NVIDIA Device Plugin | 0.19.3 (chart) | Exposes `nvidia.com/gpu` |
 | vLLM | v0.11.0 | High-throughput LLM inference |
+
+On Kubernetes 1.37 only External Secrets 2.14 is officially tested upstream. cert-manager 1.21 lists 1.33-1.36 and Kyverno 1.19 lists 1.33-1.35; no newer release exists (inside the Kyverno cap), so the first 1.37 session is their test. 1.36 is the fallback.
 
 ## Design Decisions I'd Revisit
 

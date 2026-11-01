@@ -215,10 +215,10 @@ jobs:
       - name: Install Kyverno CLI
         uses: kyverno/action-install-cli@fcee92fca5c883169ef9927acf543e0b5fc58289 # v0.2.0
         with:
-          # Matches the locally-verified CLI. The cluster runs the chart-
-          # pinned Kyverno; the validate-rule semantics tested here are
-          # stable across these releases.
-          release: v1.18.2
+          # Matches the cluster's Kyverno (chart 3.9.x = v1.19.x). Capped
+          # below 1.20 in renovate.json and grouped with the chart.
+          # renovate: datasource=github-releases depName=kyverno/kyverno
+          release: v1.19.2
 
       - name: Run policy tests
         run: |

@@ -188,6 +188,22 @@
       "automerge": false
     },
     {
+      "description": "Kyverno 1.20 (chart 3.10) rejects create/update of ClusterPolicy/Policy (removed in 1.21), which every policy here uses. Hold the chart and the CI CLI on 1.19 until the CEL ValidatingPolicy migration lands (JDH-414).",
+      "matchPackageNames": [
+        "kyverno"
+      ],
+      "allowedVersions": "<3.10.0",
+      "groupName": "kyverno"
+    },
+    {
+      "description": "Kyverno CLI in CI follows the cluster's Kyverno: hold below 1.20 and group with the chart (overrides ci-tooling).",
+      "matchPackageNames": [
+        "kyverno/kyverno"
+      ],
+      "allowedVersions": "<1.20.0",
+      "groupName": "kyverno"
+    },
+    {
       "description": "Manual merge only while the first Renovate batches are observed (JDH-406, decided 2026-11-01). Keyed on update type, not package name, so it also catches lockFileMaintenance PRs (no packageName) that :automergeMinor would otherwise merge. Must stay the LAST rule; delete it to re-enable the automerge rules above.",
       "matchUpdateTypes": [
         "major",
