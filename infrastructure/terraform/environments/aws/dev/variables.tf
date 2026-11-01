@@ -84,7 +84,8 @@ variable "kserve_ingress_domain" {
 variable "helm_aws_lb_controller_version" {
   description = "AWS Load Balancer Controller Helm chart version"
   type        = string
-  default     = "1.17.1"
+  # renovate: datasource=helm depName=aws-load-balancer-controller registryUrl=https://aws.github.io/eks-charts
+  default = "1.17.1"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_aws_lb_controller_version))
@@ -165,7 +166,8 @@ variable "helm_prometheus_stack_version" {
 variable "helm_karpenter_version" {
   description = "Karpenter Helm chart version"
   type        = string
-  default     = "1.8.3"
+  # renovate: datasource=docker depName=public.ecr.aws/karpenter/karpenter
+  default = "1.8.3"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_karpenter_version))
@@ -269,7 +271,8 @@ variable "cluster_endpoint_public_access_cidrs" {
 variable "helm_argo_rollouts_version" {
   description = "Argo Rollouts Helm chart version"
   type        = string
-  default     = "2.39.1"
+  # renovate: datasource=helm depName=argo-rollouts registryUrl=https://argoproj.github.io/argo-helm
+  default = "2.39.1"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_rollouts_version))
@@ -280,7 +283,8 @@ variable "helm_argo_rollouts_version" {
 variable "helm_argo_events_version" {
   description = "Argo Events Helm chart version"
   type        = string
-  default     = "2.4.14"
+  # renovate: datasource=helm depName=argo-events registryUrl=https://argoproj.github.io/argo-helm
+  default = "2.4.14"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_events_version))
@@ -291,7 +295,8 @@ variable "helm_argo_events_version" {
 variable "helm_opencost_version" {
   description = "OpenCost Helm chart version"
   type        = string
-  default     = "2.5.26"
+  # renovate: datasource=helm depName=opencost registryUrl=https://opencost.github.io/opencost-helm-chart
+  default = "2.5.26"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_opencost_version))
@@ -302,7 +307,8 @@ variable "helm_opencost_version" {
 variable "helm_dcgm_exporter_version" {
   description = "NVIDIA DCGM Exporter Helm chart version"
   type        = string
-  default     = "3.6.1"
+  # renovate: datasource=helm depName=dcgm-exporter registryUrl=https://nvidia.github.io/dcgm-exporter/helm-charts
+  default = "3.6.1"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_dcgm_exporter_version))

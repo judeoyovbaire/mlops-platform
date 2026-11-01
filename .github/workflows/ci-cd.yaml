@@ -43,7 +43,9 @@ on:
 
 env:
   PYTHON_VERSION: "3.12"
+  # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.*)$
   TERRAFORM_VERSION: "1.14.5"
+  # renovate: datasource=github-releases depName=Azure/kubelogin extractVersion=^v(?<version>.*)$
   KUBELOGIN_VERSION: "0.2.10"
   AWS_REGION: "eu-west-1"
   AZURE_LOCATION: "westeurope"
@@ -221,7 +223,9 @@ jobs:
       - name: Setup kubeconform
         uses: yokawasa/action-setup-kube-tools@3e3886c11bfa25fe33f8eb90f59542dd151da442 # v0.13.1
         with:
+          # renovate: datasource=github-releases depName=yannh/kubeconform extractVersion=^v(?<version>.*)$
           kubeconform: "0.6.7"
+          # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize extractVersion=^kustomize/v(?<version>.*)$
           kustomize: "5.5.0"
 
       - name: Validate Kubernetes manifests
@@ -1496,6 +1500,7 @@ jobs:
       cluster-name: mlops-platform-${{ github.event.inputs.environment }}
       resource-group: mlops-platform-${{ github.event.inputs.environment }}-rg
       # Keep in sync with env.KUBELOGIN_VERSION.
+      # renovate: datasource=github-releases depName=Azure/kubelogin extractVersion=^v(?<version>.*)$
       kubelogin-version: "0.2.10"
 
   # Deploy Model - GCP (manual trigger only). Auth inside reusable workflow.

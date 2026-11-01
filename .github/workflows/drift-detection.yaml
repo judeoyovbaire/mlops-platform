@@ -22,6 +22,7 @@ on:
           - gcp
 
 env:
+  # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.*)$
   TERRAFORM_VERSION: "1.14.5"
   AWS_REGION: "eu-west-1"
 

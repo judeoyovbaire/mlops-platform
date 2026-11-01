@@ -27,6 +27,7 @@ jobs:
       - name: Setup Kustomize
         uses: yokawasa/action-setup-kube-tools@3e3886c11bfa25fe33f8eb90f59542dd151da442 # v0.13.1
         with:
+          # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize extractVersion=^kustomize/v(?<version>.*)$
           kustomize: "5.5.0"
 
       - name: Build release artifacts

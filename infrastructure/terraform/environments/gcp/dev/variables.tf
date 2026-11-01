@@ -215,7 +215,8 @@ variable "cloudsql_high_availability" {
 variable "helm_nginx_ingress_version" {
   description = "NGINX Ingress Controller Helm chart version"
   type        = string
-  default     = "4.14.3"
+  # renovate: datasource=helm depName=ingress-nginx registryUrl=https://kubernetes.github.io/ingress-nginx
+  default = "4.14.3"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_nginx_ingress_version))
@@ -366,7 +367,8 @@ variable "helm_alloy_version" {
 variable "helm_argo_rollouts_version" {
   description = "Argo Rollouts Helm chart version"
   type        = string
-  default     = "2.39.1"
+  # renovate: datasource=helm depName=argo-rollouts registryUrl=https://argoproj.github.io/argo-helm
+  default = "2.39.1"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_rollouts_version))
@@ -377,7 +379,8 @@ variable "helm_argo_rollouts_version" {
 variable "helm_argo_events_version" {
   description = "Argo Events Helm chart version"
   type        = string
-  default     = "2.4.14"
+  # renovate: datasource=helm depName=argo-events registryUrl=https://argoproj.github.io/argo-helm
+  default = "2.4.14"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_events_version))
@@ -388,7 +391,8 @@ variable "helm_argo_events_version" {
 variable "helm_opencost_version" {
   description = "OpenCost Helm chart version"
   type        = string
-  default     = "1.44.0"
+  # renovate: datasource=helm depName=opencost registryUrl=https://opencost.github.io/opencost-helm-chart
+  default = "1.44.0"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_opencost_version))
@@ -399,7 +403,8 @@ variable "helm_opencost_version" {
 variable "helm_dcgm_exporter_version" {
   description = "NVIDIA DCGM Exporter Helm chart version"
   type        = string
-  default     = "3.6.1"
+  # renovate: datasource=helm depName=dcgm-exporter registryUrl=https://nvidia.github.io/dcgm-exporter/helm-charts
+  default = "3.6.1"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_dcgm_exporter_version))
