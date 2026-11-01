@@ -186,6 +186,23 @@
       ],
       "groupName": "terraform-modules",
       "automerge": false
+    },
+    {
+      "description": "Manual merge only while the first Renovate batches are observed (JDH-406, decided 2026-11-01). Keyed on update type, not package name, so it also catches lockFileMaintenance PRs (no packageName) that :automergeMinor would otherwise merge. Must stay the LAST rule; delete it to re-enable the automerge rules above.",
+      "matchUpdateTypes": [
+        "major",
+        "minor",
+        "patch",
+        "pin",
+        "pinDigest",
+        "digest",
+        "lockFileMaintenance",
+        "lockfileUpdate",
+        "rollback",
+        "bump",
+        "replacement"
+      ],
+      "automerge": false
     }
   ]
 }
