@@ -20,8 +20,12 @@ terraform {
       version = "~> 3.3"
     }
     kubectl = {
-      source  = "gavinbunney/kubectl"
-      version = "~> 1.18"
+      # alekc/kubectl: maintained fork of gavinbunney/kubectl (no release
+      # since 2025-01). 2.x is schema-compatible for kubectl_manifest; it
+      # fails at configure on an unknown host unless lazy_load is set (root
+      # providers.tf). 3.x (plugin framework) is a separate upgrade.
+      source  = "alekc/kubectl"
+      version = "~> 2.4"
     }
     null = {
       source  = "hashicorp/null"

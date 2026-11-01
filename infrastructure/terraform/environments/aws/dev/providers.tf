@@ -14,8 +14,12 @@ terraform {
       version = "~> 3.4"
     }
     kubectl = {
-      source  = "gavinbunney/kubectl"
-      version = "~> 1.18"
+      # alekc/kubectl: maintained fork of gavinbunney/kubectl (no release
+      # since 2025-01). 2.x is schema-compatible for kubectl_manifest; it
+      # fails at configure on an unknown host unless lazy_load is set (root
+      # providers.tf). 3.x (plugin framework) is a separate upgrade.
+      source  = "alekc/kubectl"
+      version = "~> 2.4"
     }
     helm = {
       source  = "hashicorp/helm"
@@ -73,11 +77,15 @@ provider "helm" {
   }
 }
 
-# kubectl provider for CRD-based resources (handles cluster-not-exist scenario during plan)
+# kubectl provider for CRD-based resources. lazy_load keeps a fresh plan
+# working while module.eks outputs are still unknown: alekc/kubectl >= 2.3
+# fails at provider configure otherwise (gavinbunney fell back to an empty
+# config), which breaks the single-pass plan in scripts/deploy-aws.sh.
 provider "kubectl" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
   load_config_file       = false
+  lazy_load              = true
 
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
