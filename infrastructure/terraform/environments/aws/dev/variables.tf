@@ -130,16 +130,6 @@ variable "helm_argo_workflows_version" {
   }
 }
 
-variable "helm_minio_version" {
-  description = "MinIO Helm chart version"
-  type        = string
-
-  validation {
-    condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_minio_version))
-    error_message = "Must be a valid semver version, optionally v-prefixed (e.g., 1.2.3 or v1.2.3)."
-  }
-}
-
 variable "helm_prometheus_stack_version" {
   description = "kube-prometheus-stack Helm chart version"
   type        = string

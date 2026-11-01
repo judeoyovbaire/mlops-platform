@@ -16,7 +16,6 @@ module "platform" {
   slack_notifications_enabled = var.slack_notifications_enabled
   slack_channel               = var.slack_channel
 
-  # dev: standalone MinIO, small footprint (module defaults)
 
   helm_alloy_version                = var.helm_alloy_version
   helm_argo_events_version          = var.helm_argo_events_version
@@ -32,7 +31,6 @@ module "platform" {
   helm_kyverno_version              = var.helm_kyverno_version
   helm_nvidia_device_plugin_version = var.helm_nvidia_device_plugin_version
   helm_loki_version                 = var.helm_loki_version
-  helm_minio_version                = var.helm_minio_version
   helm_mlflow_version               = var.helm_mlflow_version
   helm_opencost_version             = var.helm_opencost_version
   helm_otel_collector_version       = var.helm_otel_collector_version

@@ -40,7 +40,7 @@ resource "kubectl_manifest" "platform_baseline" {
 
 # Block the apply until ArgoCD reports the baseline Synced and Healthy, so
 # default-deny network policies and the Enforce admission policies exist
-# before workloads start. MLflow and MinIO depend on this; the controllers
+# before workloads start. MLflow depends on this; the controllers
 # that provide the baseline's CRDs (Kyverno, KServe, Argo) necessarily come
 # first. Model InferenceServices and pipeline runs are deployed by CI after
 # the apply. Sync wait is 11m: the Application's retry policy (5 attempts,

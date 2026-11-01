@@ -340,7 +340,7 @@ kubectl get configmap artifact-repositories -n argo -o yaml
 
 1. **Artifact repository not configured**
 
-   The repository is the platform MinIO (`mlpipeline` bucket, secret `minio-credentials`), defined in `infrastructure/kubernetes/argo-artifact-repository.yaml` and synced by ArgoCD. Check the ConfigMap exists and the `platform-baseline` Application is Synced.
+   The repository is the S3 bucket `${cluster}-argo-artifacts-${account}`, reached with the `argo-workflow` service account's IRSA role. Terraform writes the `artifact-repositories` ConfigMap in `argo` (`modules/aws-platform/helm-core.tf`). Check the ConfigMap exists and that the service account carries the `eks.amazonaws.com/role-arn` annotation.
 
 2. **Service account lacks storage access**
    ```bash
