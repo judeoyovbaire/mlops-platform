@@ -178,7 +178,7 @@
       "automerge": false
     },
     {
-      "description": "Tool pins in workflows (terraform, kubeconform, kustomize)",
+      "description": "Tool pins in workflows (terraform, kubeconform, kustomize, kind, kubectl)",
       "matchManagers": [
         "custom.regex"
       ],
@@ -238,6 +238,13 @@
         "dependencies",
         "gpu-session-required"
       ]
+    },
+    {
+      "description": "kubectl in CI follows the EKS cluster_version (one minor of skew at most). Raise this cap together with cluster_version and the kubeconform -kubernetes-version.",
+      "matchPackageNames": [
+        "kubernetes/kubernetes"
+      ],
+      "allowedVersions": "<1.38.0"
     },
     {
       "description": "Manual merge only while the first Renovate batches are observed (JDH-406, decided 2026-11-01). Keyed on update type, not package name, so it also catches lockFileMaintenance PRs (no packageName) that :automergeMinor would otherwise merge. Must stay the LAST rule; delete it to re-enable the automerge rules above.",

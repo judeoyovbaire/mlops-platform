@@ -41,7 +41,14 @@ on:
 env:
   PYTHON_VERSION: "3.12"
   # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.*)$
-  TERRAFORM_VERSION: "1.14.5"
+  TERRAFORM_VERSION: "1.17.1"
+  # Kind and kubectl for the e2e job. Kind v0.33 defaults to a 1.37 node
+  # image, matching the EKS cluster_version; kubectl stays within one minor
+  # (capped below 1.38 in renovate.json until cluster_version moves).
+  # renovate: datasource=github-releases depName=kubernetes-sigs/kind
+  KIND_VERSION: "v0.33.0"
+  # renovate: datasource=github-releases depName=kubernetes/kubernetes
+  KUBECTL_VERSION: "v1.37.2"
   # Argo CLI and quick-start manifest for the Kind e2e job; keep in step with
   # the argo-workflows chart's app version (helm-versions.auto.tfvars).
   # renovate: datasource=github-releases depName=argoproj/argo-workflows
@@ -169,17 +176,25 @@ jobs:
       - name: Setup kubeconform
         uses: yokawasa/action-setup-kube-tools@3e3886c11bfa25fe33f8eb90f59542dd151da442 # v0.13.1
         with:
+          # Without setup-tools the action installs every tool it knows.
+          setup-tools: |
+            kubeconform
+            kustomize
           # renovate: datasource=github-releases depName=yannh/kubeconform extractVersion=^v(?<version>.*)$
-          kubeconform: "0.6.7"
+          kubeconform: "0.8.0"
           # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize extractVersion=^kustomize/v(?<version>.*)$
-          kustomize: "5.5.0"
+          kustomize: "5.8.3"
 
       - name: Validate Kubernetes manifests
+        # -kubernetes-version tracks the EKS cluster_version (default in
+        # environments/aws/dev/variables.tf and modules/eks/variables.tf) so
+        # removed APIs fail here, not at apply.
         run: |
           find components infrastructure/kubernetes infrastructure/argocd \
             \( -name '*.yaml' -o -name '*.yml' \) \
             -not -name 'kustomization.yaml' | \
             xargs -I {} kubeconform -strict -summary \
+              -kubernetes-version 1.37.0 \
               -schema-location default \
               -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
               --skip AnalysisTemplate,ClusterPolicy,Rollout,EventBus,EventSource,Sensor,InferenceService,ServiceMonitor,PodMonitor,PrometheusRule \
@@ -982,14 +997,17 @@ jobs:
 
       - name: Install Kind
         run: |
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64
+          curl -fsSLo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          curl -fsSLo ./kind.sha256sum "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64.sha256sum"
+          echo "$(cut -d' ' -f1 kind.sha256sum)  kind" | sha256sum --check
           chmod +x ./kind
           sudo mv ./kind /usr/local/bin/kind
 
       - name: Install kubectl
         run: |
-          KUBECTL_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt)
-          curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          curl -fsSLO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          curl -fsSLO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl.sha256"
+          echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
 
