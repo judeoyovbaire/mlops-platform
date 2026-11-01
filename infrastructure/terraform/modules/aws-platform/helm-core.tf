@@ -88,7 +88,7 @@ resource "helm_release" "kserve" {
   repository = "oci://ghcr.io/kserve/charts"
   chart      = "kserve-crd"
   version    = var.helm_kserve_version # Note: KServe OCI charts require 'v' prefix
-  namespace  = kubernetes_namespace.kserve.metadata[0].name
+  namespace  = kubernetes_namespace_v1.kserve.metadata[0].name
 
   depends_on = [helm_release.cert_manager]
 }
@@ -101,7 +101,7 @@ resource "helm_release" "kserve_controller" {
   repository = "oci://ghcr.io/kserve/charts"
   chart      = "kserve-resources"
   version    = var.helm_kserve_version # Note: KServe OCI charts require 'v' prefix
-  namespace  = kubernetes_namespace.kserve.metadata[0].name
+  namespace  = kubernetes_namespace_v1.kserve.metadata[0].name
 
   set = [
     # Standard is KServe's current name for RawDeployment (a deprecated alias it
@@ -152,7 +152,7 @@ resource "helm_release" "kserve_runtime_configs" {
   repository = "oci://ghcr.io/kserve/charts"
   chart      = "kserve-runtime-configs"
   version    = var.helm_kserve_version
-  namespace  = kubernetes_namespace.kserve.metadata[0].name
+  namespace  = kubernetes_namespace_v1.kserve.metadata[0].name
 
   set = [
     {
@@ -186,7 +186,7 @@ resource "helm_release" "mlflow" {
   repository = "https://community-charts.github.io/helm-charts"
   chart      = "mlflow"
   version    = var.helm_mlflow_version
-  namespace  = kubernetes_namespace.mlflow.metadata[0].name
+  namespace  = kubernetes_namespace_v1.mlflow.metadata[0].name
 
   values = [
     templatefile("${path.module}/../../../helm/aws/mlflow-values.yaml", {
@@ -198,8 +198,8 @@ resource "helm_release" "mlflow" {
   ]
 
   depends_on = [
-    kubernetes_service_account.mlflow,
-    kubernetes_secret.mlflow_postgres,
+    kubernetes_service_account_v1.mlflow,
+    kubernetes_secret_v1.mlflow_postgres,
     time_sleep.alb_controller_ready,
     # Network and admission policies first (ADR-017 decision 6).
     terraform_data.platform_baseline_ready,
@@ -212,7 +212,7 @@ resource "helm_release" "argo_workflows" {
   repository = "https://argoproj.github.io/argo-helm"
   chart      = "argo-workflows"
   version    = var.helm_argo_workflows_version
-  namespace  = kubernetes_namespace.argo.metadata[0].name
+  namespace  = kubernetes_namespace_v1.argo.metadata[0].name
 
   # Increase timeout for CRD installation
   timeout = 600
@@ -237,7 +237,7 @@ resource "helm_release" "minio" {
   repository = "https://charts.min.io/"
   chart      = "minio"
   version    = var.helm_minio_version
-  namespace  = kubernetes_namespace.argo.metadata[0].name
+  namespace  = kubernetes_namespace_v1.argo.metadata[0].name
 
   # The chart DEFAULTS to creating a consoleAdmin user with the hardcoded
   # password "console123" - remove it. Credentials are ExternalSecret-managed

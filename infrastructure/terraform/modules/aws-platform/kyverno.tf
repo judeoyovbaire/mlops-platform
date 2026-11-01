@@ -4,7 +4,7 @@
 # Reference: https://kyverno.io/
 
 # Kyverno namespace with PSA
-resource "kubernetes_namespace" "kyverno" {
+resource "kubernetes_namespace_v1" "kyverno" {
   metadata {
     name = "kyverno"
     labels = {
@@ -23,7 +23,7 @@ resource "helm_release" "kyverno" {
   repository = "https://kyverno.github.io/kyverno"
   chart      = "kyverno"
   version    = var.helm_kyverno_version
-  namespace  = kubernetes_namespace.kyverno.metadata[0].name
+  namespace  = kubernetes_namespace_v1.kyverno.metadata[0].name
 
   # Increase timeout for CRD installation
   timeout = 600
@@ -69,7 +69,7 @@ resource "helm_release" "kyverno" {
   ]
 
   depends_on = [
-    kubernetes_namespace.kyverno,
+    kubernetes_namespace_v1.kyverno,
     time_sleep.alb_controller_ready
   ]
 }

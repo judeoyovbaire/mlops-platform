@@ -11,7 +11,7 @@
 # - argo: baseline (workflow executor needs some elevated permissions)
 # - monitoring, kyverno: privileged (system components)
 
-resource "kubernetes_namespace" "mlops" {
+resource "kubernetes_namespace_v1" "mlops" {
   metadata {
     name = "mlops"
     labels = {
@@ -28,7 +28,7 @@ resource "kubernetes_namespace" "mlops" {
   }
 }
 
-resource "kubernetes_namespace" "mlflow" {
+resource "kubernetes_namespace_v1" "mlflow" {
   metadata {
     name = "mlflow"
     labels = {
@@ -45,7 +45,7 @@ resource "kubernetes_namespace" "mlflow" {
   }
 }
 
-resource "kubernetes_namespace" "argo" {
+resource "kubernetes_namespace_v1" "argo" {
   metadata {
     name = "argo"
     labels = {
@@ -62,7 +62,7 @@ resource "kubernetes_namespace" "argo" {
   }
 }
 
-resource "kubernetes_namespace" "kserve" {
+resource "kubernetes_namespace_v1" "kserve" {
   metadata {
     name = "kserve"
     labels = {
@@ -87,10 +87,10 @@ data "aws_secretsmanager_secret_version" "mlflow_db_master" {
 }
 
 # MLflow secrets (using RDS-managed password from Secrets Manager)
-resource "kubernetes_secret" "mlflow_postgres" {
+resource "kubernetes_secret_v1" "mlflow_postgres" {
   metadata {
     name      = "mlflow-postgres"
-    namespace = kubernetes_namespace.mlflow.metadata[0].name
+    namespace = kubernetes_namespace_v1.mlflow.metadata[0].name
   }
 
   data = {
@@ -98,21 +98,21 @@ resource "kubernetes_secret" "mlflow_postgres" {
     password = jsondecode(data.aws_secretsmanager_secret_version.mlflow_db_master.secret_string)["password"]
   }
 
-  depends_on = [kubernetes_namespace.mlflow]
+  depends_on = [kubernetes_namespace_v1.mlflow]
 }
 
 # Note: S3 credentials not needed - MLflow uses IRSA (IAM Roles for Service Accounts)
 # The service account below is annotated with the IAM role ARN
 
 # Service account for MLflow with IRSA
-resource "kubernetes_service_account" "mlflow" {
+resource "kubernetes_service_account_v1" "mlflow" {
   metadata {
     name      = "mlflow"
-    namespace = kubernetes_namespace.mlflow.metadata[0].name
+    namespace = kubernetes_namespace_v1.mlflow.metadata[0].name
     annotations = {
       "eks.amazonaws.com/role-arn" = var.eks.mlflow_irsa_role_arn
     }
   }
 
-  depends_on = [kubernetes_namespace.mlflow]
+  depends_on = [kubernetes_namespace_v1.mlflow]
 }

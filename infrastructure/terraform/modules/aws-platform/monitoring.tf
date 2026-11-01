@@ -1,7 +1,7 @@
 # Observability Stack - Prometheus & Grafana
 
 # Monitoring namespace
-resource "kubernetes_namespace" "monitoring" {
+resource "kubernetes_namespace_v1" "monitoring" {
   metadata {
     name = "monitoring"
     labels = {
@@ -24,7 +24,7 @@ resource "helm_release" "prometheus_stack" {
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "kube-prometheus-stack"
   version    = var.helm_prometheus_stack_version
-  namespace  = kubernetes_namespace.monitoring.metadata[0].name
+  namespace  = kubernetes_namespace_v1.monitoring.metadata[0].name
 
   values = concat(
     [
@@ -56,7 +56,7 @@ resource "helm_release" "prometheus_stack" {
   ]
 
   depends_on = [
-    kubernetes_namespace.monitoring,
+    kubernetes_namespace_v1.monitoring,
     time_sleep.alb_controller_ready
   ]
 }
@@ -67,7 +67,7 @@ resource "helm_release" "loki" {
   repository = "https://grafana.github.io/helm-charts"
   chart      = "loki"
   version    = var.helm_loki_version
-  namespace  = kubernetes_namespace.monitoring.metadata[0].name
+  namespace  = kubernetes_namespace_v1.monitoring.metadata[0].name
 
   # Use AWS-specific values with S3 storage
   values = [
@@ -81,7 +81,7 @@ resource "helm_release" "loki" {
   timeout = 600
 
   depends_on = [
-    kubernetes_namespace.monitoring,
+    kubernetes_namespace_v1.monitoring,
     helm_release.prometheus_stack,
   ]
 }
@@ -92,7 +92,7 @@ resource "helm_release" "tempo" {
   repository = "https://grafana-community.github.io/helm-charts"
   chart      = "tempo"
   version    = var.helm_tempo_version
-  namespace  = kubernetes_namespace.monitoring.metadata[0].name
+  namespace  = kubernetes_namespace_v1.monitoring.metadata[0].name
 
   # Use AWS-specific values with S3 storage
   values = [
@@ -106,7 +106,7 @@ resource "helm_release" "tempo" {
   timeout = 600
 
   depends_on = [
-    kubernetes_namespace.monitoring,
+    kubernetes_namespace_v1.monitoring,
     helm_release.prometheus_stack,
   ]
 }
@@ -117,14 +117,14 @@ resource "helm_release" "otel_collector" {
   repository = "https://open-telemetry.github.io/opentelemetry-helm-charts"
   chart      = "opentelemetry-collector"
   version    = var.helm_otel_collector_version
-  namespace  = kubernetes_namespace.monitoring.metadata[0].name
+  namespace  = kubernetes_namespace_v1.monitoring.metadata[0].name
 
   values = [file("${path.module}/../../../helm/common/otel-collector-values.yaml")]
 
   timeout = 600
 
   depends_on = [
-    kubernetes_namespace.monitoring,
+    kubernetes_namespace_v1.monitoring,
     helm_release.tempo
   ]
 }
@@ -135,14 +135,14 @@ resource "helm_release" "alloy" {
   repository = "https://grafana.github.io/helm-charts"
   chart      = "alloy"
   version    = var.helm_alloy_version
-  namespace  = kubernetes_namespace.monitoring.metadata[0].name
+  namespace  = kubernetes_namespace_v1.monitoring.metadata[0].name
 
   values = [file("${path.module}/../../../helm/common/alloy-values.yaml")]
 
   timeout = 300
 
   depends_on = [
-    kubernetes_namespace.monitoring,
+    kubernetes_namespace_v1.monitoring,
     helm_release.loki
   ]
 }
@@ -194,7 +194,7 @@ resource "kubectl_manifest" "grafana_cloud_remote_write_secret" {
     kind       = "ExternalSecret"
     metadata = {
       name      = "grafana-cloud-remote-write"
-      namespace = kubernetes_namespace.monitoring.metadata[0].name
+      namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
     }
     spec = {
       refreshInterval = "1h"

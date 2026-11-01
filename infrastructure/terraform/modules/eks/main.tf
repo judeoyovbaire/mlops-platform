@@ -2,16 +2,12 @@
 # Creates an EKS cluster with managed node groups for MLOps workloads
 
 terraform {
-  required_version = ">= 1.5.7"
+  required_version = ">= 1.8"
 
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 6.0"
-    }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.23"
     }
   }
 }
