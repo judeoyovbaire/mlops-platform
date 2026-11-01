@@ -1,5 +1,5 @@
 # Shared Helm Chart Versions
-# Single source of truth — symlinked into each environment directory.
+# Single source of truth — symlinked into environments/aws/dev.
 # AWS-specific versions (AWS LB Controller, Karpenter, Argo Rollouts/Events, OpenCost, DCGM)
 # remain in their respective environment variables.tf files.
 
@@ -9,6 +9,9 @@ helm_cert_manager_version = "v1.19.3"
 helm_argocd_version = "10.11.6"
 # renovate: datasource=docker depName=ghcr.io/kserve/charts/kserve
 helm_kserve_version = "v0.16.0"
+# Snapshot the MLflow RDS instance before bumping this version: with
+# backendStore.databaseMigration: true (mlflow-values.yaml) an init container
+# runs Alembic against RDS on first start, and those migrations are irreversible.
 # renovate: datasource=helm depName=mlflow registryUrl=https://community-charts.github.io/helm-charts
 helm_mlflow_version = "1.11.7"
 # renovate: datasource=helm depName=argo-workflows registryUrl=https://argoproj.github.io/argo-helm

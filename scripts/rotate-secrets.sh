@@ -23,7 +23,9 @@ rotate_mlflow_db() {
     aws)
       NEW_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
       
-      # Update Secrets Manager
+      # WARNING: writes an SSM parameter that nothing reads, then sets the RDS
+      # password directly, which desyncs the RDS-managed secret that MLflow
+      # uses (mlflow-postgres). Do not use; see docs/secrets-management.md.
       aws ssm put-parameter \
         --name "/${CLUSTER_NAME}/mlflow/db-password" \
         --value "{\"username\":\"mlflow\",\"password\":\"${NEW_PASSWORD}\"}" \
@@ -92,7 +94,7 @@ rotate_argocd_admin() {
     -n argocd \
     -p "{\"stringData\":{\"admin.password\":\"${BCRYPT_HASH}\"}}"
   
-  # Store in cloud secret manager for reference
+  # Store for reference (an SSM parameter that nothing reads)
   case "${CLOUD}" in
     aws)
       aws ssm put-parameter \

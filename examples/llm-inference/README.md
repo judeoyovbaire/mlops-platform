@@ -31,7 +31,7 @@ bandwidth and full FlashAttention-2 support - benchmarks stay representative.
 2. **nvidia-device-plugin**: installed by the platform
    (`aws-platform/gpu.tf`) - without it, GPU nodes boot with drivers but
    Kubernetes never sees `nvidia.com/gpu`.
-3. The Karpenter GPU pool (spot-only, g5/g4dn, 4h node expiry) ships with
+3. The Karpenter GPU pool (spot-only, g5 only, 4h node expiry) ships with
    the platform.
 
 ## Run a benchmark session
@@ -62,8 +62,9 @@ economics concrete. Results are committed under `results/`.
 - g5.xlarge spot: ~$0.77/hr (eu-west-1c cheapest AZ)
 - Full benchmark session (both configs, 4 concurrency levels): ~2-3 GPU
   hours ~= **$5 of GPU** + cluster base
-- Karpenter expires GPU nodes after 4h; the AWS budget alarms at 50%/100%
-  of the monthly cap
+- Karpenter expires GPU nodes after 4h; an AWS Budget configured manually
+  in the account (not managed by this repo) alarms at 50%/100% of the
+  monthly cap
 
 ## Cleanup
 

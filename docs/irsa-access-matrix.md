@@ -41,7 +41,7 @@ group 1.
 | `monitoring:tempo` | Tempo (trace storage) | Tempo traces bucket: read/write/delete + KMS data-key ops | [`modules/eks/iam.tf`](../infrastructure/terraform/modules/eks/iam.tf) (`tempo_irsa`) |
 | `external-secrets:external-secrets` | External Secrets Operator | Secrets Manager: read `${cluster_name}/*` secrets + `kms:Decrypt` via Secrets Manager | [`modules/aws-platform/external-secrets.tf`](../infrastructure/terraform/modules/aws-platform/external-secrets.tf) |
 | `karpenter:karpenter` | Karpenter controller | EC2 fleet/launch-template lifecycle, spot pricing, instance-profile management, node-role `iam:PassRole` | [`modules/eks/karpenter.tf`](../infrastructure/terraform/modules/eks/karpenter.tf) |
-| `kube-system:aws-load-balancer-controller` | ALB/NLB controller | ELB lifecycle (AWS-managed controller policy) | [`modules/eks/iam.tf`](../infrastructure/terraform/modules/eks/iam.tf) (`aws_load_balancer_controller_irsa`) |
+| `kube-system:aws-load-balancer-controller` | ALB/NLB controller | ELB lifecycle (AWS-managed controller policy) | [`modules/eks/iam.tf`](../infrastructure/terraform/modules/eks/iam.tf) (`aws_lb_controller_irsa`) |
 | `kube-system:ebs-csi-controller-sa` | EBS CSI driver | EBS volume lifecycle (AWS-managed CSI policy) | [`modules/eks/iam.tf`](../infrastructure/terraform/modules/eks/iam.tf) (`ebs_csi_irsa`) |
 
 ## Non-IRSA identities
@@ -63,5 +63,5 @@ commit that added this file:
 - The **MLflow server** role had no KMS grants for its read path (UI/registry
   artifact downloads).
 
-That is five identities out of ten with the same missing-KMS defect —
+That is five of the eleven identities with the same missing-KMS defect —
 the strongest possible argument for standing rule 1.

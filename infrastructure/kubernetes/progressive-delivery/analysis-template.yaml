@@ -1,15 +1,15 @@
 # AnalysisTemplate for canary analysis (ADR-016).
 #
-# Consumed as a standalone AnalysisRun by the promote flow: KServe's
-# canaryTrafficPercent shifts traffic, this template judges the canary via
-# the MLServer metrics that actually exist in RawDeployment mode (verified
-# against the pinned runtime image - see serving-runtime-contract.yaml),
-# and the flow acts on the verdict: failure => canaryTrafficPercent: 0.
+# Consumed as a standalone AnalysisRun by the post-deploy verification
+# flow. It judges the challenger after a full in-place rollout
+# (RawDeployment ignores canaryTrafficPercent, ADR-016) via the MLServer
+# metrics that actually exist in RawDeployment mode (verified against the
+# pinned runtime image - see serving-runtime-contract.yaml). On failure the
+# flow patches storageUri back to the champion.
 #
-# canary-pods-regex selects the canary pods via the `pod` label. The exact
-# canary pod-naming convention under RawDeployment is confirmed in the
-# Phase B spike (ADR-016 consequences); the selector is an argument so
-# correcting it never restructures this template.
+# canary-pods-regex selects the predictor pods via the `pod` label.
+# Resolved 2026-07-13: the analysis judges all current predictor pods. The
+# selector is an argument so correcting it never restructures this template.
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
@@ -27,7 +27,7 @@ spec:
   metrics:
     # Success rate must be >= 95% during canary window
     # NOTE: all gates assume live traffic during the analysis window - the
-    # verification flow drives load (scripts/demo/traffic or real clients).
+    # verification flow drives load (a load generator or real clients).
     # Empty-window guards (or vector(0), clamp_min) keep the math defined;
     # the first live run returned NaN/empty and errored the AnalysisRun.
     - name: success-rate

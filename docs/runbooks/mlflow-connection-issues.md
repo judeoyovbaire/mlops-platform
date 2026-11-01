@@ -4,9 +4,11 @@
 
 **Severity:** Medium
 **Service:** MLflow Tracking Server
-**Related Alerts:** `MLflowDown`, `MLflowHighLatency`
+**Related Alerts:** `MLflowDown`
 
 This runbook helps diagnose and resolve MLflow tracking server connectivity issues.
+
+MLflow 3.16.0 (chart 1.11.7) runs cluster-internal: no authentication, no ingress, reached by `make port-forward-mlflow`. It leaves with the classic loop once the vLLM benchmark results are committed (ADR-017), and this runbook goes with it.
 
 ## Symptoms
 
@@ -65,9 +67,9 @@ aws rds describe-db-instances \
 # Check bucket exists
 aws s3 ls s3://mlops-platform-dev-mlflow-artifacts-<account-id>/
 
-# Test write access (from MLflow pod)
+# Test access with the pod's IRSA identity (from MLflow pod)
 kubectl exec -n mlflow deployment/mlflow -- \
-  aws s3 ls s3://mlops-platform-dev-mlflow-artifacts-<account-id>/
+  python -c "import boto3; print(boto3.client('s3').list_objects_v2(Bucket='mlops-platform-dev-mlflow-artifacts-<account-id>', MaxKeys=1)['KeyCount'])"
 ```
 
 ## Resolution Steps
@@ -89,7 +91,9 @@ kubectl exec -n mlflow deployment/mlflow -- \
 
 1. **Verify database credentials in secrets:**
    ```bash
-   kubectl get secret -n mlflow mlflow-db-credentials -o yaml
+   # EKS: the chart reads mlflow-postgres (RDS-managed password, copied by Terraform).
+   # mlflow-db-credentials is used only by the Kind setup.
+   kubectl get secret -n mlflow mlflow-postgres -o yaml
    ```
 
 2. **Test database connectivity:**
@@ -115,15 +119,15 @@ kubectl exec -n mlflow deployment/mlflow -- \
 
 2. **Check IAM policy:**
    ```bash
-   aws iam get-role-policy \
-     --role-name mlops-platform-dev-mlflow \
-     --policy-name mlflow-s3
+   # Managed policy mlops-platform-dev-mlflow-s3
+   aws iam list-attached-role-policies \
+     --role-name mlops-platform-dev-mlflow
    ```
 
 3. **Test S3 access from pod:**
    ```bash
    kubectl exec -n mlflow deployment/mlflow -- \
-     aws sts get-caller-identity
+     python -c "import boto3; print(boto3.client('sts').get_caller_identity())"
    ```
 
 ### High Latency
@@ -143,6 +147,8 @@ kubectl exec -n mlflow deployment/mlflow -- \
    - Consider upgrading instance class
 
 ### Network Policy Blocking
+
+Not applicable until VPC CNI network policy enforcement is enabled (the policies are synced but have no effect today).
 
 1. **Verify network policies:**
    ```bash
@@ -193,5 +199,4 @@ If issue persists:
 
 - Set up RDS automated backups
 - Monitor RDS storage and connections
-- Configure MLflow HPA for auto-scaling
 - Set up alerts for database connection pool exhaustion

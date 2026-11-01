@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted; superseded in part by [ADR-016](016-rawdeployment-canary-and-observability.md): the Rollout was deleted, Argo Rollouts runs only AnalysisRuns, and RawDeployment has no traffic shifting. The rest of this record is kept as history.
 
 ## Context
 

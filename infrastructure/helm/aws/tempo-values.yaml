@@ -1,4 +1,4 @@
-# Tempo Helm Values for AWS EKS - Production with S3 Storage
+# Tempo Helm Values for AWS EKS - SingleBinary with S3 storage (dev)
 # Chart: grafana/tempo
 # Uses S3 for trace storage with IRSA for authentication
 

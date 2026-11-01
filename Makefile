@@ -30,7 +30,7 @@ help:
 	@echo "  make deploy-aws         - Deploy to AWS EKS (~15-20 min)"
 	@echo "  make status-aws         - Check AWS deployment status"
 	@echo "  make destroy-aws        - Destroy AWS resources"
-	@echo "  make secrets-aws        - Retrieve secrets from AWS SSM"
+	@echo "  make secrets-aws        - Print credentials (Grafana only works; see docs/secrets-management.md)"
 	@echo ""
 	@echo "Terraform (Advanced):"
 	@echo "  make terraform-init-aws     - Initialize AWS Terraform"
@@ -91,7 +91,7 @@ destroy-aws:
 	./scripts/destroy-aws.sh
 
 secrets-aws:
-	@echo "Retrieving secrets from AWS SSM..."
+	@echo "Retrieving platform credentials..."
 	./scripts/deploy-aws.sh secrets
 
 # Terraform - AWS (Advanced)
@@ -167,7 +167,7 @@ test-cov:
 	uv run pytest tests/ -v --cov=examples --cov=pipelines --cov-report=term-missing --cov-report=html
 	@echo "Coverage report generated in htmlcov/"
 
-# Development (post-deployment - cloud-agnostic)
+# Development (post-deployment)
 
 port-forward-mlflow:
 	@echo "Forwarding MLflow to localhost:5000..."

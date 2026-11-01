@@ -1,471 +1,135 @@
-# MLOps Platform on AWS EKS
+# GPU Inference Platform on AWS EKS
 
-An MLOps **reference platform** for model training, versioning, and deployment on **AWS EKS**. Designed around a self-service path from experiment to production — end-to-end verification is in progress (see [Design Targets](#design-targets) and [Roadmap](#roadmap)).
-
-Azure and GCP implementations were removed by [ADR-017](docs/adr/017-pivot-to-llm-inference-on-eks.md); the multi-cloud version is preserved at tag [`v1-classic-mlops`](https://github.com/judeoyovbaire/mlops-platform/tree/v1-classic-mlops).
+An LLM inference platform on EKS, being built to measure what serving costs and how it
+behaves on spot GPUs: Karpenter-provisioned A10G nodes, vLLM on KServe, GPU and
+request telemetry, and a signed, policy-enforced supply chain. Everything runs in
+short burst sessions on one AWS account and is torn down the same day.
 
 [![CI/CD](https://github.com/judeoyovbaire/mlops-platform/actions/workflows/ci-cd.yaml/badge.svg)](https://github.com/judeoyovbaire/mlops-platform/actions/workflows/ci-cd.yaml)
 
-## The Problem
+## Results
 
-ML teams often spend more time on infrastructure than on actual machine learning:
+No GPU results are published yet. The first benchmark session will fill this table
+from `scripts/benchmark/llm_bench.py`; raw output lands in
+[`examples/llm-inference/results/`](examples/llm-inference/results/).
 
-| Challenge | Traditional Approach | Time Cost |
-|-----------|---------------------|-----------|
-| Model deployment | Manual kubectl, Docker builds, config management | 2-3 days per model |
-| Environment consistency | "Works on my machine" debugging | Hours of troubleshooting |
-| Experiment tracking | Spreadsheets, local files, tribal knowledge | Lost experiments, no reproducibility |
-| GPU resource management | Static allocation, idle resources | 60-70% underutilization |
-| Production rollbacks | Manual intervention, downtime risk | 30+ minutes MTTR |
+| Model | Precision | Instance | TTFT p50 / p95 | Output tok/s | $ per 1M tokens |
+|---|---|---|---|---|---|
+| Qwen2.5-7B-Instruct | bf16 | g5.xlarge spot | pending | pending | pending |
+| Qwen2.5-7B-Instruct-AWQ | AWQ 4-bit | g5.xlarge spot | pending | pending | pending |
 
-## The Solution
+## What is proven today
 
-The target architecture: self-service ML infrastructure where data scientists deploy models without DevOps tickets (see [Design Targets](#design-targets) for verification status):
+The platform's first serving loop was run end to end on EKS in July 2026: a CI
+dispatch builds the cluster, a training pipeline registers a model, CI deploys it
+to KServe through Kyverno admission, and a metric-gated analysis rolls back a
+degraded version automatically.
 
-```
-Data Scientist                    Platform (Automated)
-     │                                    │
-     ├── git push model code ────────────►├── CI validates & builds container
-     │                                    ├── MLflow registers model version
-     │                                    ├── KServe deploys with canary (10%)
-     │                                    ├── Prometheus monitors latency/errors
-     │                                    └── Auto-rollback if metrics degrade
-     │                                    │
-     └── Monitor in Grafana ◄─────────────┘
-```
+- [Deployment retrospective](docs/retros/aws-deploy-retro-2026-07.md): 38 defects
+  found and fixed through the pipeline, and the green rebuild run.
+- [ADR-016](docs/adr/016-rawdeployment-canary-and-observability.md): why the
+  rollback is post-deploy verification, not traffic splitting, under KServe
+  RawDeployment.
+- [Rollback evidence](docs/evidence/): the AnalysisRun and the error-rate timeline
+  from the live demonstration.
 
-## Design Targets
+That loop (sklearn pipeline, MLflow registry, MLServer) stays until the vLLM path
+has its own evidence, then leaves ([ADR-017](docs/adr/017-pivot-to-llm-inference-on-eks.md)).
+The earlier multi-cloud version is preserved at tag
+[`v1-classic-mlops`](https://github.com/judeoyovbaire/mlops-platform/tree/v1-classic-mlops).
 
-This is a **reference architecture** — the numbers below are design targets and pricing benchmarks the platform is built to achieve, not measured production outcomes. Measured results will replace these as end-to-end verification lands (see roadmap).
-
-| Metric | Typical industry baseline | Platform design target | Mechanism |
-|--------|--------------------------|------------------------|-----------|
-| Model deployment time | 2-3 days (manual process) | 15 minutes, self-service | CI → MLflow registry → KServe |
-| Infrastructure setup per project | 40+ hours | ~2 hours | Terraform modules + self-service workflows |
-| GPU cost | On-demand pricing | ~60% lower | Spot/preemptible instances + Karpenter consolidation + scale-to-zero |
-| Failed deployment recovery | 30+ min manual | <2 min auto-rollback | Canary analysis + automated rollback |
-| Experiment reproducibility | Ad-hoc | 100% tracked | MLflow autologging + model registry |
-
-## Verification Status
-
-**AWS (EKS)**: 🔄 End-to-end verification in progress: CI deploy → registry → canary → auto-rollback (evidence will be linked here).
-
-## Architecture Diagrams
-
-### High-Level System Architecture
+## Architecture
 
 ```mermaid
-graph TB
-    subgraph Users["👥 Users"]
-        DS[Data Scientists]
-        ML[ML Engineers]
-        OPS[Platform Ops]
-    end
-
-    subgraph GitOps["🔄 GitOps Layer"]
-        GH[GitHub Repository]
-        CICD[GitHub Actions CI/CD]
-        ARGOCD[ArgoCD]
-    end
-
-    subgraph Platform["🚀 ML Platform"]
-        ARGO[Argo Workflows<br/>Pipeline Orchestration]
-        MLFLOW[MLflow<br/>Experiment Tracking]
-        KSERVE[KServe<br/>Model Serving]
-    end
-
-    subgraph Security["🔒 Security"]
-        PSA[Pod Security Admission]
-        KYVERNO[Kyverno Policies]
-        EXTSEC[External Secrets]
-    end
-
-    subgraph Observability["📊 Observability"]
-        PROM[Prometheus]
-        GRAF[Grafana]
-        ALERTS[AlertManager]
-    end
-
-    subgraph K8s["☸️ Kubernetes"]
-        EKS[AWS EKS]
-    end
-
-    DS --> GH
-    ML --> GH
-    GH --> CICD
-    CICD --> ARGOCD
-    ARGOCD --> Platform
-    Platform --> K8s
-    Security --> K8s
-    Observability --> K8s
-    OPS --> GRAF
+graph LR
+    CI[GitHub Actions<br/>OIDC, no static keys] -->|terraform apply| TF[Terraform]
+    CI -->|build, sign, attest| GHCR[(GHCR images)]
+    TF --> EKS[EKS cluster]
+    TF --> HELM[Controllers via Helm<br/>Karpenter, KServe, Kyverno,<br/>ArgoCD, Prometheus, Argo]
+    TF -->|applies and waits for health| ARGO[ArgoCD platform-baseline]
+    ARGO -->|owns infrastructure/kubernetes| POL[Policies, quotas,<br/>SLO rules, dashboards]
+    EKS --> KARP[Karpenter GPU pool<br/>g5 / A10G spot]
+    KARP --> VLLM[vLLM on KServe]
+    GHCR -->|signature verified by Kyverno| PIPE[Pipeline and model<br/>server images]
+    HUB[(vLLM image<br/>docker.io)] -->|registry allow-list,<br/>tag pinned| VLLM
+    VLLM -.->|scrape planned| PROM[Prometheus + Grafana<br/>DCGM exporter]
 ```
 
-### ML Pipeline Flow
+| Layer | What runs | Where it is defined |
+|---|---|---|
+| Cluster | EKS, VPC, RDS, S3, KMS, IRSA roles | `infrastructure/terraform/modules/eks` |
+| Platform | Helm releases, namespaces, Karpenter pools, Kyverno policies | `infrastructure/terraform/modules/aws-platform` |
+| Baseline | Governance and network policies, quotas, PDBs, SLO rules, dashboards | `infrastructure/kubernetes`, synced by ArgoCD |
+| Serving | vLLM InferenceServices, benchmark harness | `examples/llm-inference`, `scripts/benchmark` |
+| Supply chain | Build, keyless signing, provenance, scanners | `.github/workflows` |
 
-```mermaid
-sequenceDiagram
-    participant DS as Data Scientist
-    participant GH as GitHub
-    participant ARGO as Argo Workflows
-    participant MLF as MLflow
-    participant KS as KServe
-    participant PROM as Prometheus
+## Security posture
 
-    DS->>GH: git push model code
-    GH->>ARGO: Trigger pipeline
-    ARGO->>ARGO: 1. Load Data
-    ARGO->>ARGO: 2. Validate Data
-    ARGO->>ARGO: 3. Feature Engineering
-    ARGO->>ARGO: 4. Train Model
-    ARGO->>MLF: 5. Register Model
-    MLF-->>ARGO: Model version created
-    ARGO->>KS: 6. Deploy canary (10%)
-    KS->>PROM: Expose metrics
-    PROM-->>KS: Health check OK
-    KS->>KS: 7. Progressive rollout (50%, 100%)
-    KS-->>DS: Inference endpoint ready
-```
+What is enforced:
 
-### Infrastructure Layers
+- In the `mlops` and `argo` namespaces, images under
+  `ghcr.io/judeoyovbaire/mlops-platform/*` must carry a keyless Cosign signature
+  from this repository's build workflow on `main`
+  ([ADR-008](docs/adr/008-supply-chain-security.md)). Builds attach SLSA v1
+  Build L2 provenance.
+- Third-party images, including vLLM, are limited to an allow-listed set of
+  registries. They are not signature-verified.
+- CI authenticates to AWS with OIDC; pods use IRSA. There are no static AWS
+  credentials.
+- No platform UI is exposed through a load balancer; access is by
+  `kubectl port-forward`.
+- Trivy and Checkov fail CI on new infrastructure findings; `main` requires all
+  checks to pass through a pull request.
 
-```mermaid
-graph TB
-    subgraph Applications["Layer 4: ML Applications"]
-        INF[InferenceServices]
-        WF[Training Workflows]
-        EXP[Experiments]
-    end
+Known gaps, tracked openly:
 
-    subgraph MLPlatform["Layer 3: ML Platform"]
-        ARGO[Argo Workflows]
-        MLF[MLflow]
-        KS[KServe]
-        ACD[ArgoCD]
-    end
+- NetworkPolicies are written but not enforced: the VPC CNI network policy agent
+  is not enabled yet.
+- In-cluster access to MLflow is unauthenticated until MLflow is removed.
+- Dependency CVE gates (image scan, pip-audit) report but do not block yet.
 
-    subgraph PlatformServices["Layer 2: Platform Services"]
-        ING[Ingress Controller]
-        CERT[cert-manager]
-        PROM[Prometheus Stack]
-    end
+## Run a session
 
-    subgraph CloudInfra["Layer 1: Cloud Infrastructure"]
-        direction LR
-        AWS["AWS<br/>EKS + Karpenter<br/>S3 + RDS<br/>IRSA"]
-    end
-
-    Applications --> MLPlatform
-    MLPlatform --> PlatformServices
-    PlatformServices --> CloudInfra
-```
-
-### CI/CD Pipeline Flow
-
-```mermaid
-flowchart LR
-    subgraph Trigger["Trigger"]
-        PUSH[Push/PR]
-        MANUAL[Manual Dispatch]
-    end
-
-    subgraph Validation["Validation"]
-        LINT[Lint<br/>ruff + terraform fmt]
-        TEST[Test<br/>pytest]
-        SEC[Security<br/>Trivy]
-        VAL[Validate<br/>TF + K8s + Helm]
-    end
-
-    subgraph Plan["Plan"]
-        PLAN_AWS[TF Plan<br/>AWS]
-    end
-
-    subgraph Deploy["Deploy"]
-        DEP_AWS[Apply AWS]
-    end
-
-    PUSH --> LINT
-    LINT --> TEST
-    TEST --> SEC
-    SEC --> VAL
-    VAL --> PLAN_AWS
-
-    MANUAL --> DEP_AWS
-```
-
-## Features
-
-| Feature | AWS |
-|---------|-----|
-| **Pipeline Orchestration** | Argo Workflows |
-| **Experiment Tracking** | MLflow + S3 + RDS |
-| **Model Serving** | KServe (RawDeployment) |
-| **GitOps** | ArgoCD |
-| **GPU Autoscaling** | Karpenter |
-| **Ingress** | AWS ALB Controller |
-| **Pod Identity** | IRSA |
-| **Secrets** | External Secrets + SSM |
-| **Security** | PSA, Kyverno, Cosign signature verification |
-| **Monitoring** | Prometheus + Grafana + Loki + Alloy + Tempo |
-| **Network Observability** | VPC Flow Logs |
-| **Backup** | AWS Backup (RDS) |
-| **Cost Management** | Cost Dashboard (Grafana) |
-
-## Tech Stack
-
-| Component | Technology | Version | Purpose |
-|-----------|------------|---------|---------|
-| Pipeline Orchestration | Argo Workflows | 0.47.3 | ML workflow automation |
-| Experiment Tracking | MLflow | 3.16.0 (chart 1.11.7) | Model versioning & metrics |
-| Model Serving | KServe | 0.16.0 | Production inference (CNCF) |
-| GPU Autoscaling (AWS) | Karpenter | 1.8.3 | Dynamic GPU node provisioning |
-| GitOps | ArgoCD | 10.11.6 | Declarative deployments |
-| Ingress (AWS) | AWS ALB Controller | 1.17.1 | Installed; no public endpoints (port-forward) |
-| TLS | cert-manager | 1.19.3 | Certificate management |
-| Monitoring | Prometheus + Grafana | 81.6.9 | Observability |
-| Log Aggregation | Loki | 6.24.0 | Centralized logging |
-| Distributed Tracing | Tempo | 1.15.0 | Request tracing |
-| Log Shipping | Grafana Alloy | 0.12.0 | Pod log collection to Loki |
-| Telemetry | OpenTelemetry Collector | 0.108.0 | Unified telemetry pipeline |
-| Security Policy | Kyverno | 3.6.2 | Policy-as-code engine |
-| Secrets | External Secrets Operator | 1.2.1 | Cloud secrets sync |
-| Infrastructure | Terraform | >= 1.5.7 | IaC for EKS |
-| CI/CD | GitHub Actions | - | Automated testing |
-
-## Project Structure
-
-```
-mlops-platform/
-├── .github/workflows/          # CI/CD pipeline
-├── components/
-│   └── drift-detection/        # Statistical drift library (showcase; see ADR-013)
-├── docs/
-│   ├── adr/                    # Architecture Decision Records
-│   ├── runbooks/               # Operations and troubleshooting runbooks
-│   ├── architecture.md         # Architecture documentation
-│   ├── performance-tuning.md   # Performance optimization guide
-│   └── ...                     # API reference, secrets, DR guides
-├── examples/
-│   ├── kserve/                 # Basic KServe inference examples
-│   ├── canary-deployment/      # Progressive rollout with traffic splitting
-│   └── llm-inference/          # LLM serving with vLLM
-├── infrastructure/
-│   ├── grafana/dashboards/     # Grafana dashboard configurations
-│   ├── kubernetes/
-│   │   ├── dashboards/         # Kubernetes dashboard configs
-│   │   └── governance/         # Kyverno model registry policies
-│   ├── terraform/
-│   │   ├── bootstrap/
-│   │   │   └── aws/            # AWS prerequisites (S3, GitHub OIDC)
-│   │   ├── modules/
-│   │   │   └── eks/            # AWS EKS module
-│   │   └── environments/
-│   │       └── aws/dev/        # AWS deployment configuration
-│   └── helm/
-│       ├── common/             # Shared Helm values
-│       └── aws/                # AWS-specific Helm values
-├── pipelines/
-│   ├── training/               # Iris training pipeline (Argo Workflow)
-│   │   ├── src/                # Pipeline Python scripts
-│   │   ├── kustomization.yaml  # ConfigMap generator
-│   │   └── ml-training-workflow.yaml
-│   └── pretrained/             # HuggingFace pretrained model pipeline
-│       ├── src/                # fetch_model.py, register_model.py
-│       └── hf-pretrained-workflow.yaml
-├── scripts/
-│   ├── common/                 # Shared script utilities
-│   ├── cost-optimization/      # Cost analysis and reporting scripts
-│   ├── deploy-aws.sh
-│   └── destroy-aws.sh
-├── tests/                      # Unit and integration tests
-└── Makefile                    # Common operations
-```
-
-## Getting Started
-
-### Prerequisites
-
-**For AWS:**
-- AWS account with appropriate permissions
-- AWS CLI configured (`aws configure`)
-
-**Common:**
-- Terraform >= 1.5.7
-- kubectl
-- Helm 3.x
-- Python 3.10+
-
-### Quick Start
+Prerequisites: an AWS account you control, AWS CLI, Terraform 1.14, kubectl,
+Helm, and a spot quota for G-family instances (see
+[`examples/llm-inference`](examples/llm-inference/README.md)).
 
 ```bash
-git clone https://github.com/judeoyovbaire/mlops-platform.git
-cd mlops-platform
+# One-time: state bucket, lock table and GitHub OIDC role.
+# Follow infrastructure/terraform/bootstrap/aws/README.md (fresh accounts differ).
 
-# 1. Bootstrap cloud resources (run once)
-cd infrastructure/terraform/bootstrap/aws
-terraform init && terraform apply
-cd -
-
-# 2. Deploy the platform (~15-25 minutes)
-make deploy-aws
-
-# 3. Access dashboards
-make port-forward-mlflow   # http://localhost:5000
-make port-forward-argocd   # https://localhost:8080
-make port-forward-grafana  # http://localhost:3000
+# Each session: build, use, tear down
+make deploy-aws                # EKS, controllers, ArgoCD baseline
+make port-forward-grafana      # http://localhost:3000
+kubectl apply -f examples/llm-inference/kserve-vllm.yaml
+make destroy-aws               # same day
 ```
 
-See **[QUICKSTART.md](QUICKSTART.md)** for deploying a model, running a training pipeline, and testing inference end-to-end.
+Infracost estimates the cost of pull requests that change Terraform. Teardown is
+covered in [docs/runbooks/teardown.md](docs/runbooks/teardown.md).
 
-Run `make help` for all available commands.
+## Repository layout
 
-## CI/CD Pipeline
-
-Single unified pipeline with OIDC authentication (no static credentials):
-
-| Trigger | What Happens |
-|---------|--------------|
-| **Push/PR** | Validate code, run tests, security scan, show terraform plan |
-| **Manual: `aws` + `deploy-infra`** | Deploy AWS EKS infrastructure via Terraform |
-| **Manual: `deploy-model`** | Deploy example InferenceServices to KServe |
-| **Local: `make destroy-*`** | Destroy infrastructure (safety - not in pipeline) |
-
-### Setup GitHub Secrets
-
-**For AWS:**
-```bash
-terraform -chdir=infrastructure/terraform/bootstrap/aws output github_actions_role_arn
-# Add to GitHub: Settings > Secrets > AWS_ROLE_ARN
 ```
-
-## Cloud Resources
-
-### AWS Resources
-
-| Resource | Purpose |
-|----------|---------|
-| VPC | Networking with public/private subnets across 3 AZs |
-| EKS Cluster | Managed Kubernetes control plane (v1.34) |
-| Node Groups | General (t3.large), Training (SPOT), GPU (g4dn SPOT) |
-| S3 Bucket | MLflow artifact storage |
-| RDS PostgreSQL | MLflow metadata backend |
-| ECR Repository | Container images for ML models |
-| IAM Roles | IRSA for secure pod authentication |
-| ALB | External access to services |
-| VPC Flow Logs | Network traffic logging to CloudWatch |
-| AWS Backup | Automated RDS backups (daily/weekly) |
-
-### Cost Estimation
-
-**AWS (eu-west-1):**
-
-| Resource | Configuration | Monthly Cost |
-|----------|---------------|--------------|
-| EKS Cluster | Control plane | $73 |
-| General Nodes | 2x t3.large (ON_DEMAND) | ~$120 |
-| Training Nodes | c5.2xlarge (SPOT, scale-to-zero) | ~$30-50 |
-| GPU Nodes | g4dn.xlarge (SPOT, scale-to-zero) | ~$50-100 |
-| NAT Gateway | Single (cost optimization) | ~$45 |
-| RDS PostgreSQL | db.t3.small | ~$25 |
-| S3 + ALB | Minimal usage | ~$10-20 |
-| **Total** | | **~$350-450/month** |
-
-**Cost Optimization:**
-- SPOT/Preemptible instances for training/GPU: 60-70% savings
-- Scale-to-zero: Training and GPU nodes only run when needed
-- Single NAT Gateway
+infrastructure/terraform   bootstrap/aws, environments/aws/dev, modules/{eks,aws-platform}
+infrastructure/kubernetes  the ArgoCD-synced baseline
+infrastructure/helm        Helm values for AWS and shared charts
+examples/                  llm-inference, kserve
+pipelines/, components/    classic training loop and transformer (leaving with MLflow)
+docs/                      ADRs, retro, evidence, runbooks
+```
 
 ## Roadmap
 
-### Completed
-- [x] **Infrastructure** — EKS with GPU autoscaling (Karpenter)
-- [x] **ML platform** — MLflow, KServe, Argo Workflows, ArgoCD
-- [x] **Observability** — Prometheus, Grafana, Loki, Alloy, Tempo, cost dashboards
-- [x] **Security** — PSA, Kyverno, Cosign, External Secrets, network policies
-- [x] **CI/CD** — GitHub Actions with OIDC auth, plan/deploy, Trivy scanning
-- [x] **Operational baseline** — backup, VPC Flow Logs, DR runbooks
-- [x] **Examples** — canary deploys, LLM inference
-- [x] **Pipelines** — Iris quickstart pipeline + [HuggingFace pretrained model pipeline](pipelines/pretrained/) with automated validation and MLflow registration
+1. GPU observability that works: DCGM on the Karpenter pool, vLLM metrics scraped.
+2. Benchmark results in the table above, with cost per million tokens.
+3. Autoscaling on inference load (queue depth), with the scale-out on record.
+4. Weight supply chain: weights pinned and hashed in S3, egress to the Hub blocked.
+5. Inference-aware routing with the Gateway API Inference Extension.
+6. Training side: Kueue and a LoRA job with checkpointing.
 
-### In Progress / Future Enhancements
-- [ ] End-to-end verification — deploy → canary → auto-rollback demonstrated on a live cluster
-- [ ] LLM inference verified on live GPUs with committed throughput/latency/cost benchmarks
-- [ ] A/B testing framework for model comparison
-- [ ] Model explainability dashboards (SHAP/LIME)
-- [ ] Auto-generated Terraform module docs via `terraform-docs`
-
-## Examples
-
-| Example | Description | Complexity |
-|---------|-------------|------------|
-| [KServe Basic](examples/kserve/) | sklearn model with production config | Beginner |
-| [Canary Deployment](examples/canary-deployment/) | Progressive rollout with traffic splitting | Intermediate |
-| [LLM Inference](examples/llm-inference/) | Mistral-7B with vLLM on GPU | Advanced |
-| [HuggingFace Sentiment](examples/kserve/huggingface-sentiment.yaml) | Pretrained HF model via KServe | Intermediate |
-| [Load Testing](examples/load-testing/) | k6 and Locust load testing examples | Intermediate |
-
-## Comparison with Alternatives
-
-| Feature | This Platform | Kubeflow | SageMaker | Vertex AI | Azure ML |
-|---------|--------------|----------|-----------|-----------|----------|
-| **Open Source** | ✅ MIT License | ✅ Apache 2.0 | ❌ Proprietary | ❌ Proprietary | ❌ Proprietary |
-| **Self-hosted** | ✅ Full control | ✅ Full control | ❌ Managed only | ❌ Managed only | ❌ Managed only |
-| **Cost (dev)** | $350-450/mo | Variable | $$$ | $$$ | $$$ |
-| **GPU Autoscaling** | ✅ Karpenter | ⚠️ Manual | ✅ Managed | ✅ Managed | ✅ Managed |
-| **Model Serving** | ✅ KServe (CNCF) | ✅ KServe | ✅ Built-in | ✅ Built-in | ✅ Built-in |
-| **Experiment Tracking** | ✅ MLflow | ✅ MLflow | ✅ Built-in | ✅ Built-in | ✅ Built-in |
-| **CI/CD Integration** | ✅ GitHub Actions | ⚠️ Manual | ✅ CodePipeline | ✅ Cloud Build | ✅ DevOps |
-| **GitOps** | ✅ ArgoCD owns the platform baseline (models deployed by CI) | ⚠️ Manual | ❌ | ❌ | ⚠️ Partial |
-| **Observability** | ✅ Prometheus/Grafana | ⚠️ Basic | ✅ CloudWatch | ✅ Cloud Monitoring | ✅ Monitor |
-| **Security** | ✅ IRSA/PSA | ⚠️ Basic | ✅ IAM | ✅ IAM | ✅ Managed Identity |
-| **Vendor Lock-in** | ✅ None | ✅ None | ❌ AWS | ❌ GCP | ❌ Azure |
-| **Customization** | ✅ Full | ✅ Full | ⚠️ Limited | ⚠️ Limited | ⚠️ Limited |
-| **Learning Curve** | Medium | High | Low | Low | Low |
-| **Best For** | OSS-first | Research, complex pipelines | AWS-native teams | GCP-native teams | Azure-native teams |
-
-### Key Differentiators
-
-1. **Open Source**: All components are CNCF/OSS projects with active communities
-2. **Self-Service**: Data scientists deploy models without DevOps tickets
-3. **Cost-Effective**: 60-70% cost savings with spot instances and scale-to-zero
-4. **Production-Ready**: Security, observability, and reliability built-in from day one
-
-## Why These Tools?
-
-### MLflow over alternatives
-- Open source, framework-agnostic
-- Native GenAI/LLM support (prompt versioning, agent tracing)
-- Model aliases replace deprecated staging workflow
-- Largest community adoption
-
-### KServe over Seldon Core
-- **Licensing**: Seldon Core moved to BSL 1.1 (paid for commercial use as of Jan 2024)
-- KServe is fully open source (Apache 2.0), CNCF Incubating project
-- Better PyTorch support out-of-the-box
-- Serverless inference with scale-to-zero
-
-## Documentation
-
-| Category | Documents |
-|----------|-----------|
-| **Getting Started** | [Quick Start Guide](QUICKSTART.md) - Deploy your first model in 5 minutes |
-| **Architecture** | [Architecture Deep Dive](docs/architecture.md) - System design and components |
-| **Security** | [Secrets Management](docs/secrets-management.md) - Credential rotation |
-| **Operations** | [Operations Runbook](docs/runbooks/operations.md) - Day-to-day procedures |
-| **Troubleshooting** | [Troubleshooting Guide](docs/runbooks/troubleshooting.md) - Common issues |
-| **Performance** | [Performance Tuning](docs/performance-tuning.md) - Optimize inference & training |
-| **Disaster Recovery** | [DR Guide](docs/disaster-recovery.md) - Backup & recovery procedures |
-| **API Reference** | [API Reference](docs/api-reference.md) - MLflow & KServe APIs |
-| **Examples** | [LLM Inference](examples/llm-inference/README.md) - GPU-based model serving |
+Decisions and their reasoning are in [docs/adr](docs/adr/README.md).
 
 ## License
 
-MIT License - see LICENSE for details.
-
-## Author
-
-**Jude Oyovbaire** — Senior DevOps Engineer · Platform architecture for AI infrastructure
-
-- Website: [judaire.io](https://judaire.io)
-- LinkedIn: [linkedin.com/in/judeoyovbaire](https://linkedin.com/in/judeoyovbaire)
-- GitHub: [github.com/judeoyovbaire](https://github.com/judeoyovbaire)
+MIT. Author: Jude Oyovbaire.

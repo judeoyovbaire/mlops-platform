@@ -6,16 +6,20 @@ Shell scripts for deploying and destroying the MLOps platform infrastructure.
 
 | Script | Purpose |
 |--------|---------|
-| `deploy-aws.sh` | Deploy MLOps platform to AWS EKS |
+| `deploy-aws.sh` | Deploy MLOps platform to AWS EKS (`deploy`, `status`, `secrets`, `destroy`) |
 | `destroy-aws.sh` | Tear down AWS infrastructure |
+| `deploy-local.sh` | Deploy the stack to a local Kind cluster |
+| `render-slos.sh` | Render the Sloth SLO sources to PrometheusRules (CI diffs the output) |
+| `test-policies.sh` | Run the Kyverno policy tests in `tests/policies/` |
+| `rotate-secrets.sh` | Broken: writes SSM parameters nothing reads and desyncs the RDS-managed MLflow password. Do not use (see [secrets management](../docs/secrets-management.md)) |
+| `backup/verify-backups.sh` | Verify RDS and AWS Backup recovery points |
+| `benchmark/llm_bench.py` | LLM serving benchmark against an OpenAI-compatible endpoint |
+| `demo/` | Rollback demo tooling ([README](demo/README.md)) |
+| `cost-optimization/` | Cost report generator and idle-resource scanner |
 
 ## Prerequisites
 
-All scripts check for required tools before running:
-
-| Cloud | Required Tools |
-|-------|---------------|
-| AWS | `aws`, `terraform`, `kubectl`, `helm` |
+The AWS scripts check for `aws`, `terraform`, `kubectl` and `helm` before running.
 
 ## Usage
 
@@ -35,7 +39,7 @@ All scripts check for required tools before running:
 ./scripts/destroy-aws.sh
 ```
 
-Type `destroy` when prompted to confirm.
+Answer `yes` when prompted to confirm. `--force` (or `-f`) skips the prompts.
 
 ## What the Scripts Do
 
@@ -44,39 +48,23 @@ Type `destroy` when prompted to confirm.
 1. **Prerequisite Checks**
    - Verify required CLI tools are installed
    - Check cloud authentication
-   - Validate environment variables
 
 2. **Terraform Execution**
-   - Initialize Terraform
+   - Create `terraform.tfvars` if missing
+   - Initialize Terraform (uses `backend.conf` if present)
    - Run `terraform plan`
    - Apply infrastructure changes
 
 3. **Kubernetes Configuration**
    - Configure kubectl context
-   - Wait for cluster to be ready
 
 4. **Post-Deployment**
    - Display access information
    - Show port-forward commands
 
-### Destroy Scripts
+### Destroy Script
 
-1. **Confirmation**
-   - Require explicit "destroy" confirmation
-
-2. **Kubernetes Cleanup**
-   - Remove webhooks that can block deletion
-   - Delete Kyverno policies
-   - Remove LoadBalancer services
-
-3. **Terraform Destroy**
-   - Run `terraform destroy -auto-approve`
-
-4. **Orphan Cleanup**
-   - Delete orphaned cloud resources (disks, IPs, etc.)
-
-5. **Verification**
-   - Confirm resources are deleted
+See the [teardown runbook](../docs/runbooks/teardown.md) for the phase-by-phase procedure.
 
 ## Environment Variables
 

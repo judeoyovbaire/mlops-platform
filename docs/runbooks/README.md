@@ -1,30 +1,26 @@
 # Operational Runbooks
 
-This directory contains runbooks for common operational scenarios in the MLOps platform.
+Runbooks for the AWS dev platform.
 
 ## Runbook Index
 
-| Runbook | Description | Severity |
-|---------|-------------|----------|
-| [Karpenter Node Not Provisioning](karpenter-node-not-provisioning.md) | Troubleshoot when GPU/training nodes don't spin up | High |
-| [MLflow Connection Issues](mlflow-connection-issues.md) | Debug MLflow tracking server connectivity | Medium |
-| [AWS Environment Teardown](teardown.md) | Destroy the AWS platform cleanly (destroy-aws.sh procedure) | High |
+| Runbook | Description |
+|---------|-------------|
+| [Troubleshooting](troubleshooting.md) | Common failures across Terraform, KServe, MLflow, Argo, Kyverno and GPU nodes |
+| [Karpenter Node Not Provisioning](karpenter-node-not-provisioning.md) | GPU or training nodes do not come up |
+| [MLflow Connection Issues](mlflow-connection-issues.md) | MLflow tracking server connectivity (until MLflow leaves with the classic loop) |
+| [AWS Environment Teardown](teardown.md) | Destroy the AWS platform cleanly (`destroy-aws.sh` procedure) |
+
+Model rollback (deploy challenger, AnalysisRun verdict, `storageUri` rollback) is documented with its scripts in [scripts/demo/README.md](../../scripts/demo/README.md).
 
 ## Using These Runbooks
 
-1. Identify the issue from alerts or user reports
-2. Find the relevant runbook above
-3. Follow the diagnostic steps in order
-4. Escalate if resolution steps don't work
+1. Identify the issue from alerts or user reports.
+2. Find the relevant runbook above.
+3. Follow the diagnostic steps in order.
 
-## Alert Integration
+The PrometheusRules in `infrastructure/kubernetes/monitoring.yaml` do not carry `runbook_url` annotations, so alerts do not link here.
 
-These runbooks are linked from Prometheus AlertManager alerts. When an alert fires, the runbook URL is included in the notification.
+## Adding a Runbook
 
-## Contributing
-
-When adding a new runbook:
-1. Use the template below
-2. Include clear diagnostic steps
-3. Add resolution steps with exact commands
-4. Include escalation criteria
+Include clear diagnostic steps, resolution steps with exact commands, and the related alerts (if any), then add a row to the index above.

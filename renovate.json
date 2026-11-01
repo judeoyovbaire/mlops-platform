@@ -47,7 +47,7 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Versions annotated with '# renovate: datasource=... depName=...' on the line above: shared Helm chart pins in helm-versions.auto.tfvars, cloud-specific pins in environments/*/variables.tf, and tool pins in workflows.",
+      "description": "Versions annotated with '# renovate: datasource=... depName=...' on the line above: shared Helm chart pins in helm-versions.auto.tfvars, AWS-specific pins in environments/aws/dev/variables.tf, and tool pins in workflows.",
       "managerFilePatterns": [
         "/(^|/)helm-versions\\.auto\\.tfvars$/",
         "/^infrastructure/terraform/environments/[^/]+/[^/]+/variables\\.tf$/",

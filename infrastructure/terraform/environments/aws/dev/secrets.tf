@@ -1,6 +1,9 @@
-# Secret Generation via AWS Secrets Manager (avoids secrets in Terraform state)
+# Secret Generation via AWS Secrets Manager. The random_password values below
+# are also stored in Terraform state.
 
-# MLflow database password - generated and managed by Secrets Manager
+# MLflow database password - UNUSED on EKS: MLflow reads the RDS-managed
+# master secret via the K8s secret mlflow-postgres (aws-platform/namespaces.tf).
+# ESO still syncs this one to mlflow-db-credentials, which nothing reads.
 resource "aws_secretsmanager_secret" "mlflow_db_password" {
   name        = "${var.cluster_name}/mlflow/db-password"
   description = "MLflow PostgreSQL database password"
@@ -49,7 +52,8 @@ resource "aws_secretsmanager_secret_version" "minio_root_password" {
   }
 }
 
-# ArgoCD admin password - generated and managed by Secrets Manager
+# ArgoCD admin password - UNUSED: never wired into Argo CD; the login is
+# argocd-initial-admin-secret (chart default).
 resource "aws_secretsmanager_secret" "argocd_admin_password" {
   name        = "${var.cluster_name}/argocd/admin-password"
   description = "ArgoCD admin password"
@@ -73,7 +77,7 @@ resource "aws_secretsmanager_secret_version" "argocd_admin_password" {
 }
 
 # Initial password generation (only used on first apply)
-# These are stored in Secrets Manager, not in Terraform state long-term
+# Stored in Secrets Manager (Grafana: SSM) and also in Terraform state
 
 resource "random_password" "mlflow_db" {
   length           = 32

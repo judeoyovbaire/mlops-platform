@@ -2,11 +2,13 @@
 
 Provisions an AWS EKS cluster with VPC, managed node groups (general, training, GPU), S3 artifact storage, RDS PostgreSQL for MLflow metadata, IRSA roles, Karpenter support, ECR repository, VPC Flow Logs, and AWS Backup.
 
+The GPU managed node group (g4dn) is dormant at desired size 0. GPU serving uses the Karpenter g5 pool defined in `modules/aws-platform/karpenter.tf`.
+
 ## Usage
 
 ```hcl
 module "eks" {
-  source = "../../modules/eks"
+  source = "../../../modules/eks" # from environments/aws/dev
 
   cluster_name    = "mlops-platform-dev"
   environment     = "dev"
@@ -55,7 +57,7 @@ module "eks" {
 | mlflow_db_engine_version | PostgreSQL engine version for MLflow RDS | `string` | `"15"` | no |
 | mlflow_db_skip_final_snapshot | Skip final snapshot when destroying RDS | `bool` | `false` | no |
 | mlflow_db_backup_retention_period | Number of days to retain automated backups | `number` | `7` | no |
-| mlflow_db_deletion_protection | Enable deletion protection for RDS | `bool` | `false` | no |
+| mlflow_db_deletion_protection | Enable deletion protection for RDS (dev passes `false`) | `bool` | `true` | no |
 | mlflow_db_multi_az | Enable Multi-AZ deployment for RDS high availability | `bool` | `false` | no |
 | cluster_admin_arns | List of IAM ARNs to grant cluster admin access | `list(string)` | `[]` | no |
 | enable_cluster_creator_admin_permissions | Enable cluster admin permissions for the cluster creator | `bool` | `true` | no |

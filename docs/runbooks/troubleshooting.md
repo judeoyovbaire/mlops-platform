@@ -2,6 +2,10 @@
 
 Common issues and their solutions for the MLOps platform.
 
+> **NetworkPolicies are synced but NOT enforced.** The VPC CNI network policy agent is off (`enableNetworkPolicy` is unset in `modules/eks/main.tf`). Do not chase "network policy blocking" symptoms on EKS today; those steps below apply only once enforcement is enabled.
+>
+> **Ad-hoc test pods:** in `mlops`, `mlflow`, `argo` and `kserve`, Kyverno enforces resource limits, and in `mlops`/`kserve` it also rejects `:latest` tags and images outside the registry allow-list. Run throwaway debug pods in `default` (no Kyverno scope) with a pinned tag, as below.
+
 ## Table of Contents
 
 - [Deployment Issues](#deployment-issues)
@@ -41,7 +45,7 @@ aws sts get-caller-identity
    ```bash
    # AWS
    aws dynamodb delete-item \
-     --table-name terraform-locks \
+     --table-name mlops-platform-terraform-locks \
      --key '{"LockID":{"S":"<lock-id>"}}'
 
    # Or force unlock
@@ -73,10 +77,8 @@ helm history <release-name> -n <namespace>
    ```
 
 2. **CRDs not installed**
-   ```bash
-   # Install CRDs first
-   kubectl apply -f https://github.com/kserve/kserve/releases/download/v0.16.0/kserve-crd.yaml
-   ```
+
+   KServe CRDs come from the `kserve-crd` Helm release (`modules/aws-platform/helm-core.tf`). Re-run `terraform apply` rather than applying CRDs by hand.
 
 3. **Webhook timeout**
    ```bash
@@ -111,10 +113,8 @@ kubectl get pods -n mlops -l serving.kserve.io/inferenceservice=<name>
    # Verify service account has storage access
    kubectl get sa -n mlops -o yaml
 
-   # Test S3 access (AWS)
-   kubectl run test-s3 --rm -it --image=amazon/aws-cli \
-     --overrides='{"spec":{"serviceAccountName":"kserve-inference"}}' \
-     -- s3 ls s3://your-bucket/
+   # Check the model download (storage-initializer runs as kserve-inference)
+   kubectl logs -n mlops <predictor-pod> -c storage-initializer
    ```
 
 3. **Image pull error**
@@ -168,7 +168,7 @@ kubectl logs -n mlops <pod-name> -c kserve-container
 ```bash
 # Check Prometheus metrics
 kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090
-# Query: histogram_quantile(0.95, rate(revision_request_latencies_bucket[5m]))
+# Query: histogram_quantile(0.95, sum by (le) (rate(rest_server_request_duration_seconds_bucket{namespace="mlops"}[5m])))
 ```
 
 **Solutions**:
@@ -227,7 +227,7 @@ kubectl logs -n mlflow -l app=mlflow
    # Should show pod IPs
    ```
 
-3. **Network policy blocking**
+3. **Network policy blocking** (only once enforcement is enabled)
    ```bash
    kubectl get networkpolicy -n mlflow
    # Ensure ingress is allowed
@@ -253,7 +253,7 @@ mlflow.set_experiment("test")
    nslookup mlflow.mlflow.svc.cluster.local
    ```
 
-2. **Network policy**
+2. **Network policy** (only once enforcement is enabled)
    ```bash
    # Ensure argo namespace can reach mlflow
    kubectl get networkpolicy allow-mlflow-from-mlops -n mlflow -o yaml
@@ -283,13 +283,14 @@ kubectl logs -n mlflow -l app=mlflow | grep -i "s3\|storage"
 
 2. **Bucket permissions**
    ```bash
-   # AWS - check IAM role
-   aws iam get-role-policy --role-name mlflow-irsa-role --policy-name mlflow-s3-access
+   # AWS - check IAM role (managed policy mlops-platform-dev-mlflow-s3)
+   aws iam list-attached-role-policies --role-name mlops-platform-dev-mlflow
    ```
 
 3. **Wrong bucket name**
    ```bash
-   kubectl get configmap mlflow-config -n mlflow -o yaml
+   # The bucket comes from artifactRoot.s3.bucket
+   helm get values mlflow -n mlflow
    ```
 
 ---
@@ -310,8 +311,8 @@ kubectl describe workflow <workflow-name> -n argo
 
 1. **No executor service account**
    ```bash
-   kubectl get sa argo-workflows-server -n argo
-   # Create if missing
+   # Workflow pods run as argo:argo-workflow (IRSA)
+   kubectl get sa argo-workflow -n argo
    ```
 
 2. **Resource quota exceeded**
@@ -338,62 +339,19 @@ kubectl get configmap artifact-repositories -n argo -o yaml
 **Solutions**:
 
 1. **Artifact repository not configured**
-   ```yaml
-   # Ensure ConfigMap exists
-   apiVersion: v1
-   kind: ConfigMap
-   metadata:
-     name: artifact-repositories
-     namespace: argo
-   data:
-     default-artifact-repository: |
-       s3:
-         bucket: mlops-artifacts
-         endpoint: s3.amazonaws.com
-   ```
+
+   The repository is the platform MinIO (`mlpipeline` bucket, secret `minio-credentials`), defined in `infrastructure/kubernetes/argo-artifact-repository.yaml` and synced by ArgoCD. Check the ConfigMap exists and the `platform-baseline` Application is Synced.
 
 2. **Service account lacks storage access**
    ```bash
-   kubectl get sa argo-workflows-server -n argo -o yaml
+   kubectl get sa argo-workflow -n argo -o yaml
    ```
 
 ---
 
 ## Networking Issues
 
-### Ingress Not Working
-
-**Symptom**: External URL returns 404 or connection refused
-
-**Diagnosis**:
-```bash
-kubectl get ingress -A
-kubectl describe ingress <name> -n <namespace>
-
-# AWS - check ALB
-aws elbv2 describe-load-balancers --query 'LoadBalancers[*].[LoadBalancerName,State.Code]'
-```
-
-**Solutions**:
-
-1. **Target group unhealthy (AWS)**
-   ```bash
-   # Check health check path
-   kubectl get ingress <name> -n <namespace> -o yaml | grep healthcheck
-   ```
-
-2. **Certificate not ready**
-   ```bash
-   kubectl get certificates -A
-   kubectl describe certificate <name> -n <namespace>
-   ```
-
-3. **Ingress class mismatch**
-   ```yaml
-   # Ensure correct ingress class
-   spec:
-     ingressClassName: alb  # or nginx
-   ```
+There are no Ingress objects; UIs and services are reached with `kubectl port-forward` (see the `port-forward-*` Makefile targets).
 
 ### Pods Cannot Reach External Services
 
@@ -401,12 +359,12 @@ aws elbv2 describe-load-balancers --query 'LoadBalancers[*].[LoadBalancerName,St
 
 **Diagnosis**:
 ```bash
-kubectl run test-net --rm -it --image=busybox -- wget -O- https://google.com
+kubectl run test-net -n default --rm -it --image=busybox:1.36 -- wget -O- https://google.com
 ```
 
 **Solutions**:
 
-1. **Network policy blocking egress**
+1. **Network policy blocking egress** (only once enforcement is enabled)
    ```bash
    kubectl get networkpolicy -n <namespace>
    # Check egress rules
@@ -420,7 +378,7 @@ kubectl run test-net --rm -it --image=busybox -- wget -O- https://google.com
 
 3. **DNS not working**
    ```bash
-   kubectl run test-dns --rm -it --image=busybox -- nslookup google.com
+   kubectl run test-dns -n default --rm -it --image=busybox:1.36 -- nslookup google.com
    ```
 
 ---
@@ -477,7 +435,7 @@ kubectl describe clusterpolicy <policy-name>
 
 2. **Create policy exception**
    ```yaml
-   apiVersion: kyverno.io/v2alpha1
+   apiVersion: kyverno.io/v2
    kind: PolicyException
    metadata:
      name: allow-specific-resource
@@ -485,7 +443,7 @@ kubectl describe clusterpolicy <policy-name>
      exceptions:
      - policyName: require-resource-limits
        ruleNames:
-       - require-limits
+       - validate-resources
      match:
        any:
        - resources:
@@ -533,7 +491,7 @@ kubectl top pods -n <namespace>
 kubectl describe pod <pod-name> -n <namespace>
 # Look for: "Insufficient nvidia.com/gpu"
 
-kubectl get nodes -l nvidia.com/gpu=true
+kubectl get nodes -l node-type=gpu
 ```
 
 **Solutions**:
@@ -547,8 +505,8 @@ kubectl get nodes -l nvidia.com/gpu=true
 
 2. **GPU driver not installed**
    ```bash
-   # Check nvidia device plugin
-   kubectl get pods -n kube-system -l name=nvidia-device-plugin-ds
+   # Check nvidia device plugin (Helm release in kube-system, aws-platform/gpu.tf)
+   kubectl get ds -n kube-system -l app.kubernetes.io/name=nvidia-device-plugin
    ```
 
 3. **Missing tolerations**
@@ -578,9 +536,8 @@ kubectl describe node <node-name> | grep -A10 Conditions
    ```
 
 2. **Increase node disk size** (via Terraform)
-   ```hcl
-   disk_size = 100  # Increase from default
-   ```
+
+   Karpenter nodes get their root volume from the EC2NodeClass `volumeSize` in `modules/aws-platform/karpenter.tf`: `100Gi` for `gpu`, `50Gi` for `default`.
 
 3. **Clean up completed pods**
    ```bash
