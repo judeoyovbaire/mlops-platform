@@ -5,7 +5,7 @@
 #   (run from the repo root; the linux/amd64 target comes from [tool.uv.pip] in pyproject.toml)
 # CI fails if requirements.txt is stale relative to this file.
 --extra-index-url https://download.pytorch.org/whl/cpu
-transformers==4.51.3
+transformers==5.10.1
 huggingface_hub==0.30.2
 mlflow==2.21.3
 torch==2.6.0
