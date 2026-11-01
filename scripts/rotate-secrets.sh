@@ -1,6 +1,6 @@
 #!/bin/bash
 # Automated secret rotation script for MLOps Platform
-# Usage: ./rotate-secrets.sh [aws] [dev|prod] [secret-type]
+# Usage: ./rotate-secrets.sh [aws] [dev] [secret-type]
 # Secret types: mlflow-db, grafana-admin, argocd-admin, minio-root
 
 set -euo pipefail
@@ -125,7 +125,7 @@ case "${SECRET_TYPE}" in
     ;;
   *)
     echo "❌ Unknown secret type: ${SECRET_TYPE}"
-    echo "Usage: $0 [aws] [dev|prod] [mlflow-db|grafana-admin|argocd-admin|all]"
+    echo "Usage: $0 [aws] [dev] [mlflow-db|grafana-admin|argocd-admin|all]"
     exit 1
     ;;
 esac

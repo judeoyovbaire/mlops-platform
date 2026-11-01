@@ -75,4 +75,3 @@ workloads to reduce costs by 60-90%.
 
 Recommended budget thresholds:
 - Dev: Alert at 80% and 100% of expected monthly cost
-- Prod: Alert at 50%, 80%, and 100%; auto-notify on-call at 100%

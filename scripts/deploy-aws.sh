@@ -252,7 +252,7 @@ main() {
             echo ""
             echo "Examples:"
             echo "  $0 deploy                              # Deploy with defaults"
-            echo "  CLUSTER_NAME=prod $0 deploy            # Deploy with custom name"
+            echo "  CLUSTER_NAME=mlops-demo $0 deploy            # Deploy with custom name"
             echo "  $0 status                              # Check deployment status"
             echo "  $0 secrets                             # Show all passwords"
             echo "  $0 destroy                             # Tear down everything"

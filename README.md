@@ -268,7 +268,7 @@ mlops-platform/
 │   │   ├── modules/
 │   │   │   └── eks/            # AWS EKS module
 │   │   └── environments/
-│   │       └── aws/{dev,prod}/ # AWS deployment configurations
+│   │       └── aws/dev/        # AWS deployment configuration
 │   └── helm/
 │       ├── common/             # Shared Helm values
 │       └── aws/                # AWS-specific Helm values
@@ -391,13 +391,12 @@ terraform -chdir=infrastructure/terraform/bootstrap/aws output github_actions_ro
 - [x] **Observability** — Prometheus, Grafana, Loki, Alloy, Tempo, cost dashboards
 - [x] **Security** — PSA, Kyverno, Tetragon, External Secrets, network policies
 - [x] **CI/CD** — GitHub Actions with OIDC auth, plan/deploy, Trivy scanning
-- [x] **Production readiness** — dev/prod configs, backup, VPC Flow Logs, DR runbooks
+- [x] **Operational baseline** — backup, VPC Flow Logs, DR runbooks
 - [x] **Examples** — distributed training, data versioning, canary deploys, chaos testing, LLM inference
 - [x] **Pipelines** — Iris quickstart pipeline + [HuggingFace pretrained model pipeline](pipelines/pretrained/) with automated validation and MLflow registration
 
 ### In Progress / Future Enhancements
 - [ ] End-to-end verification — deploy → canary → auto-rollback demonstrated on a live cluster
-- [ ] GitOps-driven promotion — ArgoCD ApplicationSets for auto-deploy to dev, PR-based promotion to prod
 - [ ] LLM inference verified on live GPUs with committed throughput/latency/cost benchmarks
 - [ ] A/B testing framework for model comparison
 - [ ] Feature store integration (Feast)

@@ -36,13 +36,13 @@ The platform supports EKS versions 1.28 through 1.34 (with optional patch versio
 
 3. **Update Terraform variable:**
    ```hcl
-   # infrastructure/terraform/environments/dev/terraform.tfvars
+   # infrastructure/terraform/environments/aws/dev/terraform.tfvars
    cluster_version = "1.XX"
    ```
 
 4. **Plan and apply:**
    ```bash
-   cd infrastructure/terraform/environments/dev
+   cd infrastructure/terraform/environments/aws/dev
    terraform plan -out=upgrade.tfplan
    terraform apply upgrade.tfplan
    ```

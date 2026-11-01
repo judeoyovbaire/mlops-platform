@@ -268,7 +268,6 @@ When fully adopted, ArgoCD enables:
 - Version-controlled infrastructure
 - Automated sync and drift detection
 - Rollback capabilities
-- Multi-environment promotion
 
 ## Cloud Providers
 
@@ -276,7 +275,7 @@ The platform runs on AWS:
 
 | Cloud | Module         | Status             | Key Services                            |
 |-------|----------------|--------------------|-----------------------------------------|
-| AWS   | `modules/eks`  | **Production Ready** | EKS, S3, RDS, ALB, IRSA               |
+| AWS   | `modules/eks`  | **Verified (dev)**   | EKS, S3, RDS, ALB, IRSA               |
 
 The Kubernetes layer (KServe, MLflow, ArgoCD) is cloud-agnostic.
 

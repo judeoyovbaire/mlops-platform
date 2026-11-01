@@ -37,7 +37,7 @@ After applying, Terraform will output:
 
 ### 3. Update Dev Environment
 
-Copy the backend configuration from the output and update `environments/dev/main.tf`:
+Copy the backend configuration from the output and use it as `environments/aws/dev/backend.conf` (see `backend.conf.example`):
 
 ```hcl
 terraform {
@@ -58,7 +58,7 @@ terraform {
 If you have existing local state:
 
 ```bash
-cd infrastructure/terraform/environments/dev
+cd infrastructure/terraform/environments/aws/dev
 terraform init -migrate-state
 ```
 

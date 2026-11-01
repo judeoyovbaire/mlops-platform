@@ -256,7 +256,8 @@ variable "cluster_endpoint_public_access_cidrs" {
   # CI (kubectl from GitHub-hosted runners) needs endpoint access from
   # ever-changing runner IPs. Note AWS rejects RFC 1918 ranges in
   # publicAccessCidrs, so "restrict to the VPC" is not expressible here -
-  # production uses a private endpoint instead (see prod/variables.tf).
+  # a production cluster would use a private endpoint plus a CI path into
+  # the VPC (runner or bastion); this repo runs dev only (ADR-017).
   default = ["0.0.0.0/0"]
 }
 

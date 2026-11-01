@@ -3,9 +3,9 @@
 # This module owns the Kubernetes platform layer that is common to every AWS
 # environment (Karpenter pools, core Helm releases, Kyverno/Tetragon security,
 # monitoring stack, namespaces, storage classes, multi-tenancy quotas). It
-# exists to eliminate the dev/prod copy-paste that once shipped prod GPU nodes
-# tagged Environment: dev — environment differences are explicit inputs here,
-# not divergent file copies.
+# was created to end a dev/prod copy-paste that once shipped prod GPU nodes
+# tagged Environment: dev. The repo now runs dev only (ADR-017); environment
+# differences stay explicit inputs so a second environment needs no copies.
 
 variable "environment" {
   description = "Environment name (dev | prod) — used for tagging and labels"
@@ -65,7 +65,7 @@ variable "argocd_extra_values_files" {
   description = <<-EOT
     Extra ArgoCD Helm values files layered on top of the base values
     (absolute paths — build with abspath()/path.module in the caller).
-    Prod passes the HA overlay here.
+    Empty for dev; a hook for an HA overlay if another environment returns.
   EOT
   type        = list(string)
   default     = []
@@ -73,7 +73,7 @@ variable "argocd_extra_values_files" {
 
 variable "minio" {
   description = <<-EOT
-    MinIO sizing: dev = standalone/small (defaults), prod = distributed/HA.
+    MinIO sizing: standalone/small by default (dev).
     Limits are always rendered - the platform's own Kyverno
     require-resource-limits policy (Enforce, argo namespace in scope)
     admission-blocks limit-less pods.

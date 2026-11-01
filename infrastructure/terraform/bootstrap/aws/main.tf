@@ -795,9 +795,9 @@ output "aws_account_id" {
 
 # Output the backend configuration for copy-paste
 output "backend_config" {
-  description = "Backend configuration to add to environments/dev/main.tf"
+  description = "Backend configuration to add to environments/aws/dev/providers.tf"
   value       = <<-EOT
-    # Add this to your terraform block in environments/dev/main.tf:
+    # Add this to your terraform block in environments/aws/dev/providers.tf:
     backend "s3" {
       bucket         = "${aws_s3_bucket.terraform_state.id}"
       key            = "mlops-platform/dev/terraform.tfstate"

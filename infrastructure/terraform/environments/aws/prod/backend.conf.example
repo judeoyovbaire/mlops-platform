@@ -1,9 +1,0 @@
-# Backend configuration for AWS S3 remote state (prod)
-# Copy this file to backend.conf and update with your bootstrap outputs:
-#   terraform -chdir=infrastructure/terraform/bootstrap/aws output
-
-bucket         = "mlops-platform-tfstate-<YOUR_ACCOUNT_ID>"
-key            = "mlops-platform/prod/terraform.tfstate" # must match ci-cd.yaml
-region         = "eu-west-1"
-encrypt        = true
-dynamodb_table = "mlops-platform-terraform-locks"

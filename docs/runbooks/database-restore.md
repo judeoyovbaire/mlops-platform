@@ -15,19 +15,19 @@ This runbook provides step-by-step procedures for restoring MLflow database back
 ```bash
 # Restore to a specific point in time
 aws rds restore-db-instance-to-point-in-time \
-  --source-db-instance-identifier mlops-platform-prod-mlflow \
-  --target-db-instance-identifier mlops-platform-prod-mlflow-restored \
+  --source-db-instance-identifier mlops-platform-dev-mlflow \
+  --target-db-instance-identifier mlops-platform-dev-mlflow-restored \
   --restore-time 2024-01-15T10:00:00Z \
   --db-instance-class db.t3.small
 
 # Wait for restore to complete
 aws rds wait db-instance-available \
-  --db-instance-identifier mlops-platform-prod-mlflow-restored
+  --db-instance-identifier mlops-platform-dev-mlflow-restored
 
 # Update MLflow to use restored database
 kubectl set env deployment/mlflow \
   -n mlflow \
-  MLFLOW_BACKEND_STORE_URI="postgresql://mlflow:${PASSWORD}@mlops-platform-prod-mlflow-restored.xxxxx.rds.amazonaws.com:5432/mlflow"
+  MLFLOW_BACKEND_STORE_URI="postgresql://mlflow:${PASSWORD}@mlops-platform-dev-mlflow-restored.xxxxx.rds.amazonaws.com:5432/mlflow"
 ```
 
 ### From Manual Snapshot
@@ -35,18 +35,18 @@ kubectl set env deployment/mlflow \
 ```bash
 # List available snapshots
 aws rds describe-db-snapshots \
-  --db-instance-identifier mlops-platform-prod-mlflow \
+  --db-instance-identifier mlops-platform-dev-mlflow \
   --query 'DBSnapshots[*].[DBSnapshotIdentifier,SnapshotCreateTime]' \
   --output table
 
 # Restore from snapshot
 aws rds restore-db-instance-from-db-snapshot \
-  --db-instance-identifier mlops-platform-prod-mlflow-restored \
-  --db-snapshot-identifier mlops-platform-prod-mlflow-snapshot-20240115
+  --db-instance-identifier mlops-platform-dev-mlflow-restored \
+  --db-snapshot-identifier mlops-platform-dev-mlflow-snapshot-20240115
 
 # Wait for restore
 aws rds wait db-instance-available \
-  --db-instance-identifier mlops-platform-prod-mlflow-restored
+  --db-instance-identifier mlops-platform-dev-mlflow-restored
 ```
 
 ### From AWS Backup
@@ -54,15 +54,15 @@ aws rds wait db-instance-available \
 ```bash
 # List recovery points
 aws backup list-recovery-points-by-backup-vault \
-  --backup-vault-name mlops-platform-prod-mlops-backup-vault \
-  --resource-arn arn:aws:rds:region:account:db:mlops-platform-prod-mlflow
+  --backup-vault-name mlops-platform-dev-mlops-backup-vault \
+  --resource-arn arn:aws:rds:region:account:db:mlops-platform-dev-mlflow
 
 # Restore from recovery point
 aws backup start-restore-job \
   --recovery-point-arn arn:aws:rds:region:account:snapshot:recovery-point-id \
   --iam-role-arn arn:aws:iam::account:role/backup-role \
   --resource-type RDS \
-  --metadata dbInstanceIdentifier=mlops-platform-prod-mlflow-restored
+  --metadata dbInstanceIdentifier=mlops-platform-dev-mlflow-restored
 ```
 
 ## Post-Restore Steps
@@ -106,15 +106,13 @@ aws backup start-restore-job \
 Run restore tests quarterly:
 
 ```bash
-# Create test restore
-./scripts/backup/test-restore.sh aws prod
-
-# Verify data integrity
-./scripts/backup/verify-restore.sh aws prod
-
-# Clean up test instance
-./scripts/backup/cleanup-test-restore.sh aws prod
+# Check backup configuration and recent recovery points
+./scripts/backup/verify-backups.sh aws dev
 ```
+
+Then exercise a real restore with the point-in-time steps above against a
+scratch instance identifier, verify MLflow can read it, and delete the
+scratch instance.
 
 ## Troubleshooting
 

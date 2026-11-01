@@ -30,9 +30,8 @@ argocd app get platform-baseline   # if the CLI is configured
 
 ## Design notes
 
-- **One Application, not app-of-apps (yet).** A single environment with a
-  single synced path does not need the indirection; an ApplicationSet per
-  environment is the natural next step when prod diverges from dev.
+- **One Application, not app-of-apps.** A single environment (ADR-017) with a
+  single synced path does not need the indirection.
 - **`ServerSideApply=true`** because PrometheusRule and dashboard ConfigMaps
   exceed client-side-apply annotation size limits.
 - **`CreateNamespace=false`** — namespaces are owned by Terraform; ArgoCD

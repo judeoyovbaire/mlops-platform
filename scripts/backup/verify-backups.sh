@@ -1,6 +1,6 @@
 #!/bin/bash
 # Verify AWS database backups (RDS and AWS Backup)
-# Usage: ./verify-backups.sh [aws] [dev|prod]
+# Usage: ./verify-backups.sh [aws] [dev]
 
 set -euo pipefail
 
@@ -65,7 +65,7 @@ case "${CLOUD}" in
 
   *)
     echo "❌ Unknown cloud provider: ${CLOUD}"
-    echo "Usage: $0 [aws] [dev|prod]"
+    echo "Usage: $0 [aws] [dev]"
     exit 1
     ;;
 esac

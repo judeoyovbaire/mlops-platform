@@ -218,7 +218,7 @@ State is stored in S3 with:
 
    a. **Ensure Terraform state is available:**
    ```bash
-   cd infrastructure/terraform/environments/dev
+   cd infrastructure/terraform/environments/aws/dev
    terraform init
    terraform plan  # Verify state
    ```

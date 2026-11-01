@@ -88,47 +88,6 @@
             ]
         },
         {
-            "file": "/environments/aws/prod/secrets.tf",
-            "findings": [
-                {
-                    "resource": "aws_secretsmanager_secret.argocd_admin_password",
-                    "check_ids": [
-                        "CKV2_AWS_57"
-                    ]
-                },
-                {
-                    "resource": "aws_secretsmanager_secret.minio_root_password",
-                    "check_ids": [
-                        "CKV2_AWS_57"
-                    ]
-                },
-                {
-                    "resource": "aws_secretsmanager_secret.mlflow_db_password",
-                    "check_ids": [
-                        "CKV2_AWS_57"
-                    ]
-                },
-                {
-                    "resource": "aws_secretsmanager_secret.slack_webhook_url",
-                    "check_ids": [
-                        "CKV2_AWS_57"
-                    ]
-                },
-                {
-                    "resource": "aws_ssm_parameter.cluster_endpoint",
-                    "check_ids": [
-                        "CKV2_AWS_34"
-                    ]
-                },
-                {
-                    "resource": "aws_ssm_parameter.cluster_name_param",
-                    "check_ids": [
-                        "CKV2_AWS_34"
-                    ]
-                }
-            ]
-        },
-        {
             "file": "/modules/eks/database.tf",
             "findings": [
                 {
