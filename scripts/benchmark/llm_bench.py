@@ -22,6 +22,7 @@ Usage:
 
 import argparse
 import json
+import os
 import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -48,7 +49,17 @@ class RequestResult:
     error: str | None = None
 
 
-def one_request(base_url: str, model: str, prompt: str, max_tokens: int) -> RequestResult:
+def request_headers(api_key: str | None) -> dict[str, str]:
+    """JSON headers, plus a Bearer token when the endpoint runs with --api-key."""
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    return headers
+
+
+def one_request(
+    base_url: str, model: str, prompt: str, max_tokens: int, api_key: str | None = None
+) -> RequestResult:
     """Streamed chat completion; TTFT = first SSE data chunk with content."""
     body = json.dumps(
         {
@@ -63,7 +74,7 @@ def one_request(base_url: str, model: str, prompt: str, max_tokens: int) -> Requ
     req = urllib.request.Request(
         f"{base_url}/v1/chat/completions",
         data=body,
-        headers={"Content-Type": "application/json"},
+        headers=request_headers(api_key),
     )
     start = time.monotonic()
     ttft = None
@@ -133,12 +144,19 @@ def cost_per_mtok(aggregate_tokens_per_s: float, gpu_hourly_usd: float) -> float
 
 
 def run_level(
-    base_url: str, model: str, concurrency: int, n_requests: int, max_tokens: int
+    base_url: str,
+    model: str,
+    concurrency: int,
+    n_requests: int,
+    max_tokens: int,
+    api_key: str | None = None,
 ) -> dict:
     prompts = [PROMPTS[i % len(PROMPTS)] for i in range(n_requests)]
     start = time.monotonic()
     with ThreadPoolExecutor(max_workers=concurrency) as pool:
-        results = list(pool.map(lambda p: one_request(base_url, model, p, max_tokens), prompts))
+        results = list(
+            pool.map(lambda p: one_request(base_url, model, p, max_tokens, api_key), prompts)
+        )
     wall = time.monotonic() - start
     level = aggregate(results, wall)
     level["concurrency"] = concurrency
@@ -184,12 +202,22 @@ def main() -> None:
     parser.add_argument("--output-json", default=None)
     parser.add_argument("--output-md", default=None)
     parser.add_argument("--date", default=None, help="ISO date stamp for the report")
+    parser.add_argument(
+        "--api-key",
+        default=os.environ.get("VLLM_API_KEY"),
+        help=(
+            "Bearer token for the endpoint (default: $VLLM_API_KEY; prefer the env var, "
+            "a flag value shows in ps and shell history). Never written to output."
+        ),
+    )
     args = parser.parse_args()
 
     levels = []
     for c in [int(x) for x in args.concurrency.split(",")]:
         print(f"concurrency={c}: {args.requests_per_level} requests...", flush=True)
-        level = run_level(args.base_url, args.model, c, args.requests_per_level, args.max_tokens)
+        level = run_level(
+            args.base_url, args.model, c, args.requests_per_level, args.max_tokens, args.api_key
+        )
         level["cost_per_mtok_usd"] = cost_per_mtok(
             level["aggregate_tokens_per_s"], args.gpu_hourly_usd
         )

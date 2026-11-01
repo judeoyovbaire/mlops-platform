@@ -37,6 +37,14 @@ bandwidth and full FlashAttention-2 support - benchmarks stay representative.
 ## Run a benchmark session
 
 ```bash
+# The OpenAI routes (/v1/*) require a Bearer token (vLLM --api-key via
+# VLLM_API_KEY). Without the Secret the pods sit in CreateContainerConfigError.
+export VLLM_API_KEY=$(openssl rand -hex 24)
+kubectl create secret generic vllm-api-key -n mlops \
+  --from-literal=api-key="$VLLM_API_KEY" --dry-run=client -o yaml | kubectl apply -f -
+# In a new shell, recover the key instead of generating a new one:
+#   export VLLM_API_KEY=$(kubectl get secret vllm-api-key -n mlops -o jsonpath='{.data.api-key}' | base64 -d)
+
 kubectl apply -f kserve-vllm.yaml
 kubectl wait --for=condition=Ready inferenceservice/llm-qwen-bf16 -n mlops --timeout=900s
 # node ~2 min (spot), image pull + model download + load ~5-8 min
@@ -44,6 +52,7 @@ kubectl wait --for=condition=Ready inferenceservice/llm-qwen-bf16 -n mlops --tim
 SVC=$(kubectl get svc -n mlops -l serving.kserve.io/inferenceservice=llm-qwen-bf16 -o jsonpath='{.items[0].metadata.name}')
 kubectl port-forward -n mlops svc/$SVC 8080:80 &
 
+# llm_bench.py reads the token from $VLLM_API_KEY (or pass --api-key)
 python ../../scripts/benchmark/llm_bench.py \
   --base-url http://localhost:8080 --model qwen25-7b \
   --concurrency 1,4,8,16 --requests-per-level 24 \
@@ -56,6 +65,12 @@ The harness measures TTFT p50/p95, end-to-end latency, per-request decode
 speed, aggregate throughput (the continuous-batching payoff), and derives
 **$/Mtok** from the spot rate - the number that makes GPU serving
 economics concrete. Results are committed under `results/`.
+
+The key gates `/v1/*` only: vLLM also serves `/invocations`, `/pause` and
+`/abort_requests` without auth (its `docs/usage/security.md`), so the
+endpoint stays ClusterIP-only and is reached by port-forward. Prefix caching
+is on by default and the prompts cycle, so TTFT after the first pass of each
+level includes cache hits; read p50 TTFT with that in mind.
 
 ## Session economics (measured 2026-07-14)
 
@@ -70,5 +85,6 @@ economics concrete. Results are committed under `results/`.
 
 ```bash
 kubectl delete -f kserve-vllm.yaml
+kubectl delete secret vllm-api-key -n mlops
 # node consolidates away within ~1 minute of the last GPU pod terminating
 ```
