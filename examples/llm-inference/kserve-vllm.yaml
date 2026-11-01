@@ -16,9 +16,15 @@
 # - /dev/shm sized for vLLM; HF cache on emptyDir backed by the node's
 #   100Gi gp3; ungated models, no HF token needed
 #
+# v0.32.0 notes: the default image is built on CUDA 13.0 and needs NVIDIA
+# driver >= 580 (the pinned AL2023 NVIDIA AMI v20261031 ships 580); the
+# `-cu129` tags are the fallback. --quantization=awq maps to vLLM's
+# auto-AWQ config (Marlin kernels on the A10G).
+#
 # Prerequisites:
-# - spot-G quota >= 4 vCPUs (JDH-375; 8 to run both at once)
+# - spot-G quota >= 4 vCPUs (8 to run both at once)
 # - nvidia-device-plugin (installed by the platform - aws-platform/gpu.tf)
+# - Secret mlops/vllm-api-key (key api-key), see the README
 #
 # Usage: kubectl apply -f kserve-vllm.yaml (node ~2 min, model pull + load
 # ~5-8 min). Benchmark: scripts/benchmark/llm_bench.py (see README).
@@ -43,7 +49,7 @@ spec:
     timeout: 1800
     containers:
       - name: kserve-container
-        image: vllm/vllm-openai:v0.11.0
+        image: vllm/vllm-openai:v0.32.0
         args:
           - --model=Qwen/Qwen2.5-7B-Instruct
           - --revision=a09a35458c702b33eeacc393d103063234e8bc28
@@ -52,6 +58,20 @@ spec:
           - --gpu-memory-utilization=0.90
           - --port=8080
           - --served-model-name=qwen25-7b
+          # Cap concurrent sequences (vLLM production guidance); above the
+          # benchmark's top concurrency of 16, so it never throttles the run.
+          - --max-num-seqs=32
+        env:
+          # Bearer token for /v1/*, /v2/*, /inference and /cohere only. vLLM
+          # leaves /health and /metrics open (probes, scraping) but also
+          # /invocations, /pause, /abort_requests and /tokenize (vLLM
+          # docs/usage/security.md: "do not rely exclusively on --api-key").
+          # Keep the service ClusterIP-only. Create the Secret first (README).
+          - name: VLLM_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: vllm-api-key
+                key: api-key
         ports:
           - containerPort: 8080
             protocol: TCP
@@ -76,19 +96,29 @@ spec:
             mountPath: /dev/shm
           - name: hf-cache
             mountPath: /root/.cache/huggingface
+        # The server only listens once the engine is ready: model download
+        # (~15 GB), weight load, torch.compile and CUDA graph capture. The
+        # startup probe allows 15 min for that on a cold spot node, and holds
+        # off liveness, which would otherwise restart the pod mid-load (each
+        # restart re-downloads into an empty emptyDir cache).
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 90
         readinessProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 120
           periodSeconds: 10
           timeoutSeconds: 5
-          failureThreshold: 60
+          failureThreshold: 3
         livenessProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 300
           periodSeconds: 30
           timeoutSeconds: 5
           failureThreshold: 3
@@ -128,7 +158,7 @@ spec:
     timeout: 1800
     containers:
       - name: kserve-container
-        image: vllm/vllm-openai:v0.11.0
+        image: vllm/vllm-openai:v0.32.0
         args:
           - --model=Qwen/Qwen2.5-7B-Instruct-AWQ
           - --revision=b25037543e9394b818fdfca67ab2a00ecc7dd641
@@ -138,6 +168,18 @@ spec:
           - --gpu-memory-utilization=0.90
           - --port=8080
           - --served-model-name=qwen25-7b-awq
+          - --max-num-seqs=32
+        env:
+          # Bearer token for /v1/*, /v2/*, /inference and /cohere only. vLLM
+          # leaves /health and /metrics open (probes, scraping) but also
+          # /invocations, /pause, /abort_requests and /tokenize (vLLM
+          # docs/usage/security.md: "do not rely exclusively on --api-key").
+          # Keep the service ClusterIP-only. Create the Secret first (README).
+          - name: VLLM_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: vllm-api-key
+                key: api-key
         ports:
           - containerPort: 8080
             protocol: TCP
@@ -162,19 +204,29 @@ spec:
             mountPath: /dev/shm
           - name: hf-cache
             mountPath: /root/.cache/huggingface
+        # The server only listens once the engine is ready: model download
+        # (~15 GB), weight load, torch.compile and CUDA graph capture. The
+        # startup probe allows 15 min for that on a cold spot node, and holds
+        # off liveness, which would otherwise restart the pod mid-load (each
+        # restart re-downloads into an empty emptyDir cache).
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 90
         readinessProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 120
           periodSeconds: 10
           timeoutSeconds: 5
-          failureThreshold: 60
+          failureThreshold: 3
         livenessProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 300
           periodSeconds: 30
           timeoutSeconds: 5
           failureThreshold: 3

@@ -192,7 +192,7 @@ The platform includes support for LLM inference using vLLM on GPU nodes:
 - OpenAI-compatible API endpoints
 - GPU nodes scale to zero via Karpenter consolidation; the InferenceService itself keeps at least one replica (RawDeployment has no scale-to-zero)
 
-**Deployment:** [`examples/llm-inference/kserve-vllm.yaml`](../examples/llm-inference/kserve-vllm.yaml) runs `vllm/vllm-openai:v0.11.0` with two configurations, each sized for one g5.xlarge (A10G 24GB):
+**Deployment:** [`examples/llm-inference/kserve-vllm.yaml`](../examples/llm-inference/kserve-vllm.yaml) runs `vllm/vllm-openai:v0.32.0` with two configurations, each sized for one g5.xlarge (A10G 24GB):
 
 | InferenceService | Model | Precision |
 |------------------|-------|-----------|
@@ -667,7 +667,7 @@ Current versions deployed by the platform:
 | DCGM Exporter | 4.8.4 (chart) | GPU metrics |
 | Alloy | 1.15.0 (chart) | Log shipper |
 | NVIDIA Device Plugin | 0.20.1 (chart) | Exposes `nvidia.com/gpu` |
-| vLLM | v0.11.0 | High-throughput LLM inference |
+| vLLM | v0.32.0 | High-throughput LLM inference (examples/llm-inference) |
 
 On Kubernetes 1.37 only External Secrets 2.14 is officially tested upstream. cert-manager 1.21 lists 1.33-1.36 and Kyverno 1.19 lists 1.33-1.35; no newer release exists (inside the Kyverno cap), so the first 1.37 session is their test. 1.36 is the fallback.
 

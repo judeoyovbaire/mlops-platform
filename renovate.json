@@ -56,6 +56,17 @@
       "matchStrings": [
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+registryUrl=(?<registryUrl>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+extractVersion=(?<extractVersion>\\S+))?\\s*\\n\\s*[\\w-]+\\s*[=:]\\s*\"?(?<currentValue>[^\"\\s]+)\"?"
       ]
+    },
+    {
+      "customType": "regex",
+      "description": "vLLM image in the LLM inference examples (not a Helm value, so no other manager sees it). Plain release tags only; -cuXXX variants stay manual.",
+      "managerFilePatterns": [
+        "/^examples/llm-inference/[^/]+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "image:\\s*(?<depName>vllm/vllm-openai):(?<currentValue>v\\d+\\.\\d+\\.\\d+)\\s"
+      ],
+      "datasourceTemplate": "docker"
     }
   ],
   "packageRules": [
@@ -216,6 +227,17 @@
         "tempo"
       ],
       "allowedVersions": "<3.0.0"
+    },
+    {
+      "description": "vLLM 0.x minors are breaking (v0.32 changed CORS, max_tokens and the transformers pin) and CI never runs vLLM. Never automerge; validate on a GPU session first.",
+      "matchPackageNames": [
+        "vllm/vllm-openai"
+      ],
+      "automerge": false,
+      "labels": [
+        "dependencies",
+        "gpu-session-required"
+      ]
     },
     {
       "description": "Manual merge only while the first Renovate batches are observed (JDH-406, decided 2026-11-01). Keyed on update type, not package name, so it also catches lockFileMaintenance PRs (no packageName) that :automergeMinor would otherwise merge. Must stay the LAST rule; delete it to re-enable the automerge rules above.",

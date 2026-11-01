@@ -5,7 +5,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "benchmark"))
 
-from llm_bench import RequestResult, aggregate, cost_per_mtok, percentile, to_markdown
+from llm_bench import (
+    RequestResult,
+    aggregate,
+    cost_per_mtok,
+    percentile,
+    request_headers,
+    to_markdown,
+)
 
 
 class TestPercentile:
@@ -77,3 +84,28 @@ class TestMarkdown:
         assert "qwen25-7b" in md
         assert "| 1 | 24/0 |" in md
         assert "$/Mtok" in md
+
+
+class TestRequestHeaders:
+    def test_no_key_sends_no_authorization(self):
+        assert request_headers(None) == {"Content-Type": "application/json"}
+        assert "Authorization" not in request_headers("")
+
+    def test_key_sends_bearer_token(self):
+        assert request_headers("s3cret")["Authorization"] == "Bearer s3cret"
+
+    def test_one_request_sends_the_token(self, monkeypatch):
+        import io
+
+        import llm_bench
+
+        seen = {}
+
+        def fake_urlopen(req, timeout):
+            seen["auth"] = req.get_header("Authorization")
+            return io.BytesIO(b'data: {"usage": {"completion_tokens": 3}}\ndata: [DONE]\n')
+
+        monkeypatch.setattr(llm_bench.urllib.request, "urlopen", fake_urlopen)
+        result = llm_bench.one_request("http://x", "m", "hi", 8, api_key="s3cret")
+        assert seen["auth"] == "Bearer s3cret"
+        assert result.ok and result.output_tokens == 3
