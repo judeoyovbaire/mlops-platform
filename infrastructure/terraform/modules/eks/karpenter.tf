@@ -38,11 +38,14 @@ resource "aws_iam_policy" "karpenter_controller" {
         Effect = "Allow"
         Action = [
           "ec2:DescribeAvailabilityZones",
+          "ec2:DescribeCapacityReservations",
           "ec2:DescribeImages",
           "ec2:DescribeInstances",
+          "ec2:DescribeInstanceStatus",
           "ec2:DescribeInstanceTypeOfferings",
           "ec2:DescribeInstanceTypes",
           "ec2:DescribeLaunchTemplates",
+          "ec2:DescribePlacementGroups",
           "ec2:DescribeSecurityGroups",
           "ec2:DescribeSubnets",
           "ec2:DescribeSpotPriceHistory"

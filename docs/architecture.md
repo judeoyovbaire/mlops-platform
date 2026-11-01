@@ -645,13 +645,13 @@ Current versions deployed by the platform:
 
 | Component | Version | Notes |
 |-----------|---------|-------|
-| Kubernetes | 1.34 | EKS |
+| Kubernetes | 1.37 | EKS (1.36 is the fallback) |
 | MLflow | 3.16.0 (chart 1.11.7) | Helm chart with S3 artifacts, RDS backend |
 | KServe | 0.16.0 | CNCF Incubating, RawDeployment mode |
 | Argo Workflows | 0.47.3 (chart) | ML pipeline execution engine |
 | Argo Rollouts | 2.39.1 (chart) | AnalysisRun engine only (ADR-016) |
 | Argo Events | 2.4.14 (chart) | Event bus |
-| Karpenter (AWS) | 1.8.3 | GPU autoscaling with SPOT support |
+| Karpenter (AWS) | 1.15.1 | GPU autoscaling with SPOT support |
 | ArgoCD | 10.11.6 | Chart deploys Argo CD v3.5.6 |
 | AWS ALB Controller | 1.17.1 | Installed; no Ingress objects created |
 | cert-manager | 1.19.3 | TLS certificate management |
