@@ -654,6 +654,19 @@ resource "aws_iam_policy" "terraform_services" {
         Resource = "*"
       },
       {
+        # AWS-managed keys carry no Project tag, and aws/secretsmanager only
+        # allows DescribeKey through Secrets Manager itself, so a call made
+        # via RDS falls to IAM. RDS describes aws/secretsmanager as the caller
+        # for managed master passwords; the 2026-11-01 dry run failed with
+        # KMSKeyNotAccessibleFault without this. Metadata only. (Other uses of
+        # AWS-managed keys go through their service and are allowed by the
+        # keys' own policies, so no CreateGrant is added here.)
+        Sid      = "KMSDescribeAnyKey"
+        Effect   = "Allow"
+        Action   = ["kms:DescribeKey"]
+        Resource = "arn:aws:kms:*:${data.aws_caller_identity.current.account_id}:key/*"
+      },
+      {
         Sid    = "CloudWatchLogsManagement"
         Effect = "Allow"
         Action = ["logs:*"]

@@ -46,6 +46,12 @@ resource "aws_db_instance" "mlflow" {
 
   # Use RDS-managed secrets via AWS Secrets Manager (no plaintext passwords in Terraform state)
   manage_master_user_password = true
+  # Encrypt the managed secret with the platform key, not aws/secretsmanager:
+  # the deploy role may only use Project-tagged keys (JDH-404), and RDS needs
+  # the caller to describe aws/secretsmanager otherwise (2026-11-01 dry run:
+  # KMSKeyNotAccessibleFault). Fixed for the life of the instance: RDS cannot
+  # change this key once it manages the secret.
+  master_user_secret_kms_key_id = var.enable_kms_encryption ? aws_kms_key.mlops[0].arn : null
 
   db_subnet_group_name   = aws_db_subnet_group.mlflow.name
   vpc_security_group_ids = [aws_security_group.mlflow_rds.id]
@@ -68,6 +74,8 @@ resource "aws_db_instance" "mlflow" {
 
   # Performance settings
   performance_insights_enabled = true
+  # Keep all RDS encryption on the platform key. Cannot be changed once set.
+  performance_insights_kms_key_id = var.enable_kms_encryption ? aws_kms_key.mlops[0].arn : null
 
   tags = var.tags
 }
