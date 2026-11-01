@@ -88,10 +88,6 @@ server:
       cpu: 200m
       memory: 256Mi
 
-  # Extra arguments
-  extraArgs:
-    - --auth-mode=client
-
 # Artifact repository configuration
 artifactRepository:
   # Use MinIO for S3-compatible artifact storage
@@ -109,18 +105,36 @@ artifactRepository:
       name: minio
       key: rootPassword
 
-# Workflow templates
-workflowTemplates:
-  # Enable workflow templates CRD
-  enabled: true
-
-# Use emissary executor (recommended)
-# Tag should match Argo Workflows version (chart 0.47.3 = app v3.7.x)
+# No executor image override: the chart sets argoexec to its own app version
+# (chart 2.0.x = v4.1.x). A hand-pinned tag drifts behind the controller.
+# Explicit executor (wait/init) resources so require-resource-limits never
+# depends on the argo-limits LimitRange, which ArgoCD syncs after Terraform.
+# Same values as that LimitRange's defaults.
 executor:
   image:
-    registry: quay.io
-    repository: argoproj/argoexec
-    tag: v3.7.2
+    # The chart otherwise inherits images.pullPolicy (Always) once an executor
+    # block exists; the tag is immutable, so pull it once per node.
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Chart 2.x installs the full CRDs from a pre-install/pre-upgrade hook Job.
+# require-resource-limits (Kyverno, Enforce) covers the argo namespace, so
+# the Job needs limits or Helm's install fails at admission.
+crds:
+  upgradeJob:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
 
 # RBAC configuration
 createAggregateRoles: true
