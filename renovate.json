@@ -247,6 +247,23 @@
       "allowedVersions": "<1.38.0"
     },
     {
+      "description": "pillow 13 requires Python >=3.11 and every image is on 3.10 (serving-runtime contract); on 3.10 the resolver drops pillow by downgrading matplotlib to 3.2.2 (closed #102). Lift with the move off Python 3.10.",
+      "matchPackageNames": [
+        "pillow"
+      ],
+      "allowedVersions": "<13.0.0"
+    },
+    {
+      "description": "transformers 5.x needs huggingface_hub>=1.5 and the pretrained pipeline migration (JDH-412); #106 was unresolvable. Lift in JDH-412.",
+      "matchPackageNames": [
+        "transformers"
+      ],
+      "matchFileNames": [
+        "pipelines/pretrained/**"
+      ],
+      "allowedVersions": "<5.0.0"
+    },
+    {
       "description": "Manual merge only while the first Renovate batches are observed (JDH-406, decided 2026-11-01). Keyed on update type, not package name, so it also catches lockFileMaintenance PRs (no packageName) that :automergeMinor would otherwise merge. Must stay the LAST rule; delete it to re-enable the automerge rules above.",
       "matchUpdateTypes": [
         "major",
