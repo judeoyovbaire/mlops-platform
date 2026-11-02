@@ -3,8 +3,8 @@
 Every GPU phase is a burst session: build the platform, measure, commit the
 evidence, and tear it down the same day. This runbook is the repeatable
 procedure on the project's own account (183590992229, eu-west-1). It was
-written from the first dry run on 2026-11-01, whose timings and findings are
-recorded at the end.
+written from the first dry run on 2026-11-01 and confirmed by a clean cycle the
+same evening; both are recorded at the end.
 
 **Requires** PRs #121, #122 and #123 on `main` (the dry-run fixes; #123 moves
 Argo artifacts to S3 and fixes MLflow memory). Without them the deploy fails as
@@ -29,6 +29,8 @@ under 4 hours, and treat the teardown as the real stop.
 ## Before the session
 
 1. **Sign in.** `aws sso login --profile mlops`. Use only the `mlops` profile.
+   The session lasts about an hour, so sign in again before the teardown
+   (see [Teardown](#teardown)).
 2. **Network.** The EKS API endpoint is not reachable through Zscaler (every
    request is reset). Turn Zscaler off for the session. Without cluster API
    access, the teardown cannot remove the Helm and Kubernetes resources.
@@ -68,15 +70,15 @@ gh run watch <run-id>
 
 What the run does, after the validation jobs it waits on:
 
-| Step | What happens | 2026-11-01 |
+| Step | What happens | First dry run |
 |---|---|---|
 | Terraform Plan (AWS) | Plans only `module.eks` while no cluster exists | about 1 min |
 | Stage 1 (EKS) | VPC, NAT, EKS 1.37, managed node groups, RDS, S3, KMS, IRSA, access entries | VPC and EKS 12 min; RDS 8 min more (the first attempt stopped at RDS) |
 | Stage 2 (Kubernetes) | Controllers via Helm, then the ArgoCD `platform-baseline` Application and its gate (Synced and Healthy, capped at about 21 minutes), then MLflow | 17 min, about 11 of them the gate waiting on an OOMKilled ArgoCD controller; expect 6 to 8 min with #122 |
 
-From dispatch, expect roughly 30 to 45 minutes: the validation jobs, about
-20 minutes for Stage 1 and under 10 for Stage 2. A wait behind a push run
-comes on top.
+The clean cycle took 33 minutes from dispatch: about 13 for queueing and the
+validation jobs, 11 for Stage 1 and 7.5 for Stage 2. Allow 45 minutes; a wait
+behind a push run comes on top.
 
 ### Cancel or recover
 
@@ -121,6 +123,29 @@ Your IAM Identity Center admin role has a cluster-admin access entry
    is a sizing problem; on 2026-11-01 the Loki chunks cache (9830Mi request)
    pulled in an on-demand r6a.large (JDH-418).
 
+### Open checks for the next session
+
+Items the follow-up tickets left for a live cluster. The clean cycle covered
+the platform itself (the four checks above and an S3 artifact smoke workflow);
+none of these were checked yet.
+
+- [ ] **Classic loop end to end** on S3 artifacts (#123): training workflow,
+      champion registered in MLflow, `deploy-model` green.
+- [ ] **JDH-417:** is Kyverno's metrics endpoint scraped, and does
+      `kyverno_policy_results_total` have the labels the alert uses?
+- [ ] **JDH-418:** `loki-chunks-cache` scheduled without an extra Karpenter
+      node; one log line arrives in Loki once (Alloy duplication).
+- [ ] **JDH-419:** the pipeline alert metrics exist in Prometheus.
+- [ ] **JDH-420:** labels on a live predictor pod, for the NetworkPolicy
+      selectors; the baseline's `default-networkpolicy` generated a policy in
+      a new namespace.
+- [ ] **Prometheus targets:** list targets that are down
+      (`kubectl -n monitoring port-forward svc/prometheus-operated 9090`,
+      then `/targets`).
+- [ ] **GPU sessions only:** JDH-399 (DCGM on the Karpenter pool, vLLM
+      `/metrics` scraped, GPU alerts on real series) and JDH-421 (vLLM v0.32
+      starts on g5).
+
 ## Evidence
 
 Commit results on a branch and open a PR before teardown (`main` rejects
@@ -133,8 +158,15 @@ AnalysisRun YAML go under `docs/evidence/`.
 There is no CI destroy action; the teardown runs locally (or in CloudShell)
 with cluster API access and Terraform 1.17.1.
 
+Right before the teardown, sign in again and confirm cluster access. Both go
+stale during a session: the SSO session lasts about an hour, and Zscaler may
+have come back on.
+
 ```bash
-export AWS_PROFILE=mlops AWS_REGION=eu-west-1
+aws sso login --profile mlops
+export AWS_PROFILE=mlops AWS_REGION=eu-west-1 KUBECONFIG=$(mktemp)
+aws eks update-kubeconfig --name mlops-platform-dev --kubeconfig "$KUBECONFIG"
+kubectl get nodes          # must answer, not "connection reset by peer"
 cd infrastructure/terraform/environments/aws/dev
 terraform init -reconfigure \
   -backend-config="bucket=mlops-platform-tfstate-183590992229" \
@@ -148,8 +180,14 @@ cd -
 
 Re-initialise first: an environment directory initialised with
 `-backend=false` (offline validation does this) destroys an empty local state.
-See [teardown.md](teardown.md) for what the script does. It took 15 minutes on
-2026-11-01, including six orphaned EBS volumes from persistent volume claims;
+See [teardown.md](teardown.md) for what the script does. Its preflight stops
+before changing anything if Terraform cannot read the state (an expired SSO
+token), if the cluster exists but the state is empty, or if the cluster API
+does not answer. If `terraform destroy` fails twice, the script exits non-zero
+without its final sweep and verification; fix the cause and run it again.
+
+It took 15 minutes on the first dry run (including six orphaned EBS volumes
+from persistent volume claims) and 12.5 minutes on the clean cycle.
 teardown.md's 30 to 45 minutes allows for a wedged namespace or a retry.
 
 ## Sweep
@@ -205,3 +243,26 @@ The findings, fixed in #121, #122 and #123:
 
 The exit criterion for JDH-409 is one clean up-and-down cycle from empty
 state with these fixes in place.
+
+## Clean cycle, 2026-11-01
+
+One deploy from empty state with #121, #122 and #123 on `main` (run
+41337338974), dispatched at 18:34 and green at 19:07 UTC: 33 minutes. The
+four live checks passed (baseline Synced and Healthy, no pod failures, event
+bus pods up, MLflow 1/1), and a workflow wrote its output artifact to the S3
+bucket through IRSA. The only unrequested node was the r6a.large for the Loki
+chunks cache (JDH-418).
+
+The first teardown attempt (19:11 UTC) failed. The SSO session had expired at
+18:44; the AWS CLI kept working on role credentials it had cached earlier, but
+Terraform's SDK could not refresh the token, so both `terraform destroy`
+attempts failed on credentials. The script carried on regardless: its
+Kubernetes phase had already removed the Kyverno policies, the webhooks and
+the ArgoCD baseline Application, and its AWS phase ran against a live
+platform. The cluster stayed up overnight until a fresh sign-in and a second
+run (03:14 to 03:26 UTC on 2026-11-02) destroyed 189 resources and swept clean.
+The re-sign-in step above and the script's preflight came out of this.
+
+The JDH-409 exit criterion (one clean up-and-down cycle from empty state) is
+met, with the teardown completing on its second run. The platform ran about 9 hours instead of 40 minutes; record the Cost
+Explorer figure for 2026-11-01 and 2026-11-02 once it lands.

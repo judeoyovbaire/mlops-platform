@@ -22,7 +22,11 @@ finding group 7.
 
 2. **Valid AWS credentials** for the target account (`aws login` /
    `aws sso login`). Every phase needs them: kubectl cleanup, terraform,
-   and the orphan sweep.
+   and the orphan sweep. Sign in again right before the teardown: an expired
+   SSO token can still leave the AWS CLI working on cached role credentials
+   while Terraform fails. The script's preflight checks that Terraform can
+   read the state, and that the cluster API answers if the cluster exists,
+   before it changes anything.
 
 3. **Terraform backend attached.** If the environment directory was ever
    initialized with `-backend=false` (offline validation does this),
@@ -46,6 +50,13 @@ finding group 7.
 ./scripts/destroy-aws.sh --force  # skip prompts
 ```
 
+A preflight runs first and stops before anything changes if Terraform
+cannot read the state (expired credentials), if the cluster exists but the
+state is empty (backend not attached), or if the cluster exists and its API
+does not answer an authenticated request (Zscaler, or no access entry). Set
+`SKIP_API_PREFLIGHT=1` to skip only the API check, for example when the
+cluster is already deleting and no Kubernetes resources remain in state.
+
 Phases:
 1. **Kubernetes cleanup** — detach the ArgoCD `platform-baseline` Application
    (orphan, no cascade, so self-heal cannot recreate what follows), Kyverno
@@ -55,7 +66,9 @@ Phases:
 2. **Backup recovery point purge** — vaults cannot be deleted while they
    hold recovery points (RDS backups).
 3. **Terraform destroy** — with one retry; before the retry the script
-   clears finalizers on namespaces stuck `Terminating`.
+   clears finalizers on namespaces stuck `Terminating` and runs the orphan
+   sweep once. If the retry also fails, the script exits nonzero without the
+   final sweep and verification; fix the error and run it again.
 4. **Orphan sweep** — Karpenter instance profiles, CloudWatch log groups,
    stray EC2 instances/ENIs, PVC-created EBS volumes, soft-deleted
    Secrets Manager entries.

@@ -44,6 +44,77 @@ get_cluster_config() {
         || print_warning "Could not fetch kubeconfig for ${CLUSTER_NAME}; Kubernetes cleanup will be skipped"
 }
 
+# Count the resources in the dev state, or print "unknown" if terraform
+# cannot read it. Never derive a count from terraform's error output.
+state_count() {
+    local out
+    if out=$(cd "${TF_DIR}" && terraform state list 2>/dev/null); then
+        grep -c . <<<"$out" || true
+    else
+        echo "unknown"
+    fi
+}
+
+# Stop before Phase 1 changes anything if the destroy cannot succeed. On
+# 2026-11-01 the SSO token expired: the AWS CLI kept working on cached role
+# credentials, so Phase 1 stripped Kyverno and the ArgoCD baseline, then
+# terraform failed on credentials and the cluster ran overnight.
+preflight_checks() {
+    echo ""
+    echo -e "${CYAN}Preflight${NC}"
+    echo "========================================"
+
+    cd "${TF_DIR}"
+
+    # terraform uses the AWS SDK credential chain, not the CLI's cache, so
+    # this is the check that catches an expired SSO token.
+    local state_out
+    if ! state_out=$(terraform state list 2>&1); then
+        print_error "terraform cannot read the state:"
+        tail -5 <<<"$state_out" >&2
+        print_error "Refresh credentials (aws sso login), or attach the backend"
+        print_error "(docs/runbooks/teardown.md), and re-run. Nothing was changed."
+        exit 1
+    fi
+    STATE_COUNT=$(grep -c . <<<"$state_out" || true)
+    print_info "Terraform state: ${STATE_COUNT} entries"
+
+    # Only a definite "not found" may skip the API check; a throttle or
+    # network error must not let a doomed teardown through.
+    local describe_err
+    if describe_err=$(aws eks describe-cluster --name "${CLUSTER_NAME}" \
+            --region "${AWS_REGION}" 2>&1 >/dev/null); then
+        if [[ "${STATE_COUNT}" -eq 0 ]]; then
+            print_error "Cluster ${CLUSTER_NAME} exists but the state is empty: the backend is"
+            print_error "not attached. Re-initialize (docs/runbooks/teardown.md) and re-run."
+            exit 1
+        fi
+        # Helm and Kubernetes destroys, and Karpenter draining its own nodes,
+        # need the API. Without it, Karpenter instances outlive the cluster.
+        # An authenticated read, not /readyz, which anonymous users may call.
+        local api_err
+        if [[ "${SKIP_API_PREFLIGHT:-}" == "1" ]]; then
+            print_warning "SKIP_API_PREFLIGHT=1: not checking the cluster API"
+        elif ! api_err=$(kubectl get namespaces --request-timeout=20s -o name 2>&1 >/dev/null); then
+            print_error "Cluster ${CLUSTER_NAME} exists but the API refused or dropped the request:"
+            tail -3 <<<"$api_err" >&2
+            print_error "\"connection reset\" means Zscaler; Unauthorized means no access entry."
+            print_error "Fix access and re-run, or set SKIP_API_PREFLIGHT=1 if no Kubernetes"
+            print_error "resources remain in state. Nothing was changed."
+            exit 1
+        else
+            print_status "Cluster API reachable"
+        fi
+    elif grep -q ResourceNotFoundException <<<"$describe_err"; then
+        print_info "Cluster ${CLUSTER_NAME} not found; continuing for the remaining resources"
+    else
+        print_error "Could not check for cluster ${CLUSTER_NAME}:"
+        tail -3 <<<"$describe_err" >&2
+        print_error "Re-run once the AWS CLI works. Nothing was changed."
+        exit 1
+    fi
+}
+
 # Pre-destroy cleanup to handle stuck Kubernetes resources
 pre_destroy_cleanup() {
     echo ""
@@ -503,6 +574,7 @@ main() {
     echo ""
 
     # Run all cleanup phases
+    preflight_checks
     pre_destroy_cleanup
     purge_backup_recovery_points
 
@@ -512,7 +584,12 @@ main() {
         clear_stuck_namespaces
         post_destroy_cleanup
         print_info "Retrying terraform destroy..."
-        terraform_destroy || true
+        if ! terraform_destroy; then
+            print_error "terraform destroy failed twice; resources left in state: $(state_count)"
+            print_error "Fix the error above and re-run this script. The final orphan sweep"
+            print_error "and verification are skipped (a sweep already ran before the retry)."
+            exit 1
+        fi
     fi
 
     post_destroy_cleanup
