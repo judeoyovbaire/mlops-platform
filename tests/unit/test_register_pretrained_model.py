@@ -36,8 +36,8 @@ def metadata_file(tmp_path):
 def fake_torch_stack(monkeypatch):
     """torch/transformers exist in the pipeline image, not the dev venv -
     register_model imports them at call time to pin pip requirements."""
-    monkeypatch.setitem(sys.modules, "torch", MagicMock(__version__="2.6.0+cpu"))
-    monkeypatch.setitem(sys.modules, "transformers", MagicMock(__version__="4.51.3"))
+    monkeypatch.setitem(sys.modules, "torch", MagicMock(__version__="2.13.0+cpu"))
+    monkeypatch.setitem(sys.modules, "transformers", MagicMock(__version__="5.13.1"))
 
 
 class TestRegisterPretrainedModel:

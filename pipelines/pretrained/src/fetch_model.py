@@ -29,10 +29,10 @@ DEFAULT_TEST_INPUTS: dict[str, str] = {
     "fill-mask": "The capital of France is [MASK].",
     "text-generation": "Once upon a time",
     "token-classification": "My name is Sarah and I live in London.",
-    "question-answering": "What is the capital of France?",
-    "summarization": "Machine learning is a branch of artificial intelligence.",
-    "translation_en_to_fr": "Hello, how are you?",
 }
+# No question-answering, summarization or translation entries: transformers 5
+# removed those text pipelines ("text pipelines that should just be LLMs"),
+# and KServe's huggingfaceserver v0.21 runs transformers 5 (JDH-420).
 
 
 @dataclass
