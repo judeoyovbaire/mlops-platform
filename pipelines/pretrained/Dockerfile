@@ -2,7 +2,7 @@
 # Installs transformers, huggingface_hub, and MLflow so the Argo
 # Workflow steps can fetch, validate, and register HF models.
 
-FROM python:3.10-slim@sha256:5f9928ea39771e8ddf4fb9a96ab24f65f087793635614405a1dc9384f040852e
+FROM python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159
 
 LABEL maintainer="mlops-platform" \
       description="HuggingFace pretrained model pipeline runtime"
