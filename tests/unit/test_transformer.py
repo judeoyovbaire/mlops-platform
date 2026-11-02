@@ -27,7 +27,7 @@ from transformer import IrisTransformer  # noqa: E402
 @pytest.fixture
 def iris_transformer():
     """Create an IrisTransformer instance."""
-    return IrisTransformer(name="iris", predictor_host="localhost:8080")
+    return IrisTransformer(name="iris")
 
 
 class TestTransformerLoad:
@@ -90,6 +90,47 @@ class TestPreprocess:
         assert isinstance(sent_df, pd.DataFrame)
         assert list(sent_df.columns) == feature_names
         assert result.inputs[0].data == transformed_array.tolist()
+
+    def test_preprocess_v1_dict_positional(self, iris_transformer):
+        """A v1 request reaches preprocess as a dict: positional instances get
+        the training column names and the transformed rows replace them."""
+        feature_names = ["sepal_length", "sepal_width", "petal_length", "petal_width"]
+        mock_preprocessor = MagicMock()
+        mock_preprocessor.feature_names_in_ = np.array(feature_names)
+        transformed_array = np.array([[1.0, 2.0, 3.0, 4.0]])
+        mock_preprocessor.transform.return_value = transformed_array
+        iris_transformer.preprocessor = mock_preprocessor
+
+        payload = {"instances": [[5.1, 3.5, 1.4, 0.2]]}
+        result = iris_transformer.preprocess(payload, headers={})
+
+        sent_df = mock_preprocessor.transform.call_args[0][0]
+        assert list(sent_df.columns) == feature_names
+        assert result is payload
+        assert result["instances"] == transformed_array.tolist()
+
+    def test_preprocess_v1_dict_named_reordered(self, iris_transformer):
+        """Named v1 instances are reordered to the training column order."""
+        feature_names = ["sepal_length", "sepal_width", "petal_length", "petal_width"]
+        mock_preprocessor = MagicMock()
+        mock_preprocessor.feature_names_in_ = np.array(feature_names)
+        mock_preprocessor.transform.return_value = np.array([[0.0, 0.0, 0.0, 0.0]])
+        iris_transformer.preprocessor = mock_preprocessor
+
+        row = {"petal_width": 0.2, "sepal_length": 5.1, "petal_length": 1.4, "sepal_width": 3.5}
+        iris_transformer.preprocess({"instances": [row]}, headers={})
+
+        sent_df = mock_preprocessor.transform.call_args[0][0]
+        assert list(sent_df.columns) == feature_names
+        assert sent_df.iloc[0].tolist() == [5.1, 3.5, 1.4, 0.2]
+
+    def test_preprocess_v1_dict_without_preprocessor(self, iris_transformer):
+        """Passthrough mode leaves a v1 payload untouched."""
+        iris_transformer.preprocessor = None
+        payload = {"instances": [[5.1, 3.5, 1.4, 0.2]]}
+        assert iris_transformer.preprocess(payload, headers={}) == {
+            "instances": [[5.1, 3.5, 1.4, 0.2]]
+        }
 
     def test_preprocess_with_sparse_output(self, iris_transformer):
         """When preprocessor returns sparse matrix, it should be converted."""

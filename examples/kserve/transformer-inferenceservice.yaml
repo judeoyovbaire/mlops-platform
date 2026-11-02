@@ -1,6 +1,11 @@
 # InferenceService with Transformer + Predictor pattern.
 # The transformer applies preprocessing (feature scaling, encoding) before
 # forwarding to the sklearn predictor, decoupling preprocessing from the model.
+# KServe injects --model_name and --predictor_host into the transformer but
+# not the predictor protocol, which defaults to v1. That matches this sklearn
+# predictor; in front of a v2 predictor (MLServer), add
+#   args: ["--predictor_protocol=v2"]
+# to the transformer container.
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:

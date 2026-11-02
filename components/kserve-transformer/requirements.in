@@ -1,10 +1,18 @@
 # Direct dependencies for the KServe transformer image.
 # Human-edited. The installable lockfile (requirements.txt) is GENERATED:
-#   uv pip compile --python-version=3.10 --generate-hashes --emit-index-url \
+#   uv pip compile --python-version=3.12 --generate-hashes --emit-index-url \
 #     --output-file=components/kserve-transformer/requirements.txt components/kserve-transformer/requirements.in
 #   (run from the repo root; the linux/amd64 target comes from [tool.uv.pip] in pyproject.toml)
 # CI fails if requirements.txt is stale relative to this file.
-kserve==0.14.1
+# Python 3.12 (JDH-424): the transformer joblib-loads the fitted
+# preprocessor (plain scikit-learn objects, no cloudpickled code), which is
+# portable across Python minors, so it is not tied to MLServer's 3.10.
+# kserve SDK follows the cluster's KServe (0.21, JDH-414/JDH-425); 0.14.1
+# held protobuf at 4.25.9 (GHSA-7gcm-g887-7qv7).
+kserve==0.21.0
 joblib==1.4.2
+# pandas and scikit-learn must match the training image, which fits and
+# pickles the preprocessor (pipelines/serving-runtime-contract.yaml,
+# pinned_libraries; tests/unit/test_serving_runtime_contract.py).
 pandas==2.2.3
-scikit-learn==1.6.1
+scikit-learn==1.7.0
