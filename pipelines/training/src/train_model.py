@@ -25,6 +25,14 @@ from pipelines.shared.mlflow_utils import MLFLOW_CONNECTION_TIMEOUT, run_with_ti
 from pipelines.training.src.tracing import get_tracer
 
 logger = get_logger(__name__)
+
+# MLflow 3.17 defaults mlflow.sklearn.log_model to skops for non-Databricks
+# tracking URIs, and skops refuses tree models ("Untrusted types found:
+# sklearn.tree._tree.Tree"), so train-model failed on every run. cloudpickle
+# is the format the serving pyfunc already uses, and this artifact is lineage
+# only: KServe serves the pyfunc built by build_serving_model. The CI image
+# smoke saves a real model with this constant.
+SKLEARN_SERIALIZATION_FORMAT = "cloudpickle"
 tracer = get_tracer("train-model")
 
 
@@ -300,7 +308,12 @@ def train_model(
                     logger.warning("SHAP feature importance skipped: %s", shap_err)
 
                 # Log model to MLflow
-                mlflow.sklearn.log_model(model, "model", input_example=X_train.head(1))
+                mlflow.sklearn.log_model(
+                    model,
+                    "model",
+                    input_example=X_train.head(1),
+                    serialization_format=SKLEARN_SERIALIZATION_FORMAT,
+                )
 
                 # Save outputs locally
                 os.makedirs(os.path.dirname(model_output_path), exist_ok=True)

@@ -398,6 +398,30 @@ jobs:
               importlib.import_module(f'pipelines.training.src.{m}')
           print(f'{len(mods)} pipeline modules import cleanly')"
 
+      # Imports alone missed a broken train step: MLflow 3.17 saves sklearn
+      # models with skops by default, which rejected the tree model (and
+      # mlflow-skinny does not install skops). Save a real model with the
+      # format train_model uses, plus a pyfunc with an input example (the
+      # serving model's shape), inside the image. No tracking server needed.
+      - name: Model-save smoke in the training image
+        run: |
+          docker run --rm mlops-platform/ml-training:test python -c "
+          import tempfile, mlflow.pyfunc, mlflow.sklearn
+          from sklearn.datasets import load_iris
+          from sklearn.ensemble import RandomForestClassifier
+          from pipelines.training.src.train_model import SKLEARN_SERIALIZATION_FORMAT
+          X, y = load_iris(return_X_y=True, as_frame=True)
+          model = RandomForestClassifier(n_estimators=5, random_state=0).fit(X, y)
+          d = tempfile.mkdtemp()
+          mlflow.sklearn.save_model(model, d + '/sk', input_example=X.head(1),
+                                    serialization_format=SKLEARN_SERIALIZATION_FORMAT)
+          class Wrap(mlflow.pyfunc.PythonModel):
+              def __init__(self, m): self.m = m
+              def predict(self, context, model_input): return self.m.predict(model_input)
+          mlflow.pyfunc.save_model(d + '/py', python_model=Wrap(model), input_example=X.head(1))
+          loaded = mlflow.pyfunc.load_model(d + '/py')
+          print('sklearn and pyfunc models save and load:', loaded.predict(X.head(2)))"
+
       # The pretrained image resolves torch from the PyTorch CPU index. A
       # deploy-model dispatch neither builds nor ships this image, and two
       # July deploys were blocked for hours by PyTorch CDN TLS failures in
@@ -675,8 +699,20 @@ jobs:
           for dir in $dirs; do
             # Same argv as the lockfile header (Renovate re-runs that header
             # verbatim); the linux/amd64 target comes from [tool.uv.pip] in
-            # pyproject.toml.
-            uv pip compile --python-version=3.10 --generate-hashes --emit-index-url \
+            # pyproject.toml. Images differ in Python (training stays on the
+            # serving runtime's 3.10; others moved on, JDH-424), so the
+            # version is read from each lockfile's header line.
+            pyver=$(sed -n '2s/.*--python-version=\([0-9][0-9.]*\).*/\1/p' "$dir/requirements.txt")
+            if [ -z "$pyver" ]; then
+              echo "::error::No --python-version in the header of $dir/requirements.txt"
+              exit 1
+            fi
+            # The image must run the interpreter its lockfile was compiled for.
+            if ! grep -q "^FROM python:${pyver}-slim" "$dir/Dockerfile"; then
+              echo "::error::$dir/Dockerfile does not build on python:${pyver}-slim (lockfile header)"
+              exit 1
+            fi
+            uv pip compile --python-version="$pyver" --generate-hashes --emit-index-url \
               --output-file="$dir/requirements.txt" "$dir/requirements.in" \
               --quiet
           done
