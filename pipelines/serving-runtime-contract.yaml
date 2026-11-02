@@ -39,8 +39,10 @@ mlserver_image: "docker.io/seldonio/mlserver:1.7.1-mlflow"
 python_version: "3.10"
 
 # Pickle-critical libraries, pinned to the exact versions inside
-# mlserver_image. Surface:
+# mlserver_image. Surfaces:
 # - pipelines/training/requirements.in
+# - components/kserve-transformer/requirements.in (scikit-learn and pandas:
+#   it joblib-loads the preprocessor the training image fits)
 pinned_libraries:
   scikit-learn: "1.7.0"
   cloudpickle: "3.1.1"

@@ -22,6 +22,7 @@ CHAMPION_TEMPLATE = REPO_ROOT / "examples" / "kserve" / "champion-inferenceservi
 TRAINING_WORKFLOW = REPO_ROOT / "pipelines" / "training" / "ml-training-workflow.yaml"
 TRAINING_DOCKERFILE = REPO_ROOT / "pipelines" / "training" / "Dockerfile"
 TRAINING_REQUIREMENTS = REPO_ROOT / "pipelines" / "training" / "requirements.in"
+TRANSFORMER_REQUIREMENTS = REPO_ROOT / "components" / "kserve-transformer" / "requirements.in"
 PRETRAINED_WORKFLOW = REPO_ROOT / "pipelines" / "pretrained" / "hf-pretrained-workflow.yaml"
 HELM_VERSIONS = REPO_ROOT / "infrastructure" / "terraform" / "helm-versions.auto.tfvars"
 
@@ -82,6 +83,19 @@ class TestServingRuntimeContract:
             assert m, f"{lib} is not pinned in {TRAINING_REQUIREMENTS}"
             assert m.group(1) == version, (
                 f"{TRAINING_REQUIREMENTS} pins {lib}=={m.group(1)}, contract says {version}"
+            )
+
+    def test_transformer_requirements_pins(self, contract):
+        """The KServe transformer joblib-loads the preprocessor the training
+        image fits, so scikit-learn and pandas must match the training pins.
+        (cloudpickle is not involved: the preprocessor holds no pickled code.)"""
+        requirements = TRANSFORMER_REQUIREMENTS.read_text()
+        for lib in ("scikit-learn", "pandas"):
+            version = contract["pinned_libraries"][lib]
+            m = re.search(rf"^{re.escape(lib)}==(\S+)", requirements, flags=re.MULTILINE)
+            assert m, f"{lib} is not pinned in {TRANSFORMER_REQUIREMENTS}"
+            assert m.group(1) == version, (
+                f"{TRANSFORMER_REQUIREMENTS} pins {lib}=={m.group(1)}, contract says {version}"
             )
 
 

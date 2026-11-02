@@ -450,6 +450,52 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # The unit tests replace kserve with a MagicMock, so an SDK API break
+      # (0.14 -> 0.21 removed ModelServer.parser) passes them. Start the real
+      # image with the args KServe injects, behind a stub predictor, and send
+      # one v1 request through a preprocessor fitted in the image.
+      - name: Serve-smoke the kserve-transformer image
+        run: |
+          set -euo pipefail
+          img=mlops-platform/kserve-transformer:test
+          work=$(mktemp -d)
+          chmod 777 "$work"
+          cleanup() { docker rm -f ksmoke-stub ksmoke-tr >/dev/null 2>&1 || true; docker network rm ksmoke >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          cat > "$work/stub.py" <<'EOF'
+          from kserve import Model, ModelServer
+          class Stub(Model):
+              def __init__(self):
+                  super().__init__("iris")
+                  self.ready = True
+              def predict(self, payload, headers=None):
+                  return {"predictions": [0] * len(payload["instances"]), "received": payload["instances"]}
+          ModelServer(http_port=8081, enable_grpc=False).start([Stub()])
+          EOF
+          docker run --rm -v "$work:/w" --entrypoint python "$img" -c "
+          import joblib
+          from sklearn.compose import ColumnTransformer
+          from sklearn.datasets import load_iris
+          from sklearn.preprocessing import StandardScaler
+          X = load_iris(as_frame=True).data
+          ct = ColumnTransformer([('s', StandardScaler(), list(X.columns))]).fit(X)
+          joblib.dump(ct, '/w/preprocessor.joblib')"
+          docker network create ksmoke >/dev/null
+          docker run -d --name ksmoke-stub --network ksmoke -v "$work:/w:ro" --entrypoint python "$img" /w/stub.py >/dev/null
+          docker run -d --name ksmoke-tr --network ksmoke -p 18080:8080 \
+            -v "$work/preprocessor.joblib:/mnt/models/preprocessor.joblib:ro" \
+            "$img" --model_name iris --predictor_host ksmoke-stub:8081 --http_port 8080 >/dev/null
+          for _ in $(seq 1 30); do
+            curl -sf localhost:18080/v1/models/iris >/dev/null && break
+            sleep 2
+          done
+          resp=$(curl -sf -X POST localhost:18080/v1/models/iris:predict \
+            -H 'content-type: application/json' \
+            -d '{"instances":[[5.1,3.5,1.4,0.2]]}') || { docker logs ksmoke-tr; docker logs ksmoke-stub; exit 1; }
+          echo "$resp"
+          # Scaled by the preprocessor on the way through: sepal length 5.1 -> about -0.90.
+          echo "$resp" | python3 -c "import json,sys; r=json.load(sys.stdin); v=r['received'][0][0]; assert -0.95 < v < -0.85, r; print('transformer forwarded scaled features')"
+
       - name: Scan training pipeline image
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:

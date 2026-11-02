@@ -10,7 +10,7 @@ import os
 
 import joblib
 import pandas as pd
-from kserve import InferRequest, InferResponse, Model, ModelServer
+from kserve import InferRequest, InferResponse, Model, ModelServer, model_server
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +20,15 @@ PREPROCESSOR_PATH = os.environ.get("PREPROCESSOR_PATH", "/mnt/models/preprocesso
 class IrisTransformer(Model):
     """Transformer that applies feature preprocessing to inference requests."""
 
-    def __init__(self, name: str, predictor_host: str):
+    def __init__(self, name: str):
+        # The predictor host is not held here: ModelServer builds a
+        # PredictorConfig from --predictor_host/--predictor_protocol and the
+        # base class reads it from the kserve context when forwarding
+        # (kserve >= 0.15). KServe injects --model_name, --predictor_host,
+        # --http_port and --workers, but NOT the protocol, which defaults to
+        # v1: in front of a v2 predictor (MLServer), set
+        # args: ["--predictor_protocol=v2"] on the transformer container.
         super().__init__(name)
-        self.predictor_host = predictor_host
         self.preprocessor = None
 
     def load(self) -> bool:
@@ -50,15 +56,25 @@ class IrisTransformer(Model):
                 self.ready = False
         return self.ready
 
-    def preprocess(self, payload: InferRequest, headers: dict) -> InferRequest:
+    def preprocess(
+        self, payload: InferRequest | dict, headers: dict | None = None
+    ) -> InferRequest | dict:
         """Apply preprocessing to the input features.
 
         The fitted ColumnTransformer was trained on *named* columns, so raw
         payloads must be aligned to the training schema before transform:
         positional rows (list-of-lists) get the training column names applied;
         named rows (list-of-dicts) are reordered to the training column order.
+
+        KServe hands a v1 request ({"instances": [...]}) to preprocess as a
+        dict and a v2 request as an InferRequest; both are handled, and the
+        payload goes on to the predictor in the protocol it arrived in. The
+        transformer's --predictor_protocol must match the predictor's.
         """
-        instances = payload.inputs[0].data
+        if isinstance(payload, dict):
+            instances = payload["instances"]
+        else:
+            instances = payload.inputs[0].data
         df = pd.DataFrame(instances)
         if self.preprocessor is not None:
             expected = getattr(self.preprocessor, "feature_names_in_", None)
@@ -85,24 +101,27 @@ class IrisTransformer(Model):
                 transformed = transformed.toarray()
             elif hasattr(transformed, "to_numpy"):
                 transformed = transformed.to_numpy()
-            payload.inputs[0].data = transformed.tolist()
+            if isinstance(payload, dict):
+                payload["instances"] = transformed.tolist()
+            else:
+                payload.inputs[0].data = transformed.tolist()
         return payload
 
-    def postprocess(self, response: InferResponse, headers: dict) -> InferResponse:
+    def postprocess(
+        self, response: InferResponse | dict, headers: dict | None = None
+    ) -> InferResponse | dict:
         """Pass through predictor response unchanged."""
         return response
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(parents=[ModelServer.parser()])
-    parser.add_argument(
-        "--predictor_host", required=True, help="Predictor hostname for forwarding requests"
-    )
+    # kserve's own parser defines --model_name and the --predictor_* flags
+    # (ModelServer.parser() was removed after 0.14).
+    parser = argparse.ArgumentParser(parents=[model_server.parser])
     args, _ = parser.parse_known_args()
+    if not args.predictor_host:
+        parser.error("--predictor_host is required (KServe injects it into the transformer)")
 
-    transformer = IrisTransformer(
-        name=args.model_name,
-        predictor_host=args.predictor_host,
-    )
+    transformer = IrisTransformer(name=args.model_name)
     transformer.load()
     ModelServer().start(models=[transformer])
