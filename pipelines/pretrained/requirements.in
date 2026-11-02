@@ -6,9 +6,11 @@
 # CI fails if requirements.txt is stale relative to this file.
 --extra-index-url https://download.pytorch.org/whl/cpu
 # transformers stays on 4.x in this image: 5.x needs huggingface_hub>=1.5
-# and a tested image build (torch 2.6, py3.10). Renovate's 5.10.1 bump could
+# and a tested image build (torch 2.13, py3.10). Renovate's 5.10.1 bump could
 # not be resolved here (JDH-412). The dev environment (uv.lock) is on 5.10.1.
-transformers==4.51.3
+# 4.53.3 is the newest 4.x that keeps huggingface_hub<1.0 at 0.30.2 and
+# clears the advisories fixed in 4.52.1 and 4.53.0. renovate.json holds <5.
+transformers==4.53.3
 huggingface_hub==0.30.2
 mlflow==3.17.2
 torch==2.13.0
