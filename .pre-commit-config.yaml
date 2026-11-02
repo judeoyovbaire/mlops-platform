@@ -76,7 +76,7 @@ repos:
 
   # Kubernetes manifest validation
   - repo: https://github.com/yannh/kubeconform
-    rev: v0.6.4
+    rev: v0.8.0
     hooks:
       - id: kubeconform
         args:
