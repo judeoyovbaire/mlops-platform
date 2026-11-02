@@ -52,6 +52,9 @@ class TestTrainModel:
         mock_log_params.assert_called()
         mock_log_metrics.assert_called()
         mock_log_model.assert_called_once()
+        # skops (MLflow 3.17's default) rejects tree models; the format must
+        # be explicit.
+        assert mock_log_model.call_args.kwargs["serialization_format"] == "cloudpickle"
 
     def test_file_not_found(self, temp_dir, mocker):
         """Test handling of missing input file."""

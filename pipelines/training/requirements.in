@@ -12,7 +12,15 @@
 pandas==2.2.3
 scikit-learn==1.7.0
 cloudpickle==3.1.1
-mlflow==3.17.2
+# mlflow-skinny, not mlflow: the image is a tracking client (log, register,
+# pyfunc save) and always talks to the MLflow server, so it needs none of the
+# server, UI or plotting stack. Full mlflow pulled in matplotlib -> pillow,
+# whose open advisories are fixed only in pillow 13 (Python >= 3.11), and this
+# image is held on 3.10 by MLServer (JDH-424). Skinny drops matplotlib,
+# pillow, pyarrow, SQLAlchemy and Flask: 110 -> 70 locked packages.
+# It also drops skops, the default format of mlflow.sklearn.log_model in
+# 3.17; train_model.py sets serialization_format="cloudpickle" explicitly.
+mlflow-skinny==3.17.2
 joblib==1.4.2
 pandera==0.31.1
 opentelemetry-api==1.45.1

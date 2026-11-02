@@ -30,6 +30,12 @@ mlserver_image: "docker.io/seldonio/mlserver:1.7.1-mlflow"
 
 # Interpreter of the mlserver image. Surface:
 # - pipelines/training/Dockerfile (base image)
+# Python 3.10 reached end of life in October 2026, but no MLServer image
+# ships a newer interpreter (checked 2026-11-02: 1.7.1-mlflow and
+# 1.7.2-rc1-mlflow both have Python 3.10.12; no stable release since June
+# 2025). The training image therefore stays on 3.10 and keeps its attack
+# surface small instead (mlflow-skinny, JDH-424). Moving off 3.10 means
+# replacing the serving runtime or retiring this loop (ADR-017).
 python_version: "3.10"
 
 # Pickle-critical libraries, pinned to the exact versions inside
