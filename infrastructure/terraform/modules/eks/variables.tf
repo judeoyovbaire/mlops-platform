@@ -295,3 +295,14 @@ variable "tags" {
     managed_by = "terraform"
   }
 }
+
+variable "availability_zone_suffixes" {
+  description = "Availability Zone letters the VPC spans, appended to the region name (eu-west-1 + a = eu-west-1a). Changing this replaces subnets."
+  type        = list(string)
+  default     = ["a", "b", "c"]
+
+  validation {
+    condition     = length(var.availability_zone_suffixes) >= 2 && alltrue([for s in var.availability_zone_suffixes : can(regex("^[a-z]$", s))])
+    error_message = "Give at least two single-letter Availability Zone suffixes (EKS needs subnets in two AZs)."
+  }
+}
