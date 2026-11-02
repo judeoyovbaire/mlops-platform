@@ -62,6 +62,16 @@ dev = [
 # `uv sync`/`uv lock`/`uv run` ignore [tool.uv.pip].
 [tool.uv.pip]
 python-platform = "x86_64-unknown-linux-gnu"
+# Only pipelines/pretrained has a second index (the PyTorch CPU wheels). uv's
+# default first-index strategy took every package that index also hosts from
+# it, at the old versions it carries: urllib3 1.26.13, requests 2.28.1,
+# certifi 2022.12.7, idna 3.4, setuptools <= 78.1.0, all with open advisories.
+# best-match picks the highest version across both indexes; torch stays on the
+# +cpu wheel because PEP 440 ranks 2.13.0+cpu above PyPI's 2.13.0. Every name
+# resolved from the PyTorch index today also exists on PyPI, so nothing can be
+# shadowed; recheck if a PyTorch-only package ever enters the resolution. The
+# image install needs the same strategy (pipelines/pretrained/Dockerfile).
+index-strategy = "unsafe-best-match"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

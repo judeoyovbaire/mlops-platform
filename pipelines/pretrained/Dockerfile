@@ -20,8 +20,14 @@ RUN apt-get update && apt-get upgrade -y --no-install-recommends \
 COPY --from=ghcr.io/astral-sh/uv:0.7.2@sha256:3b898ca84fbe7628c5adcd836c1de78a0f1ded68344d019af8478d4358417399 /uv /usr/local/bin/uv
 
 # Install Python dependencies (layer cached across rebuilds)
+# The lockfile names two indexes (PyPI and the PyTorch CPU wheels) and was
+# compiled with best-match (pyproject.toml [tool.uv.pip]), which the build
+# context does not include. Without the same strategy uv takes certifi, idna,
+# requests, urllib3 and setuptools from the PyTorch index and fails on the
+# pinned versions. Every requirement is hashed, so the strategy only decides
+# where each pinned file is fetched from.
 COPY pretrained/requirements.txt .
-RUN uv pip install --system --no-cache -r requirements.txt
+RUN UV_INDEX_STRATEGY=unsafe-best-match uv pip install --system --no-cache -r requirements.txt
 
 # Copy code in the repo's package layout - modules import
 # pipelines.shared.* / pipelines.pretrained.src.*, so the image must provide
