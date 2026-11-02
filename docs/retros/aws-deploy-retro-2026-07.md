@@ -3,8 +3,10 @@
 **Scope:** end-to-end pipeline-driven deployment of the platform to a live AWS
 account (EKS, eu-west-1), from `deploy-infra` dispatch through model serving,
 followed by full teardown.
-**Outcome:** 34 distinct defects found and fixed, every one shipped through the
-pipeline (commit → CI → GitOps sync), none patched by hand and left undocumented.
+**Outcome:** 34 distinct defects found and fixed in the deployment itself, and 4
+more surfaced by the green rebuild (#35-#38, below): 38 in total. Every one shipped
+through the pipeline (commit → CI → GitOps sync), none patched by hand and left
+undocumented.
 **Duration:** ~3 days of iterative deploy/diagnose/fix cycles.
 
 ---
