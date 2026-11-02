@@ -13,10 +13,17 @@ terraform {
 }
 
 # Data sources
+# Pinned by zone name (CKV_AWS_394): an unfiltered lookup would grow when
+# AWS adds an Availability Zone or shift when one drops out, and the VPC
+# subnets follow this list.
 data "aws_availability_zones" "available" {
   filter {
     name   = "opt-in-status"
     values = ["opt-in-not-required"]
+  }
+  filter {
+    name   = "zone-name"
+    values = [for suffix in var.availability_zone_suffixes : "${data.aws_region.current.region}${suffix}"]
   }
 }
 
