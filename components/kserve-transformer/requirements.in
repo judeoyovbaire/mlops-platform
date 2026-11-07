@@ -10,9 +10,9 @@
 # kserve SDK follows the cluster's KServe (0.21, JDH-414/JDH-425); 0.14.1
 # held protobuf at 4.25.9 (GHSA-7gcm-g887-7qv7).
 kserve==0.21.0
-joblib==1.4.2
+joblib==1.6.0
 # pandas and scikit-learn must match the training image, which fits and
 # pickles the preprocessor (pipelines/serving-runtime-contract.yaml,
 # pinned_libraries; tests/unit/test_serving_runtime_contract.py).
-pandas==2.2.3
-scikit-learn==1.7.0
+pandas==2.3.3
+scikit-learn==1.9.1
