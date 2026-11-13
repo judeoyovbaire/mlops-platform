@@ -80,8 +80,13 @@ config:
     # Metrics → Prometheus scrape endpoint
     prometheus:
       endpoint: "0.0.0.0:8889"
-      resource_to_telemetry_conversion:
-        enabled: true
+      # Every resource attribute becomes a constant label, as the deprecated
+      # resource_to_telemetry_conversion.enabled=true did. Collector v0.160
+      # deprecated that key behind the exporter.prometheus.
+      # DisableResourceToTelemetryConversion gate (JDH-418); this chart ships
+      # v0.163.2.
+      resource_constant_labels:
+        included: ["*"]
 
   service:
     pipelines:

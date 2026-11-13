@@ -54,10 +54,6 @@ The password is owned by RDS. Do not run `ALTER USER` or `modify-db-instance --m
 
 This is a dev cluster that is destroyed after each session, and these passwords are regenerated on every fresh deploy. Rotation is a redeploy.
 
-## Monitoring Secret Expiry
-
-`infrastructure/kubernetes/monitoring.yaml` defines `TLSCertificateExpiringSoon` on `certmanager_certificate_expiration_timestamp_seconds`.
-
 ## Security Best Practices
 
 1. **Never commit secrets** to version control.

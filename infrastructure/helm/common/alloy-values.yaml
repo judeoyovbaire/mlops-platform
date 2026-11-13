@@ -6,9 +6,17 @@
 alloy:
   configMap:
     content: |
-      // Kubernetes log discovery
+      // Kubernetes log discovery, limited to the pods on this node. Alloy
+      // runs as a DaemonSet; without the selector every replica tails every
+      // pod in the cluster and each log line reaches Loki once per node
+      // (JDH-418). HOSTNAME is the node name (the chart sets it from
+      // spec.nodeName).
       discovery.kubernetes "pods" {
         role = "pod"
+        selectors {
+          role  = "pod"
+          field = "spec.nodeName=" + sys.env("HOSTNAME")
+        }
       }
 
       // Relabel to add namespace, pod, container labels
@@ -58,26 +66,42 @@ alloy:
         }
       }
 
+  # Container settings live under `alloy.`; at the top level the chart
+  # ignores them (JDH-418: the previous file set securityContext, resources
+  # and tolerations top-level, so Alloy ran with none of them).
+  #
+  # loki.source.kubernetes reads logs through the Kubernetes API, not from
+  # /var/log on the host, so the container has no reason to run as root.
+  # The image defines an `alloy` user, uid and gid 473, but does not switch
+  # to it (its Dockerfile calls non-root an experimental mode); the chart's
+  # own config-reloader sidecar runs non-root, and nothing the chart mounts
+  # needs root. --storage.path=/tmp/alloy lives in the writable layer.
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 473
+    runAsGroup: 473
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
 controller:
   type: daemonset
-
-# Note: DaemonSet needs host log access, so readOnlyRootFilesystem
-# and runAsNonRoot may not be feasible. Add what the chart supports.
-securityContext:
-  runAsUser: 0  # Required for reading host log files
-  privileged: false
-
-resources:
-  requests:
-    cpu: 50m
-    memory: 64Mi
-  limits:
-    cpu: 200m
-    memory: 128Mi
-
-tolerations:
-  - effect: NoSchedule
-    operator: Exists
+  # Pod settings live under `controller.`. Tolerate every taint so the
+  # DaemonSet also lands on the GPU and training nodes.
+  tolerations:
+    - effect: NoSchedule
+      operator: Exists
 
 serviceMonitor:
   enabled: true
