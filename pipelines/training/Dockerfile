@@ -2,7 +2,7 @@
 # Baking dependencies into the image avoids running `pip install` at the start
 # of every Argo Workflow step, cutting ~30-60 s of cold-start per container.
 
-FROM python:3.10-slim@sha256:6ff506466f8b1e981719b468cc0023b8ef000b983cdec0eafe119d01f379e31d
+FROM python:3.15-slim@sha256:65a65fc7b30b06cb6df4930fd4650697cb23f4c2698ab81fc87e4b031bc36928
 
 LABEL maintainer="mlops-platform" \
       description="ML training pipeline runtime"
