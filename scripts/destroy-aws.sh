@@ -457,6 +457,25 @@ verify_cleanup() {
         print_status "CloudWatch log groups deleted"
     fi
 
+    # Check the Karpenter interruption queue and EventBridge rules
+    # (modules/eks/karpenter.tf). Free when orphaned, but they would make
+    # the next apply fail on a name clash.
+    REMAINING_QUEUE=$(aws sqs get-queue-url \
+        --queue-name "${CLUSTER_NAME}-karpenter-interruption" \
+        --region "${AWS_REGION}" \
+        --query 'QueueUrl' --output text 2>/dev/null)
+    REMAINING_RULES=$(aws events list-rules \
+        --name-prefix "${CLUSTER_NAME}-karpenter-" \
+        --region "${AWS_REGION}" \
+        --query 'Rules[*].Name' --output text 2>/dev/null)
+    if [[ -n "$REMAINING_QUEUE" && "$REMAINING_QUEUE" != "None" ]] || \
+       [[ -n "$REMAINING_RULES" && "$REMAINING_RULES" != "None" ]]; then
+        print_warning "Karpenter interruption resources remain: ${REMAINING_QUEUE} ${REMAINING_RULES}"
+        issues=$((issues + 1))
+    else
+        print_status "No Karpenter interruption queue or rules remain"
+    fi
+
     # Check for cluster S3 buckets (force_destroy should have emptied them)
     REMAINING_BUCKETS=$(aws s3api list-buckets \
         --query "Buckets[?starts_with(Name, '${CLUSTER_NAME}-')].Name" \

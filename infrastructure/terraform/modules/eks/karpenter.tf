@@ -137,6 +137,18 @@ resource "aws_iam_policy" "karpenter_controller" {
           "eks:DescribeCluster"
         ]
         Resource = "arn:aws:eks:*:${data.aws_caller_identity.current.account_id}:cluster/${var.cluster_name}"
+      },
+      {
+        # Interruption handling (JDH-415): the controller drains the queue
+        # EventBridge fills below. Same three actions as the v1.15 reference.
+        Sid    = "KarpenterInterruptionQueueActions"
+        Effect = "Allow"
+        Action = [
+          "sqs:DeleteMessage",
+          "sqs:GetQueueUrl",
+          "sqs:ReceiveMessage"
+        ]
+        Resource = aws_sqs_queue.karpenter_interruption.arn
       }
     ]
   })
@@ -196,4 +208,109 @@ resource "aws_eks_access_entry" "karpenter_node" {
   cluster_name  = module.eks.cluster_name
   principal_arn = aws_iam_role.karpenter_node.arn
   type          = "EC2_LINUX"
+}
+
+# Spot interruption handling (JDH-415)
+#
+# Karpenter only registers its interruption controller when
+# settings.interruptionQueue names an SQS queue (v1.15.1
+# pkg/controllers/controllers.go). Without it a spot reclaim kills the pods
+# on the node with no 2-minute warning, cordon or drain, and scheduled
+# maintenance is ignored. With it, Karpenter cordons and drains on spot
+# interruption warnings, scheduled-change health events, instance
+# stopping/terminating and capacity-reservation interruptions; rebalance
+# recommendations only become a node event (v1.15.1
+# pkg/controllers/interruption/utils.go, actionForMessage). The GPU and
+# training NodePools are spot-only, so this matters for every benchmark and
+# for any autoscaling or availability number (JDH-400).
+#
+# Queue, queue policy and rules follow Karpenter's v1.15 getting-started
+# CloudFormation (website/content/en/preview/getting-started/
+# getting-started-with-karpenter/cloudformation.yaml at v1.15.1). Two
+# deliberate differences: the queue name carries a suffix so it is not
+# mistaken for the cluster itself, and SendMessage is limited to this
+# account (aws:SourceAccount), which the reference leaves open.
+resource "aws_sqs_queue" "karpenter_interruption" {
+  name = "${var.cluster_name}-karpenter-interruption"
+  # Interruption notices are useless after the 2-minute warning has passed.
+  message_retention_seconds = 300
+  # SSE-SQS as in the reference. A CMK would need a key policy for
+  # events.amazonaws.com, for a queue that holds only instance IDs.
+  sqs_managed_sse_enabled = true
+
+  tags = var.tags
+}
+
+data "aws_iam_policy_document" "karpenter_interruption_queue" {
+  statement {
+    sid    = "EC2InterruptionPolicy"
+    effect = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com", "sqs.amazonaws.com"]
+    }
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.karpenter_interruption.arn]
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+
+  statement {
+    sid    = "DenyHTTP"
+    effect = "Deny"
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+    actions   = ["sqs:*"]
+    resources = [aws_sqs_queue.karpenter_interruption.arn]
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "karpenter_interruption" {
+  queue_url = aws_sqs_queue.karpenter_interruption.id
+  policy    = data.aws_iam_policy_document.karpenter_interruption_queue.json
+}
+
+# One EventBridge rule per event class in the reference. The state-change
+# rule fires for every instance in the region; Karpenter discards the ones
+# that are not its nodes, and SQS requests at this volume are within the
+# free tier.
+locals {
+  karpenter_interruption_events = {
+    spot-interruption     = { source = "aws.ec2", detail_type = "EC2 Spot Instance Interruption Warning" }
+    rebalance             = { source = "aws.ec2", detail_type = "EC2 Instance Rebalance Recommendation" }
+    instance-state-change = { source = "aws.ec2", detail_type = "EC2 Instance State-change Notification" }
+    capacity-reservation  = { source = "aws.ec2", detail_type = "EC2 Capacity Reservation Instance Interruption Warning" }
+    scheduled-change      = { source = "aws.health", detail_type = "AWS Health Event" }
+  }
+}
+
+resource "aws_cloudwatch_event_rule" "karpenter_interruption" {
+  for_each = local.karpenter_interruption_events
+
+  name        = "${var.cluster_name}-karpenter-${each.key}"
+  description = "Karpenter interruption handling: ${each.value.detail_type}"
+  event_pattern = jsonencode({
+    source        = [each.value.source]
+    "detail-type" = [each.value.detail_type]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_cloudwatch_event_target" "karpenter_interruption" {
+  for_each = local.karpenter_interruption_events
+
+  rule      = aws_cloudwatch_event_rule.karpenter_interruption[each.key].name
+  target_id = "KarpenterInterruptionQueueTarget"
+  arn       = aws_sqs_queue.karpenter_interruption.arn
 }
