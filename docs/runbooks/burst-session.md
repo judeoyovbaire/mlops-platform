@@ -225,8 +225,8 @@ days without a session show only S3 and KMS.
 A CPU-only session over three deploys. The cluster ran from about 16:05 to
 18:19 UTC; at the platform's on-demand rates (EKS control plane, two t3.large,
 one NAT gateway, db.t3.small, plus an r6a.large for the last hour, public IPv4
-and EBS) that is roughly 1 to 1.5 USD. Replace this with the Cost Explorer
-figure once the data lands.
+and EBS) that is roughly 1 to 1.5 USD. Cost Explorer reports by day, so this
+session is inside the 2026-11-01 figure below together with the clean cycle.
 
 The findings, fixed in #121, #122 and #123:
 
@@ -264,5 +264,22 @@ run (03:14 to 03:26 UTC on 2026-11-02) destroyed 189 resources and swept clean.
 The re-sign-in step above and the script's preflight came out of this.
 
 The JDH-409 exit criterion (one clean up-and-down cycle from empty state) is
-met, with the teardown completing on its second run. The platform ran about 9 hours instead of 40 minutes; record the Cost
-Explorer figure for 2026-11-01 and 2026-11-02 once it lands.
+met, with the teardown completing on its second run. The platform ran about 9
+hours instead of 40 minutes.
+
+Cost Explorer (unblended, read on 2026-11-13, still flagged as estimates by
+AWS) for 2026-11-01 (the dry run, the clean cycle and the cluster left up
+overnight) and 2026-11-02 (the teardown at 03:26). Daily totals are rounded
+from the exact amounts; the "of which" lists omit lines under a cent:
+
+| Day | Total | Of which |
+|---|---|---|
+| 2026-11-01 | 5.28 USD | EC2 other (NAT, EBS, IPv4) 1.56, EC2 compute 1.40, tax 1.21, EKS 0.71, RDS 0.27, KMS 0.08, VPC 0.04 |
+| 2026-11-02 | 1.37 USD | EC2 compute 0.61, EKS 0.34, EC2 other 0.21, RDS 0.14, KMS 0.04, VPC 0.02 |
+| 2026-11-03 to 2026-11-12 | 0.03 USD per day | KMS; the S3 state bucket and the DynamoDB lock table are below a cent together (2026-11-13 was a partial day when read) |
+
+The two days come to 6.64 USD, 5.43 USD before tax, inside the 5 to 6.5 USD
+estimated on the Linear issue (JDH-409) from about 11 cluster-hours at the
+platform's on-demand rates. Every day after the teardown shows KMS and
+sub-cent state storage only, which is the confirmation the Sweep section
+asks for.
