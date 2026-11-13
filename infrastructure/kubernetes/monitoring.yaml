@@ -218,18 +218,13 @@ spec:
             summary: "High storage usage on {{ $labels.persistentvolumeclaim }}"
             description: "PVC {{ $labels.persistentvolumeclaim }} is {{ $value | printf \"%.1f\" }}% full"
 
-        # Certificate expiring soon
-        - alert: TLSCertificateExpiringSoon
-          expr: |
-            certmanager_certificate_expiration_timestamp_seconds - time() < 604800
-          for: 1h
-          labels:
-            severity: warning
-          annotations:
-            summary: "TLS certificate {{ $labels.name }} expiring soon"
-            description: "Certificate {{ $labels.name }} in namespace {{ $labels.namespace }} expires in less than 7 days"
+        # TLSCertificateExpiringSoon was removed (JDH-417): the platform
+        # issues no Certificate and nothing scrapes cert-manager, so it could
+        # never fire. Re-add it with prometheus.servicemonitor.enabled=true on
+        # cert-manager when the first Certificate exists.
 
-        # Kyverno policy violations
+        # Kyverno policy violations. The metric name and labels are unverified
+        # on Kyverno 1.19 (JDH-417); check on a live session.
         - alert: KyvernoPolicyViolations
           expr: |
             increase(kyverno_policy_results_total{rule_result="fail"}[1h]) > 0

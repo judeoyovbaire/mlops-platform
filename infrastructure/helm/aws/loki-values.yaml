@@ -66,14 +66,27 @@ backend:
 gateway:
   enabled: false
 
+# Memcached caches. The chart defaults request 9830Mi (chunks) and 1229Mi
+# (results) of memory per pod, which no node in the general pool (t3.large,
+# 8 GiB) can schedule, so the pods sit Pending for the whole session
+# (JDH-418). A single-binary dev Loki does not need them; disabled rather
+# than down-sized so nothing competes with the platform pods.
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+
 # Monitoring
 monitoring:
   selfMonitoring:
     enabled: false
     grafanaAgent:
       installOperator: false
-  lokiCanary:
-    enabled: false
+
+# Top-level in chart 6.x; under `monitoring.` the chart ignored it and
+# deployed the canary DaemonSet anyway (JDH-418).
+lokiCanary:
+  enabled: false
 
 # Disable test
 test:
