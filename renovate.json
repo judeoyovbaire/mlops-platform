@@ -17,7 +17,9 @@
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
   "minimumReleaseAge": "3 days",
-  "dependencyDashboard": true,
+  "dependencyDashboard": {
+    "enabled": true
+  },
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
     "enabled": true,
@@ -170,7 +172,7 @@
       "groupName": "python-testing"
     },
     {
-      "description": "Image requirements: one PR per image so the serving-runtime contract check (pandas/sklearn/cloudpickle pins) fails in isolation",
+      "description": "Image requirements: one grouped PR across the three images so pins shared between training and the transformer (joblib) move together. pandas, scikit-learn and cloudpickle are excluded below (serving-runtime contract).",
       "matchManagers": [
         "pip-compile"
       ],
@@ -255,6 +257,43 @@
         "pipelines/pretrained/**"
       ],
       "allowedVersions": "<5.14.0"
+    },
+    {
+      "description": "pandas, scikit-learn and cloudpickle in the training and transformer images are the serving-runtime contract (pipelines/serving-runtime-contract.yaml): MLServer unpickles what the training image pickles, so they move only with mlserver_version, through the contract file and tests/unit/test_serving_runtime_contract.py. Renovate never proposes them (#143 bundled scikit-learn 1.9.1, which also needs Python >= 3.11).",
+      "matchManagers": [
+        "pip-compile"
+      ],
+      "matchDepNames": [
+        "pandas",
+        "scikit-learn",
+        "cloudpickle"
+      ],
+      "matchFileNames": [
+        "pipelines/training/**",
+        "components/kserve-transformer/**"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Python interpreters follow the image lockfile headers (--python-version), not the latest python tag: 3.12 for pretrained, kserve-transformer, .python-version and the devcontainer (JDH-424). Raise this together with the lockfile headers, a recompile, and a live serve-smoke and model-save check (#142 proposed 3.15 for everything).",
+      "matchDepNames": [
+        "python",
+        "mcr.microsoft.com/devcontainers/python"
+      ],
+      "allowedVersions": "/^3\\.12([.-]|$)/",
+      "matchDatasources": [
+        "docker"
+      ]
+    },
+    {
+      "description": "The training image's interpreter is MLServer's (serving-runtime-contract.yaml python_version: 3.10): the cloudpickled pyfunc must be unpickled by the same minor. Hold on 3.10 until the runtime changes (ADR-017). Must stay after the 3.12 rule (later rules win).",
+      "matchDepNames": [
+        "python"
+      ],
+      "matchFileNames": [
+        "pipelines/training/Dockerfile"
+      ],
+      "allowedVersions": "/^3\\.10([.-]|$)/"
     },
     {
       "description": "Manual merge only while the first Renovate batches are observed (JDH-406, decided 2026-11-01). Keyed on update type, not package name, so it also catches lockFileMaintenance PRs (no packageName) that :automergeMinor would otherwise merge. Must stay the LAST rule; delete it to re-enable the automerge rules above.",
