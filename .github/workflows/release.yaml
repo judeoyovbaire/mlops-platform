@@ -17,12 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
 
       - name: Setup Kustomize
-        uses: yokawasa/action-setup-kube-tools@3e3886c11bfa25fe33f8eb90f59542dd151da442 # v0.13.1
+        uses: yokawasa/action-setup-kube-tools@f8b2f6cdd1eb8575530049beacfe5d04c0ea8944 # v0.14.1
         with:
           setup-tools: kustomize
           # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize extractVersion=^kustomize/v(?<version>.*)$
@@ -49,7 +49,7 @@ jobs:
 
       - name: Generate changelog
         id: changelog
-        uses: mikepenz/release-changelog-builder-action@bcae7115752d4ed746ff92feb666574428a79415 # v6
+        uses: mikepenz/release-changelog-builder-action@b0db9d18b53447ef9f940a46c8f31653c4d9f621 # v6
         with:
           configuration: |
             {
