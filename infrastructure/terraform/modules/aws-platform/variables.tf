@@ -22,6 +22,7 @@ variable "eks" {
     Outputs object of the environment's EKS module (pass `eks = module.eks`).
     Consumed attributes: cluster_name, cluster_endpoint, oidc_provider_arn,
     vpc_id, karpenter_irsa_role_arn, karpenter_node_role_name,
+    karpenter_interruption_queue_name,
     aws_lb_controller_irsa_role_arn, loki/mlflow/tempo IRSA role ARNs,
     loki/mlflow/tempo/argo_artifacts S3 bucket ids, mlflow_db_endpoint/name/secret_arn.
   EOT

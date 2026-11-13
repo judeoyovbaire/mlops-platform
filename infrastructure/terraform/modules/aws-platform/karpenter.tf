@@ -77,6 +77,15 @@ resource "helm_release" "karpenter" {
       name  = "settings.clusterEndpoint"
       value = var.eks.cluster_endpoint
     },
+    # Registers the interruption controller (JDH-415): spot interruption
+    # warnings, instance state changes and health events arrive on this
+    # queue and Karpenter cordons and drains the node before AWS reclaims
+    # it (rebalance recommendations only become a node event). Queue, rules
+    # and the controller's SQS permissions live in modules/eks/karpenter.tf.
+    {
+      name  = "settings.interruptionQueue"
+      value = var.eks.karpenter_interruption_queue_name
+    },
     # Kept from Karpenter 1.8, which panicked on empty gate values. The values
     # match the 1.15 chart defaults; the other gates use the chart defaults.
     {

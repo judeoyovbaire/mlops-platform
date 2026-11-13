@@ -125,6 +125,11 @@ output "karpenter_node_instance_profile_name" {
   value       = aws_iam_instance_profile.karpenter_node.name
 }
 
+output "karpenter_interruption_queue_name" {
+  description = "SQS queue Karpenter drains for spot interruption, rebalance and health events (settings.interruptionQueue)"
+  value       = aws_sqs_queue.karpenter_interruption.name
+}
+
 # ECR outputs
 output "ecr_repository_url" {
   description = "URL of the ECR repository for ML model images"
