@@ -47,7 +47,7 @@ def _rows_from_v2_input(infer_input: InferInput) -> list:
         if arr.ndim == 1:
             return [arr.tolist()]
         if arr.ndim == 2:
-            return arr.tolist()
+            return list(arr.tolist())
         raise InvalidInput(f"input '{name}': tensor of rank {arr.ndim}, expected 2")
     if data is None:
         raise InvalidInput(f"input '{name}' carries no 'data'")
@@ -61,7 +61,7 @@ def _rows_from_v2_input(infer_input: InferInput) -> list:
     if len(shape) != 2:
         raise InvalidInput(f"input '{name}': shape {shape} has rank {len(shape)}, expected 2")
     try:
-        return np.asarray(data).reshape(shape).tolist()
+        return list(np.asarray(data).reshape(shape).tolist())
     except ValueError as e:
         raise InvalidInput(f"input '{name}': {len(data)} values do not fit shape {shape}") from e
 
