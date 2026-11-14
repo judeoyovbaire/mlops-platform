@@ -8,7 +8,7 @@ This module creates the foundational AWS resources required **before** deploying
 |----------|---------|
 | S3 Bucket | Terraform state storage with versioning and encryption |
 | KMS Key | Customer-managed key for state encryption |
-| DynamoDB Table | State locking to prevent concurrent modifications |
+| DynamoDB Table | Legacy state lock. Every backend also sets `use_lockfile = true` (S3 native locking); the table is removed once that has run on a live apply (JDH-422) |
 | GitHub OIDC Provider | Allows GitHub Actions to authenticate without static credentials |
 | IAM Role | Permissions for GitHub Actions to deploy infrastructure |
 | EC2 Spot service-linked role | Required for Spot launches; Karpenter cannot create it |
@@ -16,7 +16,7 @@ This module creates the foundational AWS resources required **before** deploying
 ## Prerequisites
 
 - AWS CLI configured with appropriate permissions
-- Terraform >= 1.5.7 (CI uses 1.17.1)
+- Terraform >= 1.11 (S3 native state locking; CI uses 1.17.1)
 
 ## Usage
 
@@ -51,9 +51,10 @@ key            = "mlops-platform/dev/terraform.tfstate"
 region         = "eu-west-1"
 encrypt        = true
 dynamodb_table = "mlops-platform-terraform-locks"
+use_lockfile   = true
 ```
 
-Then initialize with `terraform init -backend-config=backend.conf`.
+Then initialize with `terraform init -backend-config=backend.conf`. A working directory that was already initialised needs `terraform init -reconfigure -backend-config=backend.conf` once after `backend.conf` changes (for example when `use_lockfile` was added); bucket and key are unchanged, so no `-migrate-state`.
 
 ### 4. Migrate Existing State (if applicable)
 
@@ -98,7 +99,7 @@ jobs:
 - **Public Access Blocked**: No public access to state bucket
 - **OIDC Authentication**: No static AWS credentials in GitHub
 - **Least Privilege**: IAM role scoped to required permissions only
-- **State Locking**: DynamoDB prevents concurrent modifications
+- **State Locking**: S3 native lock file (`<key>.tflock` next to the state object) and, until the migration is confirmed, the DynamoDB table
 
 The OIDC trust `sub` is bound to `repo:judeoyovbaire/mlops-platform` (`var.github_org`, `var.github_repo`). The repository rename (JDH-411) must update it in the same change, or CI cannot assume the role.
 

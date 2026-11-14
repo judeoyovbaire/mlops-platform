@@ -940,11 +940,14 @@ jobs:
         if: steps.aws-creds.outcome == 'success'
         working-directory: infrastructure/terraform/environments/aws/dev
         run: |
+          # dynamodb_table and use_lockfile both hold the lock while the S3 native
+          # lock is proven on a live apply; dynamodb_table goes with the table (JDH-422).
           terraform init \
             -backend-config="bucket=mlops-platform-tfstate-${{ steps.aws-account.outputs.account_id }}" \
             -backend-config="key=mlops-platform/dev/terraform.tfstate" \
             -backend-config="region=${{ env.AWS_REGION }}" \
             -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
+            -backend-config="use_lockfile=true" \
             -backend-config="encrypt=true"
 
       - name: Check if EKS cluster exists
@@ -1079,11 +1082,14 @@ jobs:
       - name: Terraform Init
         working-directory: infrastructure/terraform/environments/aws/${{ github.event.inputs.environment }}
         run: |
+          # dynamodb_table and use_lockfile both hold the lock while the S3 native
+          # lock is proven on a live apply; dynamodb_table goes with the table (JDH-422).
           terraform init \
             -backend-config="bucket=mlops-platform-tfstate-${{ steps.aws-account.outputs.account_id }}" \
             -backend-config="key=mlops-platform/${{ github.event.inputs.environment }}/terraform.tfstate" \
             -backend-config="region=${{ env.AWS_REGION }}" \
             -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
+            -backend-config="use_lockfile=true" \
             -backend-config="encrypt=true"
 
       - name: Backup Terraform State

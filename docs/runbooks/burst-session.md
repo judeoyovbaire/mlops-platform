@@ -173,6 +173,7 @@ terraform init -reconfigure \
   -backend-config="key=mlops-platform/dev/terraform.tfstate" \
   -backend-config="region=eu-west-1" \
   -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
+  -backend-config="use_lockfile=true" \
   -backend-config="encrypt=true"
 cd -
 ./scripts/destroy-aws.sh --force

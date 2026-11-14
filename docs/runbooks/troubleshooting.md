@@ -43,13 +43,15 @@ aws sts get-caller-identity
 
 2. **State lock stuck**
    ```bash
-   # AWS
+   # Preferred: releases both locks (S3 lock file and DynamoDB item)
+   terraform force-unlock <lock-id>
+
+   # By hand, if force-unlock cannot reach the backend
+   aws s3 rm s3://mlops-platform-tfstate-<ACCOUNT_ID>/mlops-platform/dev/terraform.tfstate.tflock
    aws dynamodb delete-item \
      --table-name mlops-platform-terraform-locks \
-     --key '{"LockID":{"S":"<lock-id>"}}'
-
-   # Or force unlock
-   terraform force-unlock <lock-id>
+     --key '{"LockID":{"S":"mlops-platform-tfstate-<ACCOUNT_ID>/mlops-platform/dev/terraform.tfstate"}}'
+   # The DynamoDB item key is <bucket>/<state key>, not the lock id Terraform prints.
    ```
 
 3. **Resource already exists**
