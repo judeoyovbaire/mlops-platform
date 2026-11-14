@@ -4,11 +4,15 @@ Provisions an AWS EKS cluster with VPC, managed node groups (general, training, 
 
 The GPU managed node group (g4dn) is dormant at desired size 0. GPU serving uses the Karpenter g5 pool defined in `modules/aws-platform/karpenter.tf`.
 
+Every managed node group is pinned to the amazon-eks-ami release in `ami_release` (resolved to a `release_version` through AWS's per-image SSM parameters), the same tag Karpenter's `al2023@` alias uses, so both node paths boot one AMI release. The pin lives in `environments/aws/dev/variables.tf` (`eks_ami_release`) and Renovate tracks it.
+
 ## Usage
 
 ```hcl
 module "eks" {
   source = "../../../modules/eks" # from environments/aws/dev
+
+  ami_release = var.eks_ami_release # amazon-eks-ami tag, e.g. "v20261031"
 
   cluster_name    = "mlops-platform-dev"
   environment     = "dev"
@@ -29,6 +33,7 @@ module "eks" {
 | cluster_name | Name of the EKS cluster | `string` | n/a | yes |
 | environment | Deployment environment | `string` | `"dev"` | no |
 | cluster_version | Kubernetes version for the EKS cluster | `string` | `"1.37"` | no |
+| ami_release | amazon-eks-ami release tag (vYYYYMMDD) for every managed node group | `string` | n/a | yes |
 | cluster_endpoint_public_access | Enable public access to EKS API endpoint | `bool` | `false` | no |
 | cluster_endpoint_public_access_cidrs | List of CIDR blocks allowed to access the EKS public endpoint | `list(string)` | `[]` | no |
 | vpc_cidr | CIDR block for the VPC | `string` | `"10.0.0.0/16"` | no |

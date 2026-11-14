@@ -147,6 +147,16 @@ variable "training_taints" {
   }
 }
 
+variable "ami_release" {
+  description = "amazon-eks-ami release tag (vYYYYMMDD) for every managed node group. Resolved to the AMI release_version through the per-image SSM parameters, so the node groups boot the same release as Karpenter's al2023@ alias."
+  type        = string
+
+  validation {
+    condition     = can(regex("^v[0-9]{8}$", var.ami_release))
+    error_message = "Must be an amazon-eks-ami release tag such as v20261031."
+  }
+}
+
 # GPU node group
 variable "gpu_instance_types" {
   description = "Instance types for GPU node group"

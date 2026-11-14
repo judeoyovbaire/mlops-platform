@@ -17,7 +17,8 @@
 #   100Gi gp3; ungated models, no HF token needed
 #
 # v0.32.0 notes: the default image is built on CUDA 13.0 and needs NVIDIA
-# driver >= 580 (the pinned AL2023 NVIDIA AMI v20261031 ships 580); the
+# driver >= 580 (the pinned AL2023 NVIDIA AMI, eks_ami_release in
+# environments/aws/dev/variables.tf, ships 580 from v20261031 on); the
 # `-cu129` tags are the fallback. --quantization=awq maps to vLLM's
 # auto-AWQ config (Marlin kernels on the A10G).
 #

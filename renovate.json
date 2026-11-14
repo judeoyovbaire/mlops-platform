@@ -243,7 +243,7 @@
       ]
     },
     {
-      "description": "kubectl in CI follows the EKS cluster_version (one minor of skew at most). Raise this cap together with cluster_version and the kubeconform -kubernetes-version.",
+      "description": "kubectl in CI follows the EKS cluster_version (one minor of skew at most). Raise this cap together with cluster_version, the kubeconform -kubernetes-version and eks_ami_release (a tag published for the new minor).",
       "matchPackageNames": [
         "kubernetes/kubernetes"
       ],
@@ -295,6 +295,18 @@
         "pipelines/training/Dockerfile"
       ],
       "allowedVersions": "/^3\\.10([.-]|$)/"
+    },
+    {
+      "description": "EKS node AMI: the awslabs/amazon-eks-ami vYYYYMMDD tag pinned in environments/aws/dev/variables.tf (eks_ami_release) drives Karpenter's al2023@ alias and the managed node groups' release_version. The regex versioning on the annotation reads the tag as year.month.day, so a new month is a minor and a new year a major (this rule replaces the helm-major labels). Never automerge: the NVIDIA driver and kernel change, validate on a GPU session (JDH-416). The PR's Terraform plan is red with ParameterNotFound for two to three days after the GitHub release, until AWS publishes the per-image SSM parameters; retry then. Raise together with cluster_version: a new Kubernetes minor only has parameters for tags released after its GA.",
+      "matchDepNames": [
+        "awslabs/amazon-eks-ami"
+      ],
+      "groupName": "eks-node-ami",
+      "automerge": false,
+      "labels": [
+        "dependencies",
+        "gpu-session-required"
+      ]
     },
     {
       "description": "Manual merge only while the first Renovate batches are observed (JDH-406, decided 2026-11-01). Keyed on update type, not package name, so it also catches lockFileMaintenance PRs (no packageName) that :automergeMinor would otherwise merge. Must stay the LAST rule; delete it to re-enable the automerge rules above.",
