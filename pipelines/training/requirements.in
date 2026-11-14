@@ -20,17 +20,17 @@ cloudpickle==3.1.1
 # pillow, pyarrow, SQLAlchemy and Flask: 110 -> 70 locked packages.
 # It also drops skops, the default format of mlflow.sklearn.log_model in
 # 3.17; train_model.py sets serialization_format="cloudpickle" explicitly.
-mlflow-skinny==3.17.2
-joblib==1.4.2
-pandera==0.31.1
+mlflow-skinny==3.18.0
+joblib==1.6.0
+pandera==0.36.0
 opentelemetry-api==1.45.2
 opentelemetry-sdk==1.45.2
 opentelemetry-exporter-otlp-proto-grpc==1.45.2
-shap==0.46.0
+shap==0.54.1
 # Resolver floor: without it, backtracking can select numba<=0.53
 # (sdist-only, Python <3.10) and break the image build.
 numba>=0.61
 # MLflow S3 artifact uploads happen CLIENT-side - every image that logs
 # artifacts needs boto3 (discovered live: training succeeded, artifact
 # upload died).
-boto3==1.40.16
+boto3==1.44.0
