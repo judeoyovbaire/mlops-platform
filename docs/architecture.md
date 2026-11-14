@@ -276,6 +276,7 @@ infrastructure/terraform/
 - **General**: Platform services (t3.large x2, ON_DEMAND)
 - **Training**: c5.2xlarge, SPOT, 0-5
 - **GPU**: g4dn.xlarge, SPOT, 0-2 (dormant, desired 0). GPU serving uses the Karpenter g5 pool, not this node group.
+- All three node groups and the Karpenter EC2NodeClasses boot the same amazon-eks-ami release, pinned once in `environments/aws/dev/variables.tf` (`eks_ami_release`) and bumped by Renovate.
 
 Module reference: [`modules/eks/README.md`](../infrastructure/terraform/modules/eks/README.md).
 

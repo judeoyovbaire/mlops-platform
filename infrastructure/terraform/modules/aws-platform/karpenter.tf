@@ -295,7 +295,7 @@ resource "kubectl_manifest" "karpenter_gpu_nodeclass" {
       name: gpu
     spec:
       amiSelectorTerms:
-        - alias: al2023@v20261031 # pinned for reproducible sessions; Karpenter advises against @latest
+        - alias: al2023@${var.ami_release} # pinned for reproducible sessions (Karpenter advises against @latest); same release as the managed node groups
       role: ${var.eks.karpenter_node_role_name}
       subnetSelectorTerms:
         - tags:
@@ -328,7 +328,7 @@ resource "kubectl_manifest" "karpenter_default_nodeclass" {
       name: default
     spec:
       amiSelectorTerms:
-        - alias: al2023@v20261031 # pinned for reproducible sessions; Karpenter advises against @latest
+        - alias: al2023@${var.ami_release} # pinned for reproducible sessions (Karpenter advises against @latest); same release as the managed node groups
       role: ${var.eks.karpenter_node_role_name}
       subnetSelectorTerms:
         - tags:

@@ -7,6 +7,7 @@ module "platform" {
   environment  = "dev"
   eks          = module.eks
   cluster_name = var.cluster_name
+  ami_release  = var.eks_ami_release
   aws_region   = var.aws_region
   tags         = var.tags
 

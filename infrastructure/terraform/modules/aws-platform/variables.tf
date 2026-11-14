@@ -34,6 +34,16 @@ variable "cluster_name" {
   type        = string
 }
 
+variable "ami_release" {
+  description = "amazon-eks-ami release tag (vYYYYMMDD) for the Karpenter EC2NodeClass al2023@ alias; the same tag pins the managed node groups in modules/eks."
+  type        = string
+
+  validation {
+    condition     = can(regex("^v[0-9]{8}$", var.ami_release))
+    error_message = "Must be an amazon-eks-ami release tag such as v20261031."
+  }
+}
+
 variable "aws_region" {
   description = "AWS region"
   type        = string

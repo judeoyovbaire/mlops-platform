@@ -60,6 +60,31 @@ module "vpc" {
   tags = var.tags
 }
 
+# Node AMI release. The upstream module defaults use_latest_ami_release_version
+# to true: it reads .../recommended/release_version on EVERY plan and sets it
+# on the node groups, so an apply after AWS moved "recommended" rolled all
+# three node groups mid-session, while Karpenter's EC2NodeClass pins
+# al2023@<release>. AWS publishes one SSM parameter per AMI name; resolving
+# release_version through it keeps a single pin (var.ami_release, bumped by
+# Renovate) for every node. A tag that AWS has not published for this
+# Kubernetes version fails at plan with ParameterNotFound, which is the
+# intended guard: the per-image parameter appears two to three days after
+# the GitHub release, and a new Kubernetes minor has no parameters for older
+# tags, so cluster_version and ami_release move together. insecure_value is
+# the parameter's plain string (value is always marked sensitive; the release
+# version is public).
+locals {
+  ami_ssm_prefix = "/aws/service/eks/optimized-ami/${var.cluster_version}/amazon-linux-2023/x86_64"
+}
+
+data "aws_ssm_parameter" "al2023_standard_release" {
+  name = "${local.ami_ssm_prefix}/standard/amazon-eks-node-al2023-x86_64-standard-${var.cluster_version}-${var.ami_release}/release_version"
+}
+
+data "aws_ssm_parameter" "al2023_nvidia_release" {
+  name = "${local.ami_ssm_prefix}/nvidia/amazon-eks-node-al2023-x86_64-nvidia-${var.cluster_version}-${var.ami_release}/release_version"
+}
+
 # EKS Cluster
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
@@ -143,6 +168,9 @@ module "eks" {
       instance_types = var.general_instance_types
       capacity_type  = "ON_DEMAND"
 
+      use_latest_ami_release_version = false
+      ami_release_version            = data.aws_ssm_parameter.al2023_standard_release.insecure_value
+
       min_size     = var.general_min_size
       max_size     = var.general_max_size
       desired_size = var.general_desired_size
@@ -159,6 +187,9 @@ module "eks" {
       name           = "training"
       instance_types = var.training_instance_types
       capacity_type  = var.training_capacity_type
+
+      use_latest_ami_release_version = false
+      ami_release_version            = data.aws_ssm_parameter.al2023_standard_release.insecure_value
 
       min_size     = var.training_min_size
       max_size     = var.training_max_size
@@ -179,6 +210,9 @@ module "eks" {
       instance_types = var.gpu_instance_types
       capacity_type  = var.gpu_capacity_type
       ami_type       = "AL2023_x86_64_NVIDIA" # AL2 AMIs stop at EKS 1.32; AL2023 is the only option here
+
+      use_latest_ami_release_version = false
+      ami_release_version            = data.aws_ssm_parameter.al2023_nvidia_release.insecure_value
 
       min_size     = var.gpu_min_size
       max_size     = var.gpu_max_size

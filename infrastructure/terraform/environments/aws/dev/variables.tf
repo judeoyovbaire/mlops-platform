@@ -18,6 +18,29 @@ variable "cluster_version" {
   default     = "1.37"
 }
 
+variable "eks_ami_release" {
+  description = <<-EOT
+    amazon-eks-ami release tag (vYYYYMMDD) for every node: Karpenter's
+    al2023@ alias (modules/aws-platform/karpenter.tf) and the managed node
+    groups' release_version (modules/eks, via the per-image SSM parameters),
+    so both node paths run one AMI release. Renovate bumps it from
+    awslabs/amazon-eks-ami; a bump changes the NVIDIA driver and kernel the
+    next session boots, so validate it on a GPU session (JDH-416). AWS
+    publishes a release's SSM parameters two to three days after the GitHub
+    release, and only for Kubernetes minors current at that release: a
+    Renovate PR is red (ParameterNotFound) until then, and a cluster_version
+    bump needs a tag published for the new minor.
+  EOT
+  type        = string
+  # renovate: datasource=github-releases depName=awslabs/amazon-eks-ami versioning=regex:^v(?<major>\d{4})(?<minor>\d{2})(?<patch>\d{2})$
+  default = "v20261031"
+
+  validation {
+    condition     = can(regex("^v[0-9]{8}$", var.eks_ami_release))
+    error_message = "Must be an amazon-eks-ami release tag such as v20261031."
+  }
+}
+
 variable "vpc_cidr" {
   description = "CIDR block for VPC"
   type        = string
