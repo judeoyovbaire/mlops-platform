@@ -56,7 +56,7 @@ data:
           "type": "stat",
           "targets": [
             {
-              "expr": "count(argo_workflows_count{status=\"Running\"})",
+              "expr": "sum(argo_workflows_gauge{phase=\"Running\"})",
               "legendFormat": "Running",
               "refId": "A"
             }
@@ -112,17 +112,17 @@ data:
           "type": "timeseries",
           "targets": [
             {
-              "expr": "sum(increase(argo_workflows_count{status=\"Succeeded\"}[$__rate_interval]))",
+              "expr": "sum(increase(argo_workflows_total_count{phase=\"Succeeded\"}[$__rate_interval]))",
               "legendFormat": "Succeeded",
               "refId": "A"
             },
             {
-              "expr": "sum(increase(argo_workflows_count{status=\"Failed\"}[$__rate_interval]))",
+              "expr": "sum(increase(argo_workflows_total_count{phase=\"Failed\"}[$__rate_interval]))",
               "legendFormat": "Failed",
               "refId": "B"
             },
             {
-              "expr": "sum(increase(argo_workflows_count{status=\"Error\"}[$__rate_interval]))",
+              "expr": "sum(increase(argo_workflows_total_count{phase=\"Error\"}[$__rate_interval]))",
               "legendFormat": "Error",
               "refId": "C"
             }
@@ -166,29 +166,9 @@ data:
           "type": "timeseries",
           "targets": [
             {
-              "expr": "argo_workflows_pods_duration{template=\"load-data\"}",
-              "legendFormat": "load-data",
+              "expr": "argo_workflows_ml_pipeline_step_duration_seconds",
+              "legendFormat": "{{step}}",
               "refId": "A"
-            },
-            {
-              "expr": "argo_workflows_pods_duration{template=\"validate-data\"}",
-              "legendFormat": "validate-data",
-              "refId": "B"
-            },
-            {
-              "expr": "argo_workflows_pods_duration{template=\"feature-engineering\"}",
-              "legendFormat": "feature-engineering",
-              "refId": "C"
-            },
-            {
-              "expr": "argo_workflows_pods_duration{template=\"train-model\"}",
-              "legendFormat": "train-model",
-              "refId": "D"
-            },
-            {
-              "expr": "argo_workflows_pods_duration{template=\"register-model\"}",
-              "legendFormat": "register-model",
-              "refId": "E"
             }
           ]
         },
@@ -234,8 +214,8 @@ data:
           "type": "timeseries",
           "targets": [
             {
-              "expr": "argo_workflows_result_metrics{metric_name=\"accuracy\"}",
-              "legendFormat": "accuracy",
+              "expr": "argo_workflows_ml_pipeline_model_accuracy",
+              "legendFormat": "{{model}}",
               "refId": "A"
             }
           ]
