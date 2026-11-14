@@ -8,6 +8,7 @@
         terraform-init-aws terraform-plan-aws terraform-apply-aws terraform-destroy-aws \
         port-forward-mlflow port-forward-argocd port-forward-grafana port-forward-prometheus \
         port-forward-argo-wf port-forward-argo-rollouts validate-workflow deploy-example \
+        deploy-pipeline run-pipeline \
         deploy-local destroy-local status-local
 
 # Default target
@@ -218,6 +219,10 @@ deploy-pipeline:
 	@echo "Deploying ML training pipeline..."
 	$(KUBECTL) apply -k pipelines/training
 	@echo "Pipeline templates updated."
+
+run-pipeline:
+	@echo "Submitting one training pipeline run..."
+	$(KUBECTL) create -f $(PIPELINE_DIR)/ml-training-run.yaml
 
 build-pipeline-image:
 	@echo "Building ML training pipeline image..."

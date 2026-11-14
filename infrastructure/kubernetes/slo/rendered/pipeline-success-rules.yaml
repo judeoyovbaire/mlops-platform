@@ -17,10 +17,10 @@ spec:
   - name: sloth-slo-sli-recordings-ml-pipeline-pipeline-success
     rules:
     - expr: |
-        (sum(increase(argo_workflows_count{status="Failed"}[5m]))
+        (sum(increase(argo_workflows_total_count{phase=~"Failed|Error"}[5m]))
         )
         /
-        (sum(increase(argo_workflows_count[5m]))
+        (sum(increase(argo_workflows_total_count{phase=~"Succeeded|Failed|Error"}[5m]))
         )
       labels:
         release: prometheus
@@ -31,10 +31,10 @@ spec:
         team: platform
       record: slo:sli_error:ratio_rate5m
     - expr: |
-        (sum(increase(argo_workflows_count{status="Failed"}[30m]))
+        (sum(increase(argo_workflows_total_count{phase=~"Failed|Error"}[30m]))
         )
         /
-        (sum(increase(argo_workflows_count[30m]))
+        (sum(increase(argo_workflows_total_count{phase=~"Succeeded|Failed|Error"}[30m]))
         )
       labels:
         release: prometheus
@@ -45,10 +45,10 @@ spec:
         team: platform
       record: slo:sli_error:ratio_rate30m
     - expr: |
-        (sum(increase(argo_workflows_count{status="Failed"}[1h]))
+        (sum(increase(argo_workflows_total_count{phase=~"Failed|Error"}[1h]))
         )
         /
-        (sum(increase(argo_workflows_count[1h]))
+        (sum(increase(argo_workflows_total_count{phase=~"Succeeded|Failed|Error"}[1h]))
         )
       labels:
         release: prometheus
@@ -59,10 +59,10 @@ spec:
         team: platform
       record: slo:sli_error:ratio_rate1h
     - expr: |
-        (sum(increase(argo_workflows_count{status="Failed"}[2h]))
+        (sum(increase(argo_workflows_total_count{phase=~"Failed|Error"}[2h]))
         )
         /
-        (sum(increase(argo_workflows_count[2h]))
+        (sum(increase(argo_workflows_total_count{phase=~"Succeeded|Failed|Error"}[2h]))
         )
       labels:
         release: prometheus
@@ -73,10 +73,10 @@ spec:
         team: platform
       record: slo:sli_error:ratio_rate2h
     - expr: |
-        (sum(increase(argo_workflows_count{status="Failed"}[6h]))
+        (sum(increase(argo_workflows_total_count{phase=~"Failed|Error"}[6h]))
         )
         /
-        (sum(increase(argo_workflows_count[6h]))
+        (sum(increase(argo_workflows_total_count{phase=~"Succeeded|Failed|Error"}[6h]))
         )
       labels:
         release: prometheus
@@ -87,10 +87,10 @@ spec:
         team: platform
       record: slo:sli_error:ratio_rate6h
     - expr: |
-        (sum(increase(argo_workflows_count{status="Failed"}[1d]))
+        (sum(increase(argo_workflows_total_count{phase=~"Failed|Error"}[1d]))
         )
         /
-        (sum(increase(argo_workflows_count[1d]))
+        (sum(increase(argo_workflows_total_count{phase=~"Succeeded|Failed|Error"}[1d]))
         )
       labels:
         release: prometheus
@@ -101,10 +101,10 @@ spec:
         team: platform
       record: slo:sli_error:ratio_rate1d
     - expr: |
-        (sum(increase(argo_workflows_count{status="Failed"}[3d]))
+        (sum(increase(argo_workflows_total_count{phase=~"Failed|Error"}[3d]))
         )
         /
-        (sum(increase(argo_workflows_count[3d]))
+        (sum(increase(argo_workflows_total_count{phase=~"Succeeded|Failed|Error"}[3d]))
         )
       labels:
         release: prometheus

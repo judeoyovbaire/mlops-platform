@@ -1095,7 +1095,10 @@ jobs:
 
       - name: Install Argo CLI
         run: |
-          curl -sLO --retry 3 --retry-delay 5 "https://github.com/argoproj/argo-workflows/releases/download/${ARGO_WORKFLOWS_VERSION}/argo-linux-amd64.gz"
+          base="https://github.com/argoproj/argo-workflows/releases/download/${ARGO_WORKFLOWS_VERSION}"
+          curl -fsSLO --retry 3 --retry-delay 5 "${base}/argo-linux-amd64.gz"
+          curl -fsSLO --retry 3 --retry-delay 5 "${base}/argo-workflows-cli-checksums.txt"
+          sha256sum --check --ignore-missing argo-workflows-cli-checksums.txt
           gunzip argo-linux-amd64.gz
           chmod +x argo-linux-amd64
           sudo mv argo-linux-amd64 /usr/local/bin/argo
@@ -1115,15 +1118,26 @@ jobs:
             echo "Attempt $i failed, retrying in 10s..."
             sleep 10
           done
-          kubectl wait --for=condition=available deployment/argo-server -n argo --timeout=120s
+          kubectl wait --for=condition=available deployment/argo-server deployment/workflow-controller -n argo --timeout=120s
 
-      - name: Install MinIO
+      # quick-start-minimal already runs MinIO (deployment/minio, container
+      # `main`) with my-minio-cred and an artifact-repositories ConfigMap. The
+      # repo's old tests/e2e/minio.yaml merged a second container into that
+      # Deployment and both bound 9000/9001; the rollout never became
+      # available (run 41288754780).
+      - name: Lint and deploy the pipeline WorkflowTemplate
+        # argo lint runs Argo's own validator (template and parameter
+        # references, metric definitions); the apply then checks the template
+        # against the v4 CRD schema. The argo-workflow ServiceAccount and the
+        # default-artifact-repository key exist on EKS (chart, Terraform), not
+        # here, so the template is validated and stored, not run.
         run: |
-          kubectl apply -f tests/e2e/minio.yaml
-          kubectl wait --for=condition=available deployment/minio -n argo --timeout=120s
-          kubectl wait --for=condition=complete job/minio-init -n argo --timeout=60s || true
+          argo lint --offline --kinds wftmpl pipelines/training/ml-training-workflow.yaml
+          kubectl apply -k pipelines/training
 
       - name: Run E2E tests
+        # The Argo tests fail (not skip) on a missing prerequisite. The KServe
+        # test still skips: nothing installs KServe on Kind.
         env:
           E2E_CLUSTER_TEST: "true"
         run: |

@@ -1,0 +1,16 @@
+# One run of the training pipeline from the WorkflowTemplate.
+# generateName needs `kubectl create -f` (make run-pipeline) or
+# `argo submit -n argo --from workflowtemplate/ml-training-pipeline`;
+# `kubectl apply` rejects it, so this file stays out of kustomization.yaml
+# (`kubectl apply -k pipelines/training` deploys the template only).
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: ml-training-
+  namespace: argo
+  labels:
+    app: mlops
+    pipeline: training
+spec:
+  workflowTemplateRef:
+    name: ml-training-pipeline

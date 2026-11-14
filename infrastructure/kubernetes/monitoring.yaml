@@ -160,19 +160,21 @@ spec:
             summary: "MLflow tracking server is down"
             description: "MLflow tracking server has been down for more than 2 minutes"
 
-        # Argo Workflow failure rate
+        # Argo Workflow failure rate. argo_workflows_total_count counts
+        # workflows entering each phase (Argo v4 docs/metrics.md); the
+        # denominator is the terminal phases, Running would double count.
         - alert: HighWorkflowFailureRate
           expr: |
-            sum(rate(argo_workflows_count{status="Failed"}[1h]))
+            sum(rate(argo_workflows_total_count{phase=~"Failed|Error"}[1h]))
             /
-            sum(rate(argo_workflows_count[1h]))
+            sum(rate(argo_workflows_total_count{phase=~"Succeeded|Failed|Error"}[1h]))
             > 0.1
           for: 15m
           labels:
             severity: warning
           annotations:
             summary: "High Argo Workflow failure rate"
-            description: "More than 10% of workflows are failing in the last hour"
+            description: "More than 10% of workflow runs ended Failed or Error in the last hour"
 
         # GPU utilization low (cost optimization)
         - alert: LowGPUUtilization

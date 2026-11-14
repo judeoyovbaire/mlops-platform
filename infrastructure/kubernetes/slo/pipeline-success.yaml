@@ -14,12 +14,15 @@ spec:
     - name: pipeline-success
       objective: 95
       description: "95% of ML pipeline runs should complete successfully"
+      # argo_workflows_total_count (Argo v4 docs/metrics.md) counts workflows
+      # entering each phase; a run passes through Running before its terminal
+      # phase, so the total is the terminal phases only, not every sample.
       sli:
         events:
           errorQuery: >
-            sum(increase(argo_workflows_count{status="Failed"}[{{.window}}]))
+            sum(increase(argo_workflows_total_count{phase=~"Failed|Error"}[{{.window}}]))
           totalQuery: >
-            sum(increase(argo_workflows_count[{{.window}}]))
+            sum(increase(argo_workflows_total_count{phase=~"Succeeded|Failed|Error"}[{{.window}}]))
       alerting:
         name: PipelineSuccessBurnRate
         labels:

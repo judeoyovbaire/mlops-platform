@@ -231,6 +231,22 @@ spec:
         cache:
           configMap:
             name: pipeline-cache
+      # Custom metric, emitted by the controller on its /metrics endpoint
+      # (prefix argo_workflows_) when the step finishes:
+      #   argo_workflows_ml_pipeline_step_duration_seconds{step="..."}
+      # Read by dashboards/ml-pipeline-dashboard.yaml and shipped by the
+      # Grafana Cloud remote-write allowlist. Label values stay bounded: the
+      # step name here, the model name on the accuracy gauge (train-model).
+      metrics:
+        prometheus:
+          - name: ml_pipeline_step_duration_seconds
+            help: "Duration of the last run of each ML pipeline step, in seconds"
+            labels:
+              - key: step
+                value: load-data
+            gauge:
+              realtime: false
+              value: "{{duration}}"
       inputs:
         parameters:
           - name: dataset-url
@@ -263,6 +279,16 @@ spec:
       retryStrategy:
         limit: 2
         retryPolicy: "OnError"
+      metrics:
+        prometheus:
+          - name: ml_pipeline_step_duration_seconds
+            help: "Duration of the last run of each ML pipeline step, in seconds"
+            labels:
+              - key: step
+                value: validate-data
+            gauge:
+              realtime: false
+              value: "{{duration}}"
       inputs:
         parameters:
           - name: min-rows
@@ -312,6 +338,16 @@ spec:
         cache:
           configMap:
             name: pipeline-cache
+      metrics:
+        prometheus:
+          - name: ml_pipeline_step_duration_seconds
+            help: "Duration of the last run of each ML pipeline step, in seconds"
+            labels:
+              - key: step
+                value: feature-engineering
+            gauge:
+              realtime: false
+              value: "{{duration}}"
       inputs:
         parameters:
           - name: target-column
@@ -352,6 +388,25 @@ spec:
       retryStrategy:
         limit: 1
         retryPolicy: "OnFailure"
+      metrics:
+        prometheus:
+          - name: ml_pipeline_step_duration_seconds
+            help: "Duration of the last run of each ML pipeline step, in seconds"
+            labels:
+              - key: step
+                value: train-model
+            gauge:
+              realtime: false
+              value: "{{duration}}"
+          - name: ml_pipeline_model_accuracy
+            help: "Test-set accuracy of the last successfully trained model"
+            when: "{{status}} == Succeeded"
+            labels:
+              - key: model
+                value: "{{inputs.parameters.model-name}}"
+            gauge:
+              realtime: false
+              value: "{{outputs.parameters.accuracy}}"
       inputs:
         parameters:
           - name: target-column
@@ -421,6 +476,16 @@ spec:
       retryStrategy:
         limit: 1
         retryPolicy: "OnError"
+      metrics:
+        prometheus:
+          - name: ml_pipeline_step_duration_seconds
+            help: "Duration of the last run of each ML pipeline step, in seconds"
+            labels:
+              - key: step
+                value: validate-model
+            gauge:
+              realtime: false
+              value: "{{duration}}"
       inputs:
         parameters:
           - name: target-column
@@ -466,6 +531,16 @@ spec:
       retryStrategy:
         limit: 2
         retryPolicy: "OnError"
+      metrics:
+        prometheus:
+          - name: ml_pipeline_step_duration_seconds
+            help: "Duration of the last run of each ML pipeline step, in seconds"
+            labels:
+              - key: step
+                value: register-model
+            gauge:
+              realtime: false
+              value: "{{duration}}"
       inputs:
         parameters:
           - name: model-name
@@ -520,6 +595,16 @@ spec:
       retryStrategy:
         limit: 1
         retryPolicy: "OnError"
+      metrics:
+        prometheus:
+          - name: ml_pipeline_step_duration_seconds
+            help: "Duration of the last run of each ML pipeline step, in seconds"
+            labels:
+              - key: step
+                value: build-serving-model
+            gauge:
+              realtime: false
+              value: "{{duration}}"
       inputs:
         parameters:
           - name: mlflow-tracking-uri
@@ -578,6 +663,16 @@ spec:
       retryStrategy:
         limit: 1
         retryPolicy: "OnError"
+      metrics:
+        prometheus:
+          - name: ml_pipeline_step_duration_seconds
+            help: "Duration of the last run of each ML pipeline step, in seconds"
+            labels:
+              - key: step
+                value: serving-load-test
+            gauge:
+              realtime: false
+              value: "{{duration}}"
       inputs:
         artifacts:
           - name: serving-model
@@ -613,17 +708,3 @@ spec:
           allowPrivilegeEscalation: false
           capabilities:
             drop: ["ALL"]
-
----
-# Workflow to run the training pipeline
-apiVersion: argoproj.io/v1alpha1
-kind: Workflow
-metadata:
-  generateName: ml-training-
-  namespace: argo
-  labels:
-    app: mlops
-    pipeline: training
-spec:
-  workflowTemplateRef:
-    name: ml-training-pipeline

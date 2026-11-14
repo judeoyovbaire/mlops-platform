@@ -1,27 +1,10 @@
-# Kind cluster configuration for E2E tests
-# Creates a minimal cluster suitable for testing Argo Workflows
+# Kind cluster for the e2e job (.github/workflows/ci-cd.yaml, e2e-test).
+# Argo's quick-start-minimal brings its own MinIO and artifact-repositories
+# ConfigMap; nothing is exposed on the host, the tests go through kubectl and
+# the argo CLI against the API server.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: mlops-e2e-test
 nodes:
   - role: control-plane
-    kubeadmConfigPatches:
-      - |
-        kind: InitConfiguration
-        nodeRegistration:
-          kubeletExtraArgs:
-            node-labels: "ingress-ready=true"
-    extraPortMappings:
-      # Argo Workflows UI
-      - containerPort: 30746
-        hostPort: 2746
-        protocol: TCP
-      # MinIO API
-      - containerPort: 30900
-        hostPort: 9000
-        protocol: TCP
-      # MinIO Console
-      - containerPort: 30901
-        hostPort: 9001
-        protocol: TCP
   - role: worker

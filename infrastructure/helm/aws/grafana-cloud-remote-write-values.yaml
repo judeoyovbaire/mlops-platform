@@ -21,5 +21,5 @@ prometheus:
         # the evidence series. Cardinality hygiene is the point.
         writeRelabelConfigs:
           - sourceLabels: [__name__]
-            regex: "(rest_server_.*|model_.*|slo:.*|sloth_slo_.*|ALERTS|ALERTS_FOR_STATE|up|argo_workflows_count|DCGM_FI_DEV_GPU_UTIL|DCGM_FI_DEV_FB_USED)"
+            regex: "(rest_server_.*|model_.*|slo:.*|sloth_slo_.*|ALERTS|ALERTS_FOR_STATE|up|argo_workflows_gauge|argo_workflows_total_count|argo_workflows_ml_pipeline_.*|DCGM_FI_DEV_GPU_UTIL|DCGM_FI_DEV_FB_USED)"
             action: keep

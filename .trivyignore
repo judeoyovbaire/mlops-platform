@@ -60,29 +60,24 @@ AVD-AWS-0041
 # - EKS public endpoint - disabled by default, enable with restricted CIDRs if needed
 
 # =============================================================================
-# E2E Test Infrastructure (tests/e2e/minio.yaml)
+# Test fixtures and the local dev stack (HIGH checks)
 # =============================================================================
-# The MinIO manifest is used only for E2E testing in disposable Kind clusters.
-# These are not production workloads and security hardening is not required.
-# Path: tests/e2e/minio.yaml
+# Every production manifest passes KSV014 and KSV118 (scan of 2026-11-14 with
+# both removed failed only in the files below). They stay ignored for:
+# - tests/policies/*/resources/pods.yaml: minimal Pod fixtures for the Kyverno
+#   image-tag and image-audit policy tests; a security context is not what
+#   they test.
+# - infrastructure/local/manifests/postgres-local.yaml: local Kind dev stack;
+#   Postgres writes to its root filesystem.
+# .trivyignore cannot scope an ID to a path; the YAML ignore format can, if
+# this list grows.
 
-# HIGH: Root filesystem not read-only - MinIO requires write access for data
+# HIGH: Root filesystem not read-only
 KSV014
 
-# HIGH: Default security context configured - acceptable for test workloads
+# HIGH: Default security context configured
 KSV118
 
-# MEDIUM: Runs as root - MinIO test container runs as root
-KSV012
-
-# MEDIUM: Container could be running as root user
-KSV104
-
-# MEDIUM: SYS_ADMIN capability added
-KSV0125
-
-# LOW: Various container security best practices not followed in test fixture
-KSV011
 KSV015
 KSV016
 KSV018
