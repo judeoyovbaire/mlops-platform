@@ -33,7 +33,7 @@ spec:
       - name: transformer
         # Pinned Git-SHA tag from build-sign-publish. Mutable tags are
         # rejected at admission (governance/immutable-image-tags-policy.yaml).
-        image: ghcr.io/judeoyovbaire/mlops-platform/kserve-transformer:5bf53d3
+        image: ghcr.io/judeoyovbaire/mlops-platform/kserve-transformer:c5f28ab
         env:
           - name: PREPROCESSOR_PATH
             value: /mnt/models/preprocessor.joblib
