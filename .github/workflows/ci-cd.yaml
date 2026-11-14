@@ -450,25 +450,32 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # The unit tests replace kserve with a MagicMock, so an SDK API break
+      # The unit tests stub kserve (tests/kserve_stub.py), so an SDK API break
       # (0.14 -> 0.21 removed ModelServer.parser) passes them. Start the real
       # image with the args KServe injects, behind a stub predictor, and send
-      # one v1 request through a preprocessor fitted in the image.
+      # a v1 request, a non-JSON v1 body (400) and a v2 request through a
+      # preprocessor fitted in the image.
       - name: Serve-smoke the kserve-transformer image
         run: |
           set -euo pipefail
           img=mlops-platform/kserve-transformer:test
           work=$(mktemp -d)
           chmod 777 "$work"
-          cleanup() { docker rm -f ksmoke-stub ksmoke-tr >/dev/null 2>&1 || true; docker network rm ksmoke >/dev/null 2>&1 || true; }
+          cleanup() { docker rm -f ksmoke-stub ksmoke-tr ksmoke-tr2 >/dev/null 2>&1 || true; docker network rm ksmoke >/dev/null 2>&1 || true; }
           trap cleanup EXIT
+          # The stub predictor answers v1 (dict) and v2 (InferRequest), echoing
+          # what it received so the assertions below see the transformed tensor.
           cat > "$work/stub.py" <<'EOF'
-          from kserve import Model, ModelServer
+          from kserve import InferOutput, InferRequest, InferResponse, Model, ModelServer
           class Stub(Model):
               def __init__(self):
                   super().__init__("iris")
                   self.ready = True
               def predict(self, payload, headers=None):
+                  if isinstance(payload, InferRequest):
+                      i = payload.inputs[0]
+                      echo = InferOutput(name="received", shape=i.shape, datatype=i.datatype, data=i.data)
+                      return InferResponse(response_id=payload.id, model_name=self.name, infer_outputs=[echo])
                   return {"predictions": [0] * len(payload["instances"]), "received": payload["instances"]}
           ModelServer(http_port=8081, enable_grpc=False).start([Stub()])
           EOF
@@ -495,6 +502,32 @@ jobs:
           echo "$resp"
           # Scaled by the preprocessor on the way through: sepal length 5.1 -> about -0.90.
           echo "$resp" | python3 -c "import json,sys; r=json.load(sys.stdin); v=r['received'][0][0]; assert -0.95 < v < -0.85, r; print('transformer forwarded scaled features')"
+          # A body without a JSON content-type reaches preprocess as bytes: 400, not 500 (JDH-425).
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost:18080/v1/models/iris:predict \
+            -H 'content-type: text/plain' -d '{"instances":[[5.1,3.5,1.4,0.2]]}')
+          [ "$code" = "400" ] || { echo "expected 400 for a non-JSON body, got $code"; docker logs ksmoke-tr; exit 1; }
+          echo "non-JSON body rejected with 400"
+          # v2 in front of a v2 predictor: KServe does not inject the protocol, the
+          # manifest must. Spec-style flat data with a shape, reshaped by the transformer;
+          # the forwarded input must describe the transformed tensor.
+          docker run -d --name ksmoke-tr2 --network ksmoke -p 18081:8080 \
+            -v "$work/preprocessor.joblib:/mnt/models/preprocessor.joblib:ro" \
+            "$img" --model_name iris --predictor_host ksmoke-stub:8081 --predictor_protocol v2 --http_port 8080 >/dev/null
+          for _ in $(seq 1 30); do
+            curl -sf localhost:18081/v2/models/iris >/dev/null && break
+            sleep 2
+          done
+          resp=$(curl -sf -X POST localhost:18081/v2/models/iris/infer \
+            -H 'content-type: application/json' \
+            -d '{"inputs":[{"name":"input-0","shape":[1,4],"datatype":"FP32","data":[5.1,3.5,1.4,0.2]}]}') || { docker logs ksmoke-tr2; docker logs ksmoke-stub; exit 1; }
+          echo "$resp"
+          echo "$resp" | python3 -c "
+          import json, sys
+          r = json.load(sys.stdin)
+          o = r['outputs'][0]
+          assert o['shape'] == [1, 4] and o['datatype'] == 'FP32', o
+          assert -0.95 < o['data'][0] < -0.85, o
+          print('v2 flat request reshaped, transformed and forwarded with shape/datatype')"
 
       - name: Scan training pipeline image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0

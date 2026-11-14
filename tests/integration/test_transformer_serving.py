@@ -11,7 +11,6 @@ serving container.
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import joblib
 import numpy as np
@@ -21,12 +20,11 @@ from sklearn.ensemble import RandomForestClassifier
 
 from pipelines.training.src.build_serving_model import PreprocessingModel
 from pipelines.training.src.feature_engineering import feature_engineering
+from tests import kserve_stub
 
 # The kserve package is not a test dependency; stub it like the unit tests do
 # (the seam under test is the preprocessor, not kserve plumbing).
-_kserve_mock = MagicMock()
-_kserve_mock.Model = type("Model", (), {"__init__": lambda self, name: None})
-sys.modules.setdefault("kserve", _kserve_mock)
+kserve_stub.install()
 
 _transformer_dir = str(Path(__file__).resolve().parents[2] / "components" / "kserve-transformer")
 if _transformer_dir not in sys.path:
@@ -79,8 +77,17 @@ def fitted_artifacts(tmp_path_factory):
 
 
 def _make_payload(data):
-    """Minimal stand-in for a KServe InferRequest."""
-    return SimpleNamespace(inputs=[SimpleNamespace(data=data)])
+    """A v2 InferRequest (stub) carrying nested rows, as the repo's clients send."""
+    shape = [len(data), len(data[0])] if isinstance(data[0], list) else [len(data)]
+    return kserve_stub.InferRequest(
+        "iris", [kserve_stub.InferInput("input-0", shape, "FP64", data=data)]
+    )
+
+
+def _rows(result):
+    """The transformed rows: v2 data leaves flat, described by shape."""
+    out = result.inputs[0]
+    return np.asarray(out.data).reshape(out.shape)
 
 
 @pytest.fixture
@@ -108,7 +115,7 @@ class TestTransformerWithRealPreprocessor:
         expected = fitted_artifacts.preprocessor.transform(raw.head(3))
         if hasattr(expected, "to_numpy"):
             expected = expected.to_numpy()
-        np.testing.assert_allclose(result.inputs[0].data, expected, rtol=1e-9)
+        np.testing.assert_allclose(_rows(result), expected, rtol=1e-9)
 
     def test_named_payload_out_of_order_columns(self, loaded_transformer, fitted_artifacts):
         """Dict payload with shuffled key order must align to training order."""
@@ -121,7 +128,7 @@ class TestTransformerWithRealPreprocessor:
         expected = fitted_artifacts.preprocessor.transform(raw.head(2))
         if hasattr(expected, "to_numpy"):
             expected = expected.to_numpy()
-        np.testing.assert_allclose(result.inputs[0].data, expected, rtol=1e-9)
+        np.testing.assert_allclose(_rows(result), expected, rtol=1e-9)
 
     def test_wrong_width_raises_actionable_error(self, loaded_transformer):
         """Wrong feature count should fail with the expected schema, not a
@@ -161,7 +168,7 @@ class TestServingPyfuncEndToEnd:
 
         # Path 1: KServe transformer preprocess → model
         payload = _make_payload(raw.values.tolist())
-        transformed = loaded_transformer.preprocess(payload, headers={}).inputs[0].data
+        transformed = _rows(loaded_transformer.preprocess(payload, headers={}))
         path1 = fitted_artifacts.model.predict(
             pd.DataFrame(transformed, columns=fitted_artifacts.model.feature_names_in_)
         )

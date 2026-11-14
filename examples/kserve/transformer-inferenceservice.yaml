@@ -5,7 +5,15 @@
 # not the predictor protocol, which defaults to v1. That matches this sklearn
 # predictor; in front of a v2 predictor (MLServer), add
 #   args: ["--predictor_protocol=v2"]
-# to the transformer container.
+# to the transformer container. v2 requests may carry spec-style flat data
+# with a shape or nested rows; the forwarded tensor's shape and datatype
+# describe the transformed features.
+#
+# Note the CI-deployed champion (champion-inferenceservice.template.yaml) is
+# the bundled pyfunc from build_serving_model.py: it already preprocesses raw
+# features, so this transformer in front of it would scale twice. Pair the
+# transformer with the bare model artifact (train-model's model.joblib), or
+# set PASSTHROUGH_MODE=true to exercise the plumbing only.
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
