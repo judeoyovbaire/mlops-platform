@@ -491,6 +491,10 @@ cloudevents==1.13.0 \
     --hash=sha256:ba01fb257b472c6222fea78ed8bea0fd7a3b0b0fb994cfd677d33a2d53388ccb \
     --hash=sha256:c4b9ea89f1bb6e2090c8de740870d3c96809181ef691843cb672632afcae039b
     # via kserve
+cloudpickle==3.1.2 \
+    --hash=sha256:7fda9eb655c9c230dab534f1983763de5835249750e85fbcef43aaa30a9a2414 \
+    --hash=sha256:9acb47f6afd73f60dc1df93bb801b472f05ff42fa6c84167d25cb206be1fbf4a
+    # via joblib
 cryptography==50.0.2 \
     --hash=sha256:0ddc924c04591c2811ca024d62ecad4f7f6f08af8939c211438f48a16bd23602 \
     --hash=sha256:0ec5f09541743261e66e291b4a0cbf0fb2997aeaab6d9e9c740b9dba1b58d1c2 \
@@ -964,9 +968,9 @@ idna==3.20 \
     #   httpx
     #   requests
     #   yarl
-joblib==1.4.2 \
-    --hash=sha256:06d478d5674cbc267e7496a410ee875abd68e4340feff4490bcb7afb88060ae6 \
-    --hash=sha256:2382c5816b2636fbd20a09e0f4e9dad4736765fdfb7dca582943b9c1366b3f0e
+joblib==1.6.0 \
+    --hash=sha256:2ccc96785b12046c08fd6d55839c12857831b54a3c1673ffadd2f04bfc4eda03 \
+    --hash=sha256:3dbbf9f6e4b592a2357b854608e980fe6390d131d7a82f011a377ef2ebef7aba
     # via
     #   -r components/kserve-transformer/requirements.in
     #   scikit-learn
