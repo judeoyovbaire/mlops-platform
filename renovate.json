@@ -297,6 +297,19 @@
       "allowedVersions": "/^3\\.10([.-]|$)/"
     },
     {
+      "description": "shap in the training image: 0.50+ needs Python >= 3.11 and 0.52+ needs 3.12, while the image stays on 3.10 with MLServer (serving-runtime-contract.yaml, JDH-424). Hold on 0.49.x until the runtime moves; Renovate #143 proposed 0.54.1 and the 3.10 lockfile could not resolve it.",
+      "matchManagers": [
+        "pip-compile"
+      ],
+      "matchDepNames": [
+        "shap"
+      ],
+      "matchFileNames": [
+        "pipelines/training/**"
+      ],
+      "allowedVersions": "<0.50.0"
+    },
+    {
       "description": "EKS node AMI: the awslabs/amazon-eks-ami vYYYYMMDD tag pinned in environments/aws/dev/variables.tf (eks_ami_release) drives Karpenter's al2023@ alias and the managed node groups' release_version. The regex versioning on the annotation reads the tag as year.month.day, so a new month is a minor and a new year a major (this rule replaces the helm-major labels). Never automerge: the NVIDIA driver and kernel change, validate on a GPU session (JDH-416). The PR's Terraform plan is red with ParameterNotFound for two to three days after the GitHub release, until AWS publishes the per-image SSM parameters; retry then. Raise together with cluster_version: a new Kubernetes minor only has parameters for tags released after its GA.",
       "matchDepNames": [
         "awslabs/amazon-eks-ami"
