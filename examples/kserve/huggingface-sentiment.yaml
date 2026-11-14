@@ -31,7 +31,7 @@ metadata:
     # these keys, and the Hub commit below is the actual provenance.
     mlops.io/mlflow-run-id: "external-pretrained"
     mlops.io/mlflow-experiment-id: "external-pretrained"
-    mlops.io/hf-revision: "714eb0fa89d2f80546fda750413ed43d93601a13"
+    mlops.io/hf-revision: "714eb0fa89d2f80546fda750413ed43d93601a13"  # pragma: allowlist secret
 spec:
   predictor:
     serviceAccountName: kserve-inference

@@ -384,7 +384,7 @@ post_destroy_cleanup() {
         --output text 2>/dev/null)
 
     for secret in $SECRETS; do
-        if [[ -n "$secret" && "$secret" != "None" ]]; then
+        if [[ -n "$secret" && "$secret" != "None" ]]; then  # pragma: allowlist secret
             print_info "  Force-deleting secret: $secret"
             aws secretsmanager delete-secret --secret-id "$secret" \
                 --force-delete-without-recovery \

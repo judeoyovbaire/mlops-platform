@@ -286,4 +286,3 @@ resource "kubernetes_config_map_v1" "argo_artifact_repositories" {
     "default-artifact-repository" = yamlencode(local.argo_artifact_repository)
   }
 }
-

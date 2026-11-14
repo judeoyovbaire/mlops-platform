@@ -25,7 +25,7 @@ def metadata_file(tmp_path):
         "test_output": '[{"label": "POSITIVE", "score": 0.9998}]',
         "success": True,
         "requested_revision": None,
-        "resolved_revision": "714eb0fa89d2f80546fda750413ed43d93601a13",
+        "resolved_revision": "714eb0fa89d2f80546fda750413ed43d93601a13",  # pragma: allowlist secret
     }
     path = tmp_path / "metadata.json"
     path.write_text(json.dumps(metadata))

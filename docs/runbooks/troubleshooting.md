@@ -240,6 +240,7 @@ kubectl logs -n mlflow -l app=mlflow
 **Diagnosis**:
 ```python
 import mlflow
+
 mlflow.set_tracking_uri("http://mlflow.mlflow.svc.cluster.local:5000")
 # Try simple operation
 mlflow.set_experiment("test")
