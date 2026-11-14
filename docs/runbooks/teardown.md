@@ -39,6 +39,7 @@ finding group 7.
      -backend-config="key=mlops-platform/dev/terraform.tfstate" \
      -backend-config="region=eu-west-1" \
      -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
+     -backend-config="use_lockfile=true" \
      -backend-config="encrypt=true"
    terraform state list | wc -l   # must NOT be 0 for a live environment
    ```

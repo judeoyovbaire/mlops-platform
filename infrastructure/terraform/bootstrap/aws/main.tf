@@ -1,7 +1,9 @@
 # Bootstrap AWS: S3 state bucket, DynamoDB lock table, GitHub OIDC provider, IAM role
 
 terraform {
-  required_version = ">= 1.5.7"
+  # >= 1.11 for S3 native state locking (use_lockfile in the backend config,
+  # GA in 1.11).
+  required_version = ">= 1.11"
 
   required_providers {
     aws = {
@@ -18,6 +20,7 @@ terraform {
   #     -backend-config="key=bootstrap/aws/terraform.tfstate" \
   #     -backend-config="region=eu-west-1" \
   #     -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
+  #     -backend-config="use_lockfile=true" \
   #     -backend-config="encrypt=true"
   # First-ever creation in a fresh account: comment this out, apply with
   # local state, restore it, re-init with -migrate-state.
@@ -182,8 +185,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "terraform_state" {
   }
 }
 
-# DynamoDB Table for State Locking
-
 # EC2 Spot service-linked role - accounts that have never launched Spot
 # lack it, and instance-launching roles (Karpenter) cannot create it:
 # first GPU session failed with ServiceLinkedRoleCreationNotPermitted.
@@ -191,6 +192,12 @@ resource "aws_iam_service_linked_role" "spot" {
   aws_service_name = "spot.amazonaws.com"
 }
 
+# DynamoDB table for state locking. Legacy: every backend config also sets
+# use_lockfile = true (S3 native locking, GA in Terraform 1.11, which also
+# deprecated dynamodb_table) and holds both locks during the migration. After one
+# plan/apply cycle has run with both, remove this table, the DynamoDBLocking
+# policy statement, the two terraform_locks_table outputs and every
+# dynamodb_table backend entry (JDH-422 part 2; a bootstrap apply).
 resource "aws_dynamodb_table" "terraform_locks" {
   name         = "${var.project_name}-terraform-locks"
   billing_mode = "PAY_PER_REQUEST"
@@ -817,6 +824,7 @@ output "backend_config" {
       region         = "${var.aws_region}"
       encrypt        = true
       dynamodb_table = "${aws_dynamodb_table.terraform_locks.name}"
+      use_lockfile   = true
     }
   EOT
 }

@@ -6,4 +6,9 @@ bucket         = "mlops-platform-tfstate-<YOUR_ACCOUNT_ID>"
 key            = "mlops-platform/dev/terraform.tfstate" # must match ci-cd.yaml, or local and CI manage the same cluster from two states
 region         = "eu-west-1"
 encrypt        = true
-dynamodb_table = "mlops-platform-terraform-locks"
+dynamodb_table = "mlops-platform-terraform-locks" # legacy lock; removed with the table once use_lockfile has run live (JDH-422)
+use_lockfile   = true                             # S3 native locking (Terraform >= 1.11): <key>.tflock in the state bucket
+#
+# After changing this file in an initialised working directory, run
+#   terraform init -reconfigure -backend-config=backend.conf
+# once (bucket and key are unchanged, so no -migrate-state).

@@ -1,8 +1,9 @@
 # Terraform Configuration and Providers
 
 terraform {
-  # >= 1.8 because modules/aws-platform/moved.tf moves resources across types.
-  required_version = ">= 1.8"
+  # >= 1.11 for S3 native state locking (use_lockfile in backend.conf, GA in
+  # 1.11); modules/aws-platform/moved.tf needs 1.8 on its own.
+  required_version = ">= 1.11"
 
   required_providers {
     aws = {
