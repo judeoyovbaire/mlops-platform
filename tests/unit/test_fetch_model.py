@@ -18,7 +18,7 @@ def output_dir(tmp_path):
     return str(tmp_path / "hf-model")
 
 
-RESOLVED_SHA = "714eb0fa89d2f80546fda750413ed43d93601a13"
+RESOLVED_SHA = "714eb0fa89d2f80546fda750413ed43d93601a13"  # pragma: allowlist secret
 
 
 def _hub_info(pipeline_tag=None, safetensors=None, sha=RESOLVED_SHA):

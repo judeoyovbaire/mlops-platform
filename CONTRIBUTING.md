@@ -28,7 +28,7 @@ uv run ruff format --check pipelines/ components/ scripts/ tests/ examples/
 terraform fmt -check -recursive infrastructure/terraform/
 ```
 
-CI validates Kubernetes manifests with kubeconform (`ci-cd.yaml` job `validate-kubernetes`); locally, rely on pre-commit.
+`uv run pre-commit run --all-files` runs the same hooks CI runs (job `pre-commit`). The kubeconform hook needs the binary on PATH (`brew install kubeconform`); the Terraform validate/tflint/docs hooks need their tools and are skipped in CI (`SKIP=terraform_validate,terraform_tflint,terraform_docs,pytest-check,no-commit-to-branch`).
 
 ## Tests
 

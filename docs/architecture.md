@@ -576,6 +576,7 @@ make port-forward-argocd   # localhost:8080
 ```
 Push / pull request to main
     │
+    ├── pre-commit (every hook in .pre-commit-config.yaml except the Terraform validate/tflint/docs and pytest ones)
     ├── lint-python (uv ruff, bandit 1.8.3)
     ├── validate-terraform
     ├── validate-kubernetes (kubeconform)

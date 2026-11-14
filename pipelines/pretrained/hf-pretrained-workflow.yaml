@@ -34,7 +34,7 @@ spec:
         # Hub commit SHA - model repos are mutable git refs, so runs pin a
         # revision the same way pods pin image tags. fetch_model resolves
         # branches/tags to a SHA either way; this default IS a SHA.
-        value: "714eb0fa89d2f80546fda750413ed43d93601a13"
+        value: "714eb0fa89d2f80546fda750413ed43d93601a13"  # pragma: allowlist secret
       - name: task
         value: "text-classification"
       - name: model-name
@@ -123,7 +123,7 @@ spec:
         env:
           # Optional: lets the fetch access gated/private models. The
           # secret is ESO-synced only when enable_huggingface_hub_token is
-          # set (aws-platform module); absent secret = anonymous access.
+          # set (aws-platform module); absent secret = anonymous access.  # pragma: allowlist secret
           - name: HF_TOKEN
             valueFrom:
               secretKeyRef:

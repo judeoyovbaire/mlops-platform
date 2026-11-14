@@ -1,6 +1,8 @@
 # Pre-commit hooks for MLOps Platform
-# Install: pip install pre-commit && pre-commit install
-# Run manually: pre-commit run --all-files
+# Install: uv sync && uv run pre-commit install   (pre-commit is in the dev group)
+# Run manually: uv run pre-commit run --all-files
+# CI runs the same (job pre-commit in ci-cd.yaml) with the tool-dependent
+# hooks skipped: SKIP=terraform_validate,terraform_tflint,terraform_docs,pytest-check,no-commit-to-branch
 
 repos:
   # General hooks
@@ -11,6 +13,9 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
         args: ["--unsafe"] # Allow custom tags in Kubernetes YAML
+        # Terraform templatefile() directives (%{ if }) are not YAML; CI strips
+        # them before parsing (validate-helm).
+        exclude: ^infrastructure/helm/aws/prometheus-stack-values\.yaml$
       - id: check-json
       - id: check-added-large-files
         args: ["--maxkb=1000"]
@@ -18,11 +23,13 @@ repos:
       - id: detect-private-key
       - id: no-commit-to-branch
         args: ["--branch", "main"]
-        stages: [commit]
+        stages: [pre-commit]
 
   # Python linting with Ruff
+  # Keep in step with ruff in uv.lock (the Lint Python job); Renovate's
+  # python-linting group bumps both together.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.3
+    rev: v0.17.5
     hooks:
       - id: ruff
         args: ["--fix"]
@@ -74,26 +81,38 @@ repos:
         args: ["--baseline", ".secrets.baseline"]
         exclude: "infrastructure/terraform/.*/terraform.tfstate.*"
 
-  # Kubernetes manifest validation
-  - repo: https://github.com/yannh/kubeconform
-    rev: v0.6.4
-    hooks:
-      - id: kubeconform
-        args:
-          - "-strict"
-          - "-ignore-missing-schemas"
-          - "-skip"
-          - "TracingPolicy,ClusterPolicy,PolicyException,InferenceService,WorkflowTemplate,Workflow"
-
-  # Run unit tests on commit
   - repo: local
     hooks:
+      # Kubernetes manifest validation. yannh/kubeconform ships no
+      # .pre-commit-hooks.yaml (no tag does), so a remote hook can never
+      # install and, worse, aborts every other hook (InvalidManifestError).
+      # Needs kubeconform on PATH (brew install kubeconform); same flags and
+      # skip list as the validate-kubernetes CI job, which pins 0.8.0.
+      - id: kubeconform
+        name: kubeconform
+        entry: kubeconform
+        language: system
+        files: ^(components|infrastructure/kubernetes|infrastructure/argocd)/.*\.ya?ml$
+        exclude: (^|/)kustomization\.ya?ml$
+        args:
+          - -strict
+          - -summary
+          - -kubernetes-version
+          - "1.37.0"
+          - -schema-location
+          - default
+          - -schema-location
+          - "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+          - -skip
+          - AnalysisTemplate,ClusterPolicy,Rollout,EventBus,EventSource,Sensor,InferenceService,ServiceMonitor,PodMonitor,PrometheusRule
+
+      # Run unit tests on commit
       - id: pytest-check
         name: pytest-check
-        entry: pytest tests/ -q --tb=short
+        entry: uv run pytest tests/ -q --tb=short
         language: system
         pass_filenames: false
-        stages: [commit]
+        stages: [pre-commit]
         always_run: true
 
 # CI configuration
@@ -104,4 +123,4 @@ ci:
   autoupdate_branch: ""
   autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
   autoupdate_schedule: weekly
-  skip: [terraform_validate, terraform_tflint, terraform_docs, pytest-check]
+  skip: [terraform_validate, terraform_tflint, terraform_docs, pytest-check, kubeconform]

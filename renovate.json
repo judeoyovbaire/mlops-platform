@@ -18,6 +18,9 @@
   "prHourlyLimit": 2,
   "minimumReleaseAge": "3 days",
   "dependencyDashboard": true,
+  "constraints": {
+    "uv": "0.13.8"
+  },
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
     "enabled": true,

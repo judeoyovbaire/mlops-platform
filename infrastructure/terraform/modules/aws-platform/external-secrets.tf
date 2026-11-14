@@ -151,7 +151,7 @@ resource "kubectl_manifest" "huggingface_hub_token" {
       target = { name = "huggingface-hub-token" }
       data = [
         {
-          secretKey = "token"
+          secretKey = "token" # pragma: allowlist secret
           remoteRef = { key = "${var.cluster_name}/huggingface/token", property = "token" }
         },
       ]

@@ -205,11 +205,11 @@ resource "kubectl_manifest" "grafana_cloud_remote_write_secret" {
       target = { name = "grafana-cloud-remote-write" }
       data = [
         {
-          secretKey = "username"
+          secretKey = "username" # pragma: allowlist secret
           remoteRef = { key = "${var.cluster_name}/grafana-cloud/remote-write", property = "username" }
         },
         {
-          secretKey = "password"
+          secretKey = "password" # pragma: allowlist secret
           remoteRef = { key = "${var.cluster_name}/grafana-cloud/remote-write", property = "password" }
         },
       ]
