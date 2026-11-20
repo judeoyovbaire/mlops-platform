@@ -41,13 +41,13 @@ on:
 env:
   PYTHON_VERSION: "3.12"
   # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.*)$
-  TERRAFORM_VERSION: "1.17.1"
+  TERRAFORM_VERSION: "1.17.2"
   # One uv for every job, and the same value as constraints.uv in
   # renovate.json: Renovate regenerates the image lockfiles with its uv and
   # the sync check below recompiles them with this one; a uv release in
   # between would make the two disagree (JDH-406). Bump both together.
   # renovate: datasource=github-releases depName=astral-sh/uv
-  UV_VERSION: "0.13.8"
+  UV_VERSION: "0.13.9"
   # Kind and kubectl for the e2e job. Kind v0.33 defaults to a 1.37 node
   # image, matching the EKS cluster_version; kubectl stays within one minor
   # (capped below 1.38 in renovate.json until cluster_version moves).
