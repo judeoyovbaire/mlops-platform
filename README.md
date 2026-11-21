@@ -95,7 +95,7 @@ Helm, and a spot quota for G-family instances (see
 [`examples/llm-inference`](examples/llm-inference/README.md)).
 
 ```bash
-# One-time: state bucket, lock table and GitHub OIDC role.
+# One-time: state bucket and GitHub OIDC role.
 # Follow infrastructure/terraform/bootstrap/aws/README.md (fresh accounts differ).
 
 # Each session: build, use, tear down

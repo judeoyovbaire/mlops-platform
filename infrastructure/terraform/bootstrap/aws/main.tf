@@ -1,4 +1,4 @@
-# Bootstrap AWS: S3 state bucket, DynamoDB lock table, GitHub OIDC provider, IAM role
+# Bootstrap AWS: S3 state bucket (native locking), GitHub OIDC provider, IAM role
 
 terraform {
   # >= 1.11 for S3 native state locking (use_lockfile in the backend config,
@@ -19,7 +19,6 @@ terraform {
   #     -backend-config="bucket=mlops-platform-tfstate-<ACCOUNT_ID>" \
   #     -backend-config="key=bootstrap/aws/terraform.tfstate" \
   #     -backend-config="region=eu-west-1" \
-  #     -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
   #     -backend-config="use_lockfile=true" \
   #     -backend-config="encrypt=true"
   # First-ever creation in a fresh account: comment this out, apply with
@@ -164,7 +163,11 @@ resource "aws_s3_bucket_public_access_block" "terraform_state" {
   restrict_public_buckets = true
 }
 
-# Lifecycle rule to manage old state versions
+# Lifecycle rule to manage old state versions. Every S3 native lock cycle
+# (use_lockfile) leaves a noncurrent <key>.tflock version, expired here at
+# 90 days, and a delete marker that nothing else removes: 29 of each after
+# three weeks (JDH-422). expired_object_delete_marker clears a marker once
+# its noncurrent versions are gone.
 resource "aws_s3_bucket_lifecycle_configuration" "terraform_state" {
   bucket = aws_s3_bucket.terraform_state.id
 
@@ -173,6 +176,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "terraform_state" {
     status = "Enabled"
 
     filter {} # Apply to all objects
+
+    expiration {
+      expired_object_delete_marker = true
+    }
 
     noncurrent_version_expiration {
       noncurrent_days = 90
@@ -190,33 +197,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "terraform_state" {
 # first GPU session failed with ServiceLinkedRoleCreationNotPermitted.
 resource "aws_iam_service_linked_role" "spot" {
   aws_service_name = "spot.amazonaws.com"
-}
-
-# DynamoDB table for state locking. Legacy: every backend config also sets
-# use_lockfile = true (S3 native locking, GA in Terraform 1.11, which also
-# deprecated dynamodb_table) and holds both locks during the migration. After one
-# plan/apply cycle has run with both, remove this table, the DynamoDBLocking
-# policy statement, the two terraform_locks_table outputs and every
-# dynamodb_table backend entry (JDH-422 part 2; a bootstrap apply).
-resource "aws_dynamodb_table" "terraform_locks" {
-  name         = "${var.project_name}-terraform-locks"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "LockID"
-
-  attribute {
-    name = "LockID"
-    type = "S"
-  }
-
-  # Enable point-in-time recovery for disaster recovery
-  point_in_time_recovery {
-    enabled = true
-  }
-
-  tags = {
-    Name        = "${var.project_name}-terraform-locks"
-    Description = "Terraform state locking for ${var.project_name}"
-  }
 }
 
 # GitHub OIDC Provider
@@ -308,16 +288,6 @@ resource "aws_iam_policy" "terraform_state_access" {
         Effect   = "Allow"
         Action   = ["kms:Decrypt", "kms:GenerateDataKey", "kms:DescribeKey"]
         Resource = aws_kms_key.terraform_state.arn
-      },
-      {
-        Sid    = "DynamoDBLocking"
-        Effect = "Allow"
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:DeleteItem"
-        ]
-        Resource = aws_dynamodb_table.terraform_locks.arn
       }
     ]
   })
@@ -803,16 +773,6 @@ output "terraform_state_bucket_arn" {
   value       = aws_s3_bucket.terraform_state.arn
 }
 
-output "terraform_locks_table" {
-  description = "DynamoDB table name for Terraform state locking"
-  value       = aws_dynamodb_table.terraform_locks.name
-}
-
-output "terraform_locks_table_arn" {
-  description = "DynamoDB table ARN for Terraform state locking"
-  value       = aws_dynamodb_table.terraform_locks.arn
-}
-
 output "github_oidc_provider_arn" {
   description = "GitHub OIDC provider ARN"
   value       = aws_iam_openid_connect_provider.github.arn
@@ -844,12 +804,11 @@ output "backend_config" {
   value       = <<-EOT
     # Add this to your terraform block in environments/aws/dev/providers.tf:
     backend "s3" {
-      bucket         = "${aws_s3_bucket.terraform_state.id}"
-      key            = "mlops-platform/dev/terraform.tfstate"
-      region         = "${var.aws_region}"
-      encrypt        = true
-      dynamodb_table = "${aws_dynamodb_table.terraform_locks.name}"
-      use_lockfile   = true
+      bucket       = "${aws_s3_bucket.terraform_state.id}"
+      key          = "mlops-platform/dev/terraform.tfstate"
+      region       = "${var.aws_region}"
+      encrypt      = true
+      use_lockfile = true
     }
   EOT
 }
