@@ -288,7 +288,7 @@ variable "helm_opencost_version" {
   description = "OpenCost Helm chart version"
   type        = string
   # renovate: datasource=helm depName=opencost registryUrl=https://opencost.github.io/opencost-helm-chart
-  default = "2.5.33"
+  default = "2.5.34"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_opencost_version))
