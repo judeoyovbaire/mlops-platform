@@ -19,7 +19,7 @@
   "minimumReleaseAge": "3 days",
   "dependencyDashboard": true,
   "constraints": {
-    "uv": "0.13.8"
+    "uv": "0.13.9"
   },
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {

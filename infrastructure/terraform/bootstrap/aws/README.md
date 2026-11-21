@@ -16,7 +16,7 @@ This module creates the foundational AWS resources required **before** deploying
 ## Prerequisites
 
 - AWS CLI configured with appropriate permissions
-- Terraform >= 1.11 (S3 native state locking; CI uses 1.17.1)
+- Terraform >= 1.11 (S3 native state locking; CI pins the exact release in `TERRAFORM_VERSION`, `.github/workflows/ci-cd.yaml`)
 
 ## Usage
 
