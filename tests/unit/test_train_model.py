@@ -132,6 +132,7 @@ class TestTrainModel:
         mocker.patch("mlflow.start_run", return_value=mock_run)
         mocker.patch("mlflow.log_params")
         mocker.patch("mlflow.log_metrics")
+        mocker.patch("mlflow.log_metric")
         mocker.patch("mlflow.sklearn.log_model")
 
         train_model(
@@ -166,6 +167,7 @@ class TestTrainModel:
         mocker.patch("mlflow.start_run", return_value=mock_run)
         mocker.patch("mlflow.log_params")
         mocker.patch("mlflow.log_metrics")
+        mocker.patch("mlflow.log_metric")
         mocker.patch("mlflow.sklearn.log_model")
 
         train_model(
@@ -200,6 +202,7 @@ class TestTrainModel:
         mocker.patch("mlflow.start_run", return_value=mock_run)
         mocker.patch("mlflow.log_params")
         mocker.patch("mlflow.log_metrics")
+        mocker.patch("mlflow.log_metric")
         mocker.patch("mlflow.sklearn.log_model")
 
         result = train_model(
@@ -242,6 +245,7 @@ class TestGridSearch:
         mocker.patch("mlflow.start_run", return_value=mock_run)
         mocker.patch("mlflow.log_params")
         mock_log_metrics = mocker.patch("mlflow.log_metrics")
+        mocker.patch("mlflow.log_metric")
         mocker.patch("mlflow.sklearn.log_model")
         return mock_log_metrics
 
