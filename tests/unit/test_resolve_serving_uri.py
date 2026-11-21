@@ -85,6 +85,54 @@ class TestResolveServingUri:
         with pytest.raises(ModelRegistrationError, match="storage-initializer cannot fetch"):
             resolve_serving_uri("iris-classifier", "champion", "http://mlflow:5000")
 
+    def test_models_uri_resolved_through_download_uri(self, mock_client):
+        """MLflow 3 sets mv.source to the logged-model URI (models:/m-<id>);
+        the serving URI is the version's download URI."""
+        mock_client.get_model_version_by_alias.return_value = _model_version(
+            version="1", source="models:/m-d4109ca6e57240fb84f552af7220d495"
+        )
+        mock_client.get_model_version_download_uri.return_value = (
+            "s3://mlflow-artifacts/1/models/m-d4109ca6e57240fb84f552af7220d495/artifacts"
+        )
+        mock_client.get_run.return_value = _run()
+
+        result = resolve_serving_uri("iris-classifier", "champion", "http://mlflow:5000")
+
+        assert result.storage_uri == (
+            "s3://mlflow-artifacts/1/models/m-d4109ca6e57240fb84f552af7220d495/artifacts"
+        )
+        mock_client.get_model_version_download_uri.assert_called_once_with("iris-classifier", "1")
+
+    def test_models_uri_without_download_uri_raises(self, mock_client):
+        """If the download URI cannot be fetched, the models:/ source is still
+        unfetchable and the error must say so."""
+        from mlflow.exceptions import MlflowException
+
+        mock_client.get_model_version_by_alias.return_value = _model_version(
+            source="models:/m-d4109ca6e57240fb84f552af7220d495"
+        )
+        mock_client.get_model_version_download_uri.side_effect = MlflowException("boom")
+
+        with pytest.raises(ModelRegistrationError) as exc_info:
+            resolve_serving_uri("iris-classifier", "champion", "http://mlflow:5000")
+        message = str(exc_info.value)
+        assert "models:/m-d4109ca6e57240fb84f552af7220d495" in message
+        assert "storage-initializer cannot fetch" in message
+        assert "get-download-uri" in message
+
+    def test_models_uri_with_unfetchable_download_uri_raises(self, mock_client):
+        """A download URI that is itself proxied (mlflow-artifacts:/) still
+        fails, with the proxied-artifacts hint."""
+        mock_client.get_model_version_by_alias.return_value = _model_version(
+            source="models:/m-d4109ca6e57240fb84f552af7220d495"
+        )
+        mock_client.get_model_version_download_uri.return_value = (
+            "mlflow-artifacts:/1/models/m-d4109ca6e57240fb84f552af7220d495/artifacts"
+        )
+
+        with pytest.raises(ModelRegistrationError, match="proxied artifacts"):
+            resolve_serving_uri("iris-classifier", "champion", "http://mlflow:5000")
+
     def test_gs_uri_accepted(self, mock_client):
         mock_client.get_model_version_by_alias.return_value = _model_version(
             source="gs://bucket/path/serving_model"
