@@ -84,14 +84,32 @@ def resolve_serving_uri(
         ) from e
 
     source = mv.source or ""
+    if source.startswith("models:/"):
+        # MLflow 3 registers a version from a logged model, so mv.source is
+        # the registry-internal models:/m-<id> URI; the artifact location
+        # the storage-initializer needs comes from the download-URI endpoint
+        # (first live deploy-model after the MLflow 3 upgrade, 2026-11-21).
+        try:
+            source = client.get_model_version_download_uri(model_name, mv.version) or source
+        except (RestException, MlflowException) as e:
+            logger.warning(f"Could not fetch the download URI for version {mv.version}: {e}")
+
     if not source.startswith(FETCHABLE_SCHEMES):
+        if source.startswith("models:/"):
+            hint = (
+                "The registry's get-download-uri endpoint did not return the "
+                "version's artifact location (see the warning above)."
+            )
+        else:
+            hint = (
+                "This usually means MLflow runs with proxied artifacts "
+                "(mlflow-artifacts:/ scheme) instead of a direct S3 artifact "
+                "root. The platform's MLflow chart is configured with a direct "
+                "s3:// artifactRoot - check mlflow-values.yaml."
+            )
         raise ModelRegistrationError(
             f"'{model_name}@{alias}' (version {mv.version}) resolves to "
-            f"'{source}', which the KServe storage-initializer cannot fetch. "
-            f"This usually means MLflow runs with proxied artifacts "
-            f"(mlflow-artifacts:/ scheme) instead of a direct S3 artifact "
-            f"root. The platform's MLflow chart is configured with a direct "
-            f"s3:// artifactRoot - check mlflow-values.yaml."
+            f"'{source}', which the KServe storage-initializer cannot fetch. {hint}"
         )
 
     # Lineage: governance policy requires the experiment id on the deployed

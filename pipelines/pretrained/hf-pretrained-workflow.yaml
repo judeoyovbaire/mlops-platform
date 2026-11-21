@@ -121,6 +121,12 @@ spec:
         image: "{{workflow.parameters.pipeline-image}}"
         command: [python, /app/pipelines/pretrained/src/fetch_model.py]
         env:
+          # huggingface_hub's xet downloader keeps its own cache under
+          # HF_HOME (default ~/.cache/huggingface); as uid 1000 with no
+          # home directory that is "Permission denied (os error 13)"
+          # (session 2026-11-21, JDH-412). /tmp is the writable scratch.
+          - name: HF_HOME
+            value: /tmp/hf-home
           # Optional: lets the fetch access gated/private models. The
           # secret is ESO-synced only when enable_huggingface_hub_token is
           # set (aws-platform module); absent secret = anonymous access.  # pragma: allowlist secret
