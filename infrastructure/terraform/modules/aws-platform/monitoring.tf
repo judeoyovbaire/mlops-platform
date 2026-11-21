@@ -158,31 +158,6 @@ resource "aws_ssm_parameter" "grafana_admin_password" {
   tags = var.tags
 }
 
-# network-policies.yaml and the mlops-overview / cloud-cost dashboards used
-# to be applied here as well as by ArgoCD. ArgoCD is now the only owner
-# (gitops-baseline.tf). The removed blocks drop them from any existing state
-# without deleting the live objects that ArgoCD manages.
-removed {
-  from = kubectl_manifest.network_policies
-  lifecycle {
-    destroy = false
-  }
-}
-
-removed {
-  from = kubectl_manifest.grafana_mlops_overview_dashboard
-  lifecycle {
-    destroy = false
-  }
-}
-
-removed {
-  from = kubectl_manifest.grafana_cloud_cost_dashboard
-  lifecycle {
-    destroy = false
-  }
-}
-
 # Grafana Cloud remote_write credentials (ADR-016) - synced from Secrets
 # Manager only when the feature is enabled. Prometheus references the
 # resulting secret via basicAuth in the remote_write overlay.

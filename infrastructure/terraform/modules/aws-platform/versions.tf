@@ -1,5 +1,6 @@
 terraform {
-  # >= 1.8: moved.tf moves resources across types (kubernetes_namespace to _v1).
+  # Conservative floor; the root stacks require >= 1.11 (S3 native locking)
+  # and are what actually bounds the version in use.
   required_version = ">= 1.8"
 
   # Constraints mirror environments/aws/*/providers.tf. The helm bound matters:

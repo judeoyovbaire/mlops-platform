@@ -6,9 +6,8 @@ This module creates the foundational AWS resources required **before** deploying
 
 | Resource | Purpose |
 |----------|---------|
-| S3 Bucket | Terraform state storage with versioning and encryption |
+| S3 Bucket | Terraform state storage with versioning, encryption and native locking (`use_lockfile`, a `<key>.tflock` object next to the state) |
 | KMS Key | Customer-managed key for state encryption |
-| DynamoDB Table | Legacy state lock. Every backend also sets `use_lockfile = true` (S3 native locking); the table is removed once that has run on a live apply (JDH-422) |
 | GitHub OIDC Provider | Allows GitHub Actions to authenticate without static credentials |
 | IAM Role | Permissions for GitHub Actions to deploy infrastructure |
 | EC2 Spot service-linked role | Required for Spot launches; Karpenter cannot create it |
@@ -31,13 +30,10 @@ terraform apply
 
 The bootstrap state lives in the bucket it creates. For the first-ever creation in a fresh account, comment out `backend "s3" {}`, apply with local state, restore the block and re-init with `-migrate-state` (see `main.tf`).
 
-`imports.tf` adopts resources that already exist in the author's account (183590992229). In any other account, delete it before the first plan, or the import blocks fail with "Cannot import non-existent remote object".
-
 ### 2. Note the Outputs
 
 After applying, Terraform will output:
 - `terraform_state_bucket` - S3 bucket name for state
-- `terraform_locks_table` - DynamoDB table for locking
 - `github_actions_role_arn` - IAM role ARN for CI/CD
 - `backend_config` - Ready-to-use backend configuration
 
@@ -46,15 +42,14 @@ After applying, Terraform will output:
 `environments/aws/dev/providers.tf` uses a partial backend (`backend "s3" {}`). Create `environments/aws/dev/backend.conf` from `backend.conf.example` using the outputs:
 
 ```hcl
-bucket         = "mlops-platform-tfstate-<account-id>"
-key            = "mlops-platform/dev/terraform.tfstate"
-region         = "eu-west-1"
-encrypt        = true
-dynamodb_table = "mlops-platform-terraform-locks"
-use_lockfile   = true
+bucket       = "mlops-platform-tfstate-<account-id>"
+key          = "mlops-platform/dev/terraform.tfstate"
+region       = "eu-west-1"
+encrypt      = true
+use_lockfile = true
 ```
 
-Then initialize with `terraform init -backend-config=backend.conf`. A working directory that was already initialised needs `terraform init -reconfigure -backend-config=backend.conf` once after `backend.conf` changes (for example when `use_lockfile` was added); bucket and key are unchanged, so no `-migrate-state`.
+Then initialize with `terraform init -backend-config=backend.conf`. A working directory that was already initialised needs `terraform init -reconfigure -backend-config=backend.conf` once after `backend.conf` changes (for example when `dynamodb_table` was removed); bucket and key are unchanged, so no `-migrate-state`.
 
 ### 4. Migrate Existing State (if applicable)
 
@@ -99,16 +94,15 @@ jobs:
 - **Public Access Blocked**: No public access to state bucket
 - **OIDC Authentication**: No static AWS credentials in GitHub
 - **Least Privilege**: IAM role scoped to required permissions only
-- **State Locking**: S3 native lock file (`<key>.tflock` next to the state object) and, until the migration is confirmed, the DynamoDB table
+- **State Locking**: S3 native lock file (`<key>.tflock` next to the state object); the DynamoDB table was removed on 2026-11-21 (JDH-422)
 
 The OIDC trust `sub` is bound to `repo:judeoyovbaire/mlops-platform` (`var.github_org`, `var.github_repo`). The repository rename (JDH-411) must update it in the same change, or CI cannot assume the role.
 
 ## Cost
 
-Minimal - approximately $2-3/month:
+Minimal - approximately $1/month:
 - KMS key: ~$1/month
 - S3: Pay per GB stored (state files are tiny)
-- DynamoDB: PAY_PER_REQUEST (minimal for state operations)
 
 ## Destroying
 

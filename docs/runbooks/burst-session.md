@@ -136,11 +136,9 @@ now automerges green PRs, and every push to `main` queues behind or cancels the
 dispatch (rule 6 above). Before dispatching, `gh pr list` must show no open PR
 that can still automerge.
 
-**Done on 2026-11-21, do not repeat:** local `backend.conf` with
-`use_lockfile = true`, `terraform init -reconfigure` in dev and bootstrap
-against the S3 state, uv 0.13.9. **Still to do before the session:** install
-the `TERRAFORM_VERSION` release so it survives the shell (`tfenv install
-1.17.2`, or copy the verified binary to `~/bin`); `~/bin/terraform` is 1.14.5.
+**The session ran on 2026-11-21.** Results and captured output:
+`docs/evidence/session-2026-11-21/README.md`. The steps below stay as the
+template for the next CPU session.
 
 Working order, with the ticket each step closes. Capture the command output
 for the evidence PR as you go.
@@ -230,22 +228,22 @@ for the evidence PR as you go.
    for `QueueName=mlops-platform-dev-karpenter-interruption` (Sum, 1 min) go
    up, and `AWS/Events` `FailedInvocations` on the Karpenter rules stays 0.
    Delete the probe pod and the FIS template when done.
-7. **State hygiene** (JDH-426): `terraform state list | grep kubernetes_namespace`
-   in dev shows only `kubernetes_namespace_v1.*`; `terraform state list` in
-   bootstrap/aws holds all 11 resources named in `imports.tf`. Both were
-   initialised against S3 on 2026-11-21.
+7. **State hygiene** (JDH-426, done on 2026-11-21): `terraform state list |
+   grep kubernetes_namespace` in dev showed only `kubernetes_namespace_v1.*`
+   and the bootstrap state held all 11 imported resources, so the one-time
+   `imports.tf`, `moved.tf` and `removed` blocks were deleted afterwards.
 8. **Evidence PR** before teardown: outputs from the steps above under
    `docs/evidence/session-2026-xx-xx/`, the contract-file versions, and the
    Linear items ticked. Then **teardown** as below; the sweep adds a check
    that no `.tflock` object remains current in the state bucket.
 
-**After the session, on Jude's go** (one bootstrap apply, one PR): JDH-422
-phase 2 (drop the DynamoDB table, its IAM statement, outputs and every
-`dynamodb_table` backend entry; add the delete-marker expiration to the state
-bucket lifecycle) together with JDH-426 (delete `imports.tf`, `moved.tf` and
-the three `removed` blocks). Close JDH-412, 415, 416, 417, 418, 419, 420,
-424, 425, 427 with their evidence; JDH-406 closes after the first automerge
-is observed.
+**After the session (done 2026-11-21):** JDH-422 phase 2 (DynamoDB table,
+its IAM statement, outputs and every `dynamodb_table` backend entry removed;
+delete-marker expiration added to the state bucket lifecycle) together with
+JDH-426 (`imports.tf`, `moved.tf` and the three `removed` blocks deleted), one
+bootstrap apply. JDH-412, 415, 416, 419, 420, 424 and 427 closed with their
+evidence; JDH-417, 418 and 425 keep a follow-up each; JDH-406 closes after
+the first automerge is observed.
 
 **GPU session (separate, next):** JDH-376 (vLLM on g5, the benchmark),
 JDH-399 (DCGM on the Karpenter pool, vLLM `/metrics`, GPU alerts on real
@@ -280,7 +278,6 @@ terraform init -reconfigure \
   -backend-config="bucket=mlops-platform-tfstate-183590992229" \
   -backend-config="key=mlops-platform/dev/terraform.tfstate" \
   -backend-config="region=eu-west-1" \
-  -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
   -backend-config="use_lockfile=true" \
   -backend-config="encrypt=true"
 cd -

@@ -2,7 +2,7 @@
 
 terraform {
   # >= 1.11 for S3 native state locking (use_lockfile in backend.conf, GA in
-  # 1.11); modules/aws-platform/moved.tf needs 1.8 on its own.
+  # 1.11).
   required_version = ">= 1.11"
 
   required_providers {

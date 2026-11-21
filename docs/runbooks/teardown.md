@@ -38,7 +38,6 @@ finding group 7.
      -backend-config="bucket=mlops-platform-tfstate-<ACCOUNT_ID>" \
      -backend-config="key=mlops-platform/dev/terraform.tfstate" \
      -backend-config="region=eu-west-1" \
-     -backend-config="dynamodb_table=mlops-platform-terraform-locks" \
      -backend-config="use_lockfile=true" \
      -backend-config="encrypt=true"
    terraform state list | wc -l   # must NOT be 0 for a live environment
@@ -88,11 +87,10 @@ the slow resources.
 
 ## What intentionally survives
 
-Bootstrap resources: the tfstate bucket, the DynamoDB lock table, its KMS
-key (~$1/month), and the `mlops-platform-github-actions` OIDC role. They
-are the redeploy capability — one `deploy-infra` dispatch rebuilds the
-platform. KMS keys created by the environment enter `PendingDeletion`
-(30-day window, no billing).
+Bootstrap resources: the tfstate bucket, its KMS key (~$1/month), and the
+`mlops-platform-github-actions` OIDC role. They are the redeploy capability:
+one `deploy-infra` dispatch rebuilds the platform. KMS keys created by the
+environment enter `PendingDeletion` (30-day window, no billing).
 
 ## After
 
