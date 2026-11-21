@@ -48,6 +48,41 @@ DEFAULT_PARAM_GRID = {
 SPLIT_COLUMN = "is_train"
 
 
+# Rows passed to the SHAP explainer; TreeExplainer is linear in rows and the
+# importance ranking is stable well below this on the pipeline's tabular data.
+SHAP_SAMPLE_ROWS = 100
+
+
+def shap_feature_importance(model: RandomForestClassifier, X: pd.DataFrame) -> dict[str, float]:
+    """Mean absolute SHAP value per feature, from a TreeExplainer.
+
+    Handles both shap_values layouts: shap < 0.45 returns a list with one
+    (n_samples, n_features) array per class for classifiers; shap >= 0.45
+    returns a single (n_samples, n_features, n_classes) array. Regression
+    models return (n_samples, n_features) in both. Classes are averaged, so
+    the result is one non-negative float per column of X, keyed by column
+    name. Raises on an unexpected shape instead of logging a partial result.
+    """
+    import shap
+
+    explainer = shap.TreeExplainer(model)
+    sample = X.iloc[:SHAP_SAMPLE_ROWS]
+    raw = explainer.shap_values(sample)
+    values = np.stack(raw, axis=-1) if isinstance(raw, list) else np.asarray(raw)
+    if values.ndim == 3:
+        mean_abs = np.abs(values).mean(axis=(0, 2))
+    elif values.ndim == 2:
+        mean_abs = np.abs(values).mean(axis=0)
+    else:
+        raise ValueError(f"unexpected shap_values shape {values.shape}")
+    names = [str(c) for c in X.columns]
+    if len(names) != len(mean_abs):
+        raise ValueError(
+            f"shap returned {len(mean_abs)} feature importances for {len(names)} columns"
+        )
+    return {name: float(v) for name, v in zip(names, mean_abs, strict=True)}
+
+
 @dataclass
 class TrainingResult:
     """Result of model training operation."""
@@ -282,30 +317,17 @@ def train_model(
                 logger.info(f"Metrics - Accuracy: {accuracy:.4f}, F1: {f1:.4f}")
                 mlflow.log_metrics({"accuracy": accuracy, "f1_score": f1})
 
-                # SHAP feature importance (optional — skip if shap not installed)
+                # SHAP feature importance. Optional: it is lineage only, not part
+                # of the serving contract, so a failure here must not fail training.
+                # It logs with the traceback because the previous version hid a
+                # shape bug behind a one-line warning for a year (JDH-427).
                 try:
-                    import shap
-
-                    explainer = shap.TreeExplainer(model)
-                    X_test_sample = X_test[:100] if len(X_test) > 100 else X_test
-                    shap_values = explainer.shap_values(X_test_sample)
-                    if isinstance(shap_values, list):
-                        # Multi-class: average absolute SHAP values across classes
-                        mean_shap = np.mean([np.abs(sv).mean(axis=0) for sv in shap_values], axis=0)
-                    else:
-                        mean_shap = np.abs(shap_values).mean(axis=0)
-                    feature_names = (
-                        X_test.columns
-                        if hasattr(X_test, "columns")
-                        else [f"feature_{i}" for i in range(len(mean_shap))]
-                    )
-                    for fname, importance in zip(feature_names, mean_shap, strict=False):
-                        mlflow.log_metric(f"shap_importance_{fname}", float(importance))
-                    logger.info(
-                        "Logged SHAP feature importance for %d features", len(feature_names)
-                    )
-                except Exception as shap_err:
-                    logger.warning("SHAP feature importance skipped: %s", shap_err)
+                    importances = shap_feature_importance(model, X_test)
+                    for fname, importance in importances.items():
+                        mlflow.log_metric(f"shap_importance_{fname}", importance)
+                    logger.info("Logged SHAP feature importance for %d features", len(importances))
+                except Exception:
+                    logger.warning("SHAP feature importance skipped", exc_info=True)
 
                 # Log model to MLflow
                 mlflow.sklearn.log_model(
