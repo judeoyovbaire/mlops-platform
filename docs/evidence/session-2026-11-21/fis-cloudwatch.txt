@@ -1,0 +1,11 @@
+# CloudWatch, 19:25-19:40 UTC, Sum per 1-minute period (only non-zero shown)
+AWS/SQS QueueName=mlops-platform-dev-karpenter-interruption
+  NumberOfMessagesSent     19:27=2  19:29=2  19:31=5
+  NumberOfMessagesReceived 19:27=2  19:29=2  19:31=5
+  NumberOfMessagesDeleted  19:27=2  19:29=2  19:31=5
+AWS/Events RuleName=mlops-platform-dev-karpenter-* (Sum over the window)
+  spot-interruption     Invocations=1 FailedInvocations=0
+  rebalance             Invocations=1 FailedInvocations=0
+  instance-state-change Invocations=6 FailedInvocations=0
+  capacity-reservation  Invocations=0 FailedInvocations=0
+  scheduled-change      Invocations=1 FailedInvocations=0

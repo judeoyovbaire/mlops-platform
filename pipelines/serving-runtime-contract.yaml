@@ -55,11 +55,14 @@ pinned_libraries:
 # Surfaces:
 # - pipelines/pretrained/hf-pretrained-workflow.yaml (serving-load-test image)
 # - infrastructure/terraform/helm-versions.auto.tfvars (helm_kserve_version)
-# v0.21.0 (2026-11, from its CPU Dockerfile and uv.lock, not yet run):
-# Python 3.10, torch 2.11.0+cpu, transformers 5.13.0. Replace with the
-# versions the first serving-load-test run prints. The pipeline image saves
-# with transformers 5.13.1 on Python 3.12 (JDH-412), the same minor as this
-# runtime; renovate.json caps it below 5.14 to keep it there. safetensors artifacts are interpreter-portable (unlike
-# cloudpickle), so the serving-load-test gate - not version pinning of
-# transformers in the pipeline image - guards this boundary.
+# v0.21.0, as printed by the first live serving-load-test (2026-11-21,
+# docs/evidence/session-2026-11-21/hf-pretrained-vc599-serving-load-test.txt):
+# Python 3.10.12,
+# transformers 5.13.0 (torch 2.11.0+cpu per its CPU Dockerfile and uv.lock;
+# the step does not print it). The pipeline image saves with transformers
+# 5.13.1 on Python 3.12 (JDH-412), the same minor as this runtime;
+# renovate.json caps it below 5.14 to keep it there. safetensors artifacts
+# are interpreter-portable (unlike cloudpickle), so the serving-load-test
+# gate - not version pinning of transformers in the pipeline image - guards
+# this boundary.
 huggingface_runtime_image: "kserve/huggingfaceserver:v0.21.0"
