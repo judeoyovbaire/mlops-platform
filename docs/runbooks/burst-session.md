@@ -125,28 +125,133 @@ Your IAM Identity Center admin role has a cluster-admin access entry
    is a sizing problem; on 2026-11-01 the Loki chunks cache (9830Mi request)
    pulled in an on-demand r6a.large (JDH-418).
 
-### Open checks for the next session
+### Session 2 plan: CPU-only verification (planned for 2026-11-24 or later)
 
-Items the follow-up tickets left for a live cluster. The clean cycle covered
-the platform itself (the four checks above and an S3 artifact smoke workflow);
-none of these were checked yet.
+Twelve tickets left live checks behind after the 2026-11-01 cycle. This
+session closes them on the CPU platform, at about 0.5 USD per cluster-hour,
+and leaves the GPU work (JDH-376, JDH-399, JDH-421) for its own session on a
+fresh budget. Budget about 3 cluster-hours plus the 45-minute deploy: 2 to 3
+USD. Not on a Monday morning: Renovate opens its batch before 08:00 London and
+now automerges green PRs, and every push to `main` queues behind or cancels the
+dispatch (rule 6 above). Before dispatching, `gh pr list` must show no open PR
+that can still automerge.
 
-- [ ] **Classic loop end to end** on S3 artifacts (#123): training workflow,
-      champion registered in MLflow, `deploy-model` green.
-- [ ] **JDH-417:** is Kyverno's metrics endpoint scraped, and does
-      `kyverno_policy_results_total` have the labels the alert uses?
-- [ ] **JDH-418:** `loki-chunks-cache` scheduled without an extra Karpenter
-      node; one log line arrives in Loki once (Alloy duplication).
-- [ ] **JDH-419:** the pipeline alert metrics exist in Prometheus.
-- [ ] **JDH-420:** labels on a live predictor pod, for the NetworkPolicy
-      selectors; the baseline's `default-networkpolicy` generated a policy in
-      a new namespace.
-- [ ] **Prometheus targets:** list targets that are down
-      (`kubectl -n monitoring port-forward svc/prometheus-operated 9090`,
-      then `/targets`).
-- [ ] **GPU sessions only:** JDH-399 (DCGM on the Karpenter pool, vLLM
-      `/metrics` scraped, GPU alerts on real series) and JDH-421 (vLLM v0.32
-      starts on g5).
+**Done on 2026-11-21, do not repeat:** local `backend.conf` with
+`use_lockfile = true`, `terraform init -reconfigure` in dev and bootstrap
+against the S3 state, uv 0.13.9. **Still to do before the session:** install
+the `TERRAFORM_VERSION` release so it survives the shell (`tfenv install
+1.17.2`, or copy the verified binary to `~/bin`); `~/bin/terraform` is 1.14.5.
+
+Working order, with the ticket each step closes. Capture the command output
+for the evidence PR as you go.
+
+1. **Deploy** (45 min). While Stage 1 applies, from the laptop:
+   `aws s3api head-object --bucket mlops-platform-tfstate-183590992229
+   --key mlops-platform/dev/terraform.tfstate.tflock` answers 200 during the
+   apply and 404 after it (the lock leaves a delete marker and a noncurrent
+   version behind, which the phase 2 lifecycle rule will expire). JDH-422
+   phase 2, first half.
+2. **Platform** (the four checks above), then:
+   - Nothing Pending in `monitoring`; `loki` Running without a cache pod and
+     without an unrequested node (JDH-418). `kubectl -n monitoring get pods
+     -l app.kubernetes.io/name=alloy -o jsonpath='{.items[*].spec.securityContext.runAsUser}'`
+     prints 473 for every pod.
+   - Prometheus targets: port-forward `svc/prometheus-operated 9090`, then
+     `/targets`. `argo-workflows-workflow-controller` must be UP (JDH-419);
+     list anything DOWN. There is no Kyverno target: nothing in the repo
+     creates a ServiceMonitor for it, so `KyvernoPolicyViolations` cannot
+     fire today (JDH-417).
+   - Kyverno metric: `kubectl -n kyverno port-forward svc/kyverno-svc-metrics 8000`,
+     then `curl -s localhost:8000/metrics | grep kyverno_policy_results_total`.
+     If the metric and the labels the alert uses are there, the fix is a
+     ServiceMonitor on that Service; if not, drop the alert (JDH-417).
+3. **Classic loop** (JDH-424, JDH-427, JDH-419, JDH-420): `make deploy-pipeline`,
+   `make run-pipeline`, `argo -n argo watch @latest`. Then:
+   - MLflow (`make port-forward-mlflow`): the run has four
+     `shap_importance_*` metrics for Iris (JDH-427) and the champion is
+     registered (the mlflow-skinny image, JDH-424).
+   - Prometheus: `argo_workflows_total_count`, `argo_workflows_gauge` and
+     `argo_workflows_ml_pipeline_*` return series; the pipeline SLO
+     recording rules and `HighWorkflowFailureRate` evaluate; every panel of
+     the ML pipeline dashboard renders (JDH-419).
+   - `gh workflow run ci-cd.yaml --ref main -f cloud=aws -f environment=dev
+     -f action=deploy-model`, then `kubectl -n mlops get inferenceservice`
+     Ready and one prediction through port-forward (JDH-424 acceptance).
+   - `kubectl -n mlops get pods --show-labels` on the predictor: the
+     `serving.kserve.io/inferenceservice` label is present, so the
+     `Exists` selector matches (JDH-420; enforcement stays off, so this is a
+     label check only). `kubectl get networkpolicy -A` shows the generated
+     `default-deny-ingress` in the new namespaces.
+   - One log line arrives in Loki once: query a predictor pod's logs in
+     Grafana Explore and count streams (JDH-418).
+4. **Transformer** (JDH-425): copy `examples/kserve/transformer-inferenceservice.yaml`,
+   replace the predictor `storageUri` (a `gs://` placeholder) with the
+   champion's S3 URI from MLflow, and add `PASSTHROUGH_MODE: "true"` to the
+   transformer's `env` (the champion bundles the preprocessor, so a
+   transforming pass would scale twice). Apply it and send one v1 request.
+   Record that the plumbing works; the bare-model variant with
+   `--predictor_protocol=v2` is a follow-up, Jude's call.
+5. **Pretrained** (JDH-412): nothing deploys this WorkflowTemplate, so
+   `kubectl -n argo create -f pipelines/pretrained/hf-pretrained-workflow.yaml`
+   creates the template and submits one run (the file holds both; on a rerun
+   use `argo -n argo submit --from workflowtemplate/hf-pretrained-pipeline`).
+   Watch the serving-load-test on huggingfaceserver v0.21 for
+   text-classification, and copy the versions it prints into
+   `pipelines/serving-runtime-contract.yaml` in the evidence PR.
+6. **Node AMIs and spot interruption** (JDH-416, JDH-415). Managed node
+   groups carry a generated suffix, so list them first:
+
+   ```bash
+   for ng in $(aws eks list-nodegroups --cluster-name mlops-platform-dev --query 'nodegroups[]' --output text); do
+     aws eks describe-nodegroup --cluster-name mlops-platform-dev --nodegroup-name "$ng" \
+       --query '[nodegroup.nodegroupName,nodegroup.releaseVersion]' --output text
+   done                                              # every line ends 1.37.1-20261031
+   kubectl run ami-probe --image=registry.k8s.io/pause:3.10 \
+     --overrides='{"spec":{"nodeSelector":{"node-type":"training"},
+       "tolerations":[{"key":"workload","operator":"Exists","effect":"NoSchedule"}]}}'
+   kubectl get nodeclaims -o wide                    # the new spot node on the training pool
+   aws ec2 describe-images --image-ids <ami-id> --query 'Images[0].Name'   # ends in v20261031
+   ```
+
+   `1.37.1-20261031` is the pinned `eks_ami_release`; both node paths must
+   show the same date. Then the interruption test on that instance:
+   Karpenter's log must show the interruption controller started
+   (`kubectl -n karpenter logs deploy/karpenter | grep -i interruption`), and
+   an AWS FIS experiment with action `aws:ec2:send-spot-instance-interruptions`
+   (target type `aws:ec2:spot-instance`, the instance ARN,
+   `durationBeforeInterruption` PT2M, an experiment role with the managed
+   policy `AWSFaultInjectionSimulatorEC2Access`) must produce cordon and
+   drain on the node before it terminates. FIS sends a rebalance
+   recommendation at once and the interruption warning two minutes later;
+   Karpenter may start draining on the first, so cite the reason from its
+   log in the evidence. Delivery through the queue's `SourceAccount`
+   condition shows in CloudWatch, not in the queue (Karpenter deletes what it
+   reads): `AWS/SQS` `NumberOfMessagesReceived` and `NumberOfMessagesDeleted`
+   for `QueueName=mlops-platform-dev-karpenter-interruption` (Sum, 1 min) go
+   up, and `AWS/Events` `FailedInvocations` on the Karpenter rules stays 0.
+   Delete the probe pod and the FIS template when done.
+7. **State hygiene** (JDH-426): `terraform state list | grep kubernetes_namespace`
+   in dev shows only `kubernetes_namespace_v1.*`; `terraform state list` in
+   bootstrap/aws holds all 11 resources named in `imports.tf`. Both were
+   initialised against S3 on 2026-11-21.
+8. **Evidence PR** before teardown: outputs from the steps above under
+   `docs/evidence/session-2026-xx-xx/`, the contract-file versions, and the
+   Linear items ticked. Then **teardown** as below; the sweep adds a check
+   that no `.tflock` object remains current in the state bucket.
+
+**After the session, on Jude's go** (one bootstrap apply, one PR): JDH-422
+phase 2 (drop the DynamoDB table, its IAM statement, outputs and every
+`dynamodb_table` backend entry; add the delete-marker expiration to the state
+bucket lifecycle) together with JDH-426 (delete `imports.tf`, `moved.tf` and
+the three `removed` blocks). Close JDH-412, 415, 416, 417, 418, 419, 420,
+424, 425, 427 with their evidence; JDH-406 closes after the first automerge
+is observed.
+
+**GPU session (separate, next):** JDH-376 (vLLM on g5, the benchmark),
+JDH-399 (DCGM on the Karpenter pool, vLLM `/metrics`, GPU alerts on real
+series), JDH-421 (vLLM v0.32 starts on g5, auth on every route), and the
+Renovate AMI PR (v20261112, `gpu-session-required`) merged once the NVIDIA
+driver on that release has run the vLLM smoke.
 
 ## Evidence
 
