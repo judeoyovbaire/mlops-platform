@@ -34,13 +34,15 @@ under 4 hours, and treat the teardown as the real stop.
 2. **Network.** The EKS API endpoint is not reachable through Zscaler (every
    request is reset). Turn Zscaler off for the session. Without cluster API
    access, the teardown cannot remove the Helm and Kubernetes resources.
-   AWS CloudShell is the alternative, with two caveats: install Terraform
-   1.17.1 there, and put the provider cache under `/tmp`
+   AWS CloudShell is the alternative, with two caveats: install the CI
+   Terraform release there (see step 3), and put the provider cache under `/tmp`
    (`export TF_DATA_DIR=/tmp/tf-dev TF_PLUGIN_CACHE_DIR=/tmp/tf-plugins`),
    because the 1 GB home directory cannot hold the providers.
-3. **Local tools.** Terraform must read state written by CI (Terraform
-   1.17.1), both for the teardown and for the sweep's `terraform state list`.
-   With tfenv: `tfenv install 1.17.1`, then use it for the session.
+3. **Local tools.** Terraform must read state written by CI, so use the
+   release pinned in `TERRAFORM_VERSION` (`.github/workflows/ci-cd.yaml`;
+   Renovate bumps it), both for the teardown and for the sweep's
+   `terraform state list`. With tfenv: `tfenv install <that version>`, then
+   use it for the session.
 4. **CA bundle (Zscaler on only).** The `mlops` profile has no `ca_bundle`;
    while Zscaler is on, prefix AWS commands with
    `AWS_CA_BUNDLE=$HOME/.aws/system-ca-bundle.pem`.
@@ -156,7 +158,8 @@ AnalysisRun YAML go under `docs/evidence/`.
 ## Teardown
 
 There is no CI destroy action; the teardown runs locally (or in CloudShell)
-with cluster API access and Terraform 1.17.1.
+with cluster API access and the Terraform release CI pins (`TERRAFORM_VERSION`
+in `.github/workflows/ci-cd.yaml`).
 
 Right before the teardown, sign in again and confirm cluster access. Both go
 stale during a session: the SSO session lasts about an hour, and Zscaler may
