@@ -1,0 +1,20 @@
+{
+  "description": "JDH-415 session 2: spot interruption on the Karpenter training node",
+  "roleArn": "arn:aws:iam::183590992229:role/mlops-platform-fis-spot-interruption",
+  "stopConditions": [{"source": "none"}],
+  "targets": {
+    "trainingSpotNode": {
+      "resourceType": "aws:ec2:spot-instance",
+      "resourceArns": ["arn:aws:ec2:eu-west-1:183590992229:instance/i-0f196c6ecd75f5d29"],
+      "selectionMode": "ALL"
+    }
+  },
+  "actions": {
+    "interrupt": {
+      "actionId": "aws:ec2:send-spot-instance-interruptions",
+      "parameters": {"durationBeforeInterruption": "PT2M"},
+      "targets": {"SpotInstances": "trainingSpotNode"}
+    }
+  },
+  "tags": {"Project": "mlops-platform", "Ticket": "JDH-415"}
+}

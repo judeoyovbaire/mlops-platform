@@ -1,0 +1,49 @@
+# Session 2 (JDH-425): examples/kserve/transformer-inferenceservice.yaml with the
+# predictor pointed at the registered champion (MLflow pyfunc, MLServer v2) and
+# the transformer in passthrough mode, because the champion already preprocesses.
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: sklearn-iris-with-transformer
+  namespace: mlops
+  labels:
+    mlops.io/model-name: iris-classifier
+    mlops.io/model-version: "1"
+    mlops.io/model-owner: platform-team
+    mlops.io/model-stage: staging
+  annotations:
+    mlops.io/mlflow-experiment-id: "1"
+    mlops.io/mlflow-run-id: "8e0f1c3cb4234c7eb7ccb80d0da4e947"  # pragma: allowlist secret
+spec:
+  transformer:
+    containers:
+      - name: transformer
+        image: ghcr.io/judeoyovbaire/mlops-platform/kserve-transformer:42d5b2d
+        args: ["--predictor_protocol=v2"]
+        env:
+          - name: PREPROCESSOR_PATH
+            value: /mnt/models/preprocessor.joblib
+          - name: PASSTHROUGH_MODE
+            value: "true"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+  predictor:
+    serviceAccountName: kserve-inference
+    model:
+      modelFormat:
+        name: mlflow
+      protocolVersion: v2
+      runtimeVersion: "1.7.1-mlflow"
+      storageUri: "s3://mlops-platform-dev-mlflow-artifacts-183590992229/1/models/m-d4109ca6e57240fb84f552af7220d495/artifacts"
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi

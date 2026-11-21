@@ -1,0 +1,5 @@
+# FIS experiment EXPuAiK7bfscoMzvuY on i-0f196c6ecd75f5d29 (training-workloads-6f7wm, spot c4.xlarge); started 19:30:52Z, completed 19:31:13Z; polled every 10 s, state changes shown
+19:31:02Z  fis=running node[unsched= taints=workload] probe=Running nodeclaim[ ]
+19:31:15Z  fis=running node[unsched= taints=workload karpenter.sh/disrupted] probe=NotFound nodeclaim[2026-11-21T19:31:15Z ]
+19:31:28Z  fis=completed node[unsched= taints=workload karpenter.sh/disrupted node.kubernetes.io/not-ready node.kubernetes.io/not-ready] probe=NotFound nodeclaim[2026-11-21T19:31:15Z ]
+19:31:41Z  fis=completed node[NotFound] probe=NotFound nodeclaim[NotFound]

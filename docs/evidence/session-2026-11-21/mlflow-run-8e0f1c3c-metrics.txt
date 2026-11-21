@@ -1,0 +1,9 @@
+# MLflow run 8e0f1c3cb4234c7eb7ccb80d0da4e947 (iris-classifier, ml-training-md7lr train-model step)
+accuracy = 0.9
+cv_mean_accuracy = 0.941667
+cv_std_accuracy = 0.0565194
+f1_score = 0.899749
+shap_importance_scaler__petal_length = 0.199593
+shap_importance_scaler__petal_width = 0.195553
+shap_importance_scaler__sepal_length = 0.0447234
+shap_importance_scaler__sepal_width = 0.00630945

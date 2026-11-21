@@ -1,0 +1,4 @@
+# hf-pretrained-vc599, step serving-load-test (image kserve/huggingfaceserver:v0.21.0), main container, from Loki (tenant mlops), 18:43 UTC
+Python 3.10.12, transformers 5.13.0
+Loading weights:   0%|          | 0/104 [00:00<?, ?it/s]Loading weights: 100%|██████████| 104/104 [00:00<00:00, 1473.45it/s]
+Serving load test OK - prediction: [{'label': 'POSITIVE', 'score': 0.9998781681060791}]

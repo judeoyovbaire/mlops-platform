@@ -1,0 +1,22 @@
+# Prometheus active targets by scrape pool, 18:29 UTC (before the pipelines ran)
+up     1 serviceMonitor/argo/argo-workflows-controller/0
+down   1 serviceMonitor/mlflow/mlflow/0
+up     2 serviceMonitor/monitoring/alloy/0
+up     1 serviceMonitor/monitoring/argo-events-controller-manager/0
+up     2 serviceMonitor/monitoring/argo-rollouts/0
+up     1 serviceMonitor/monitoring/opencost/0
+up     1 serviceMonitor/monitoring/prometheus-grafana/0
+up     1 serviceMonitor/monitoring/prometheus-kube-prometheus-alertmanager/0
+up     1 serviceMonitor/monitoring/prometheus-kube-prometheus-alertmanager/1
+up     4 serviceMonitor/monitoring/prometheus-kube-prometheus-apiserver/0
+up     2 serviceMonitor/monitoring/prometheus-kube-prometheus-coredns/0
+up     3 serviceMonitor/monitoring/prometheus-kube-prometheus-kubelet/0
+up     3 serviceMonitor/monitoring/prometheus-kube-prometheus-kubelet/1
+up     3 serviceMonitor/monitoring/prometheus-kube-prometheus-kubelet/2
+up     1 serviceMonitor/monitoring/prometheus-kube-prometheus-operator/0
+up     1 serviceMonitor/monitoring/prometheus-kube-prometheus-prometheus/0
+up     1 serviceMonitor/monitoring/prometheus-kube-prometheus-prometheus/1
+up     1 serviceMonitor/monitoring/prometheus-kube-state-metrics/0
+up     3 serviceMonitor/monitoring/prometheus-prometheus-node-exporter/0
+
+serviceMonitor/mlflow/mlflow/0 http://10.0.2.176:5000/metrics: server returned HTTP status 403 Forbidden
