@@ -146,14 +146,34 @@ jobs:
             {"name":"petal_length","shape":[1],"datatype":"FP64","data":[1.4]},
             {"name":"petal_width","shape":[1],"datatype":"FP64","data":[0.2]}]}'
 
-          RESPONSE=$(kubectl run smoke-test-${GITHUB_RUN_ID} \
+          # `kubectl run -i --rm` attaches after the container starts; a
+          # sub-second curl can exit first, and kubectl then falls back to
+          # streaming logs best-effort (from a laptop: warning plus the
+          # prediction; run 44939062904: empty RESPONSE). Creating the pod
+          # detached and reading its logs once it has Succeeded removes the
+          # race. The attempt number keeps re-runs from colliding on the name.
+          SMOKE_POD="smoke-test-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          trap 'kubectl delete pod "$SMOKE_POD" -n mlops --ignore-not-found --wait=false' EXIT
+          kubectl delete pod "$SMOKE_POD" -n mlops --ignore-not-found
+          kubectl run "$SMOKE_POD" \
             --image=curlimages/curl:8.7.1 \
-            --rm -i --restart=Never -n mlops \
-            --timeout=60s \
+            --labels="app.kubernetes.io/name=smoke-test" \
+            --restart=Never -n mlops \
             -- curl -sf --max-time 30 \
               -H "Content-Type: application/json" \
               -d "${PAYLOAD}" \
-              "http://${PREDICTOR_SVC}/v2/models/${MODEL_NAME}/infer" 2>/dev/null) || RESPONSE=""
+              "http://${PREDICTOR_SVC}/v2/models/${MODEL_NAME}/infer"
+          if ! kubectl wait pod "$SMOKE_POD" -n mlops --timeout=90s \
+              --for=jsonpath='{.status.phase}'=Succeeded; then
+            echo "Smoke pod did not succeed:"
+            kubectl get pod "$SMOKE_POD" -n mlops -o wide || true
+            kubectl logs "$SMOKE_POD" -n mlops || true
+            echo "- **Status**: FAILED (smoke pod did not succeed)" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Smoke test failed - smoke pod did not succeed"
+            exit 1
+          fi
+          RESPONSE=$(kubectl logs "$SMOKE_POD" -n mlops 2>/dev/null || true)
+          echo "Response: ${RESPONSE}"
 
           if [ -n "$RESPONSE" ]; then
             echo "- **Status**: PASSED" >> $GITHUB_STEP_SUMMARY
