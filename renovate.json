@@ -3,7 +3,6 @@
   "extends": [
     "config:recommended",
     ":semanticCommits",
-    ":automergeMinor",
     "helpers:pinGitHubActionDigests",
     ":maintainLockFilesWeekly"
   ],
@@ -14,10 +13,14 @@
   "schedule": [
     "before 8am on Monday"
   ],
-  "prConcurrentLimit": 5,
-  "prHourlyLimit": 2,
+  "platformAutomerge": false,
+  "automergeStrategy": "squash",
+  "prConcurrentLimit": 10,
+  "prHourlyLimit": 0,
   "minimumReleaseAge": "3 days",
-  "dependencyDashboard": true,
+  "dependencyDashboard": {
+    "enabled": true
+  },
   "constraints": {
     "uv": "0.13.9"
   },
@@ -99,11 +102,24 @@
       "automerge": true
     },
     {
-      "description": "Group GitHub Actions updates (digest pins)",
+      "description": "Group GitHub Actions updates (digest pins). Majors are split into their own grouped PR (major-github-actions) and stay manual: release.yaml and build-sign-publish.yaml never run on a PR, so a breaking major would merge green and fail at the next tag or image publish, and those workflows hold id-token: write.",
       "matchManagers": [
         "github-actions"
       ],
-      "groupName": "github-actions",
+      "groupName": "github-actions"
+    },
+    {
+      "description": "GitHub Actions digests, patches and minors automerge once CI is green.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "digest",
+        "pin",
+        "pinDigest",
+        "patch",
+        "minor"
+      ],
       "automerge": true,
       "automergeType": "pr"
     },
@@ -147,7 +163,7 @@
       ]
     },
     {
-      "description": "Auto-merge patch updates for all packages once CI is green",
+      "description": "Auto-merge patch updates once CI is green (JDH-406, enabled 2026-11-21 after two observed batches). Later rules switch it off where a patch still needs a session or a human: image requirements (pip-compile), Terraform modules, vLLM, the node AMI. Everything else (Helm chart minors, kubectl/kind minors, lock file maintenance, digests outside GitHub Actions) stays manual because nothing automerges by default.",
       "matchUpdateTypes": [
         "patch"
       ],
@@ -320,23 +336,6 @@
         "dependencies",
         "gpu-session-required"
       ]
-    },
-    {
-      "description": "Manual merge only while the first Renovate batches are observed (JDH-406, decided 2026-11-01). Keyed on update type, not package name, so it also catches lockFileMaintenance PRs (no packageName) that :automergeMinor would otherwise merge. Must stay the LAST rule; delete it to re-enable the automerge rules above.",
-      "matchUpdateTypes": [
-        "major",
-        "minor",
-        "patch",
-        "pin",
-        "pinDigest",
-        "digest",
-        "lockFileMaintenance",
-        "lockfileUpdate",
-        "rollback",
-        "bump",
-        "replacement"
-      ],
-      "automerge": false
     }
   ]
 }

@@ -965,12 +965,15 @@ jobs:
         id: plan
         working-directory: infrastructure/terraform/environments/aws/dev
         run: |
-          # If EKS cluster doesn't exist, only plan the EKS module to avoid K8s provider errors
+          # If EKS cluster doesn't exist, only plan the EKS module to avoid K8s provider errors.
+          # -lock=false: a PR plan never writes state, and Renovate opens its Monday
+          # batch in one go; plans that race for the state lock would fail and
+          # block automerge (Renovate needs every check green, required or not).
           if [ "${{ steps.eks-check.outputs.exists }}" == "false" ]; then
             echo "EKS cluster not found - planning infrastructure only (module.eks)"
-            terraform plan -no-color -target=module.eks -out=tfplan 2>&1 | tee plan.txt
+            terraform plan -no-color -lock=false -target=module.eks -out=tfplan 2>&1 | tee plan.txt
           else
-            terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+            terraform plan -no-color -lock=false -out=tfplan 2>&1 | tee plan.txt
           fi
 
           if grep -q "No changes" plan.txt; then
