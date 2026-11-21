@@ -743,6 +743,31 @@ resource "aws_iam_policy" "terraform_services" {
         Action   = "ssm:DescribeParameters"
         Resource = "*"
       },
+      # SQS and EventBridge: Karpenter interruption handling in
+      # modules/eks/karpenter.tf (the queue, its policy, five rules and their
+      # targets, JDH-415). The 2026-11-21 deploy failed on sqs:CreateQueue
+      # and events:TagResource without these. Names start with the cluster
+      # name, which starts with the project name.
+      {
+        Sid    = "SQSProjectQueues"
+        Effect = "Allow"
+        Action = [
+          "sqs:CreateQueue", "sqs:DeleteQueue",
+          "sqs:GetQueueAttributes", "sqs:SetQueueAttributes",
+          "sqs:TagQueue", "sqs:UntagQueue", "sqs:ListQueueTags"
+        ]
+        Resource = "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:${var.project_name}*"
+      },
+      {
+        Sid    = "EventsProjectRules"
+        Effect = "Allow"
+        Action = [
+          "events:PutRule", "events:DeleteRule", "events:DescribeRule",
+          "events:PutTargets", "events:RemoveTargets", "events:ListTargetsByRule",
+          "events:TagResource", "events:UntagResource", "events:ListTagsForResource"
+        ]
+        Resource = "arn:aws:events:${var.aws_region}:${data.aws_caller_identity.current.account_id}:rule/${var.project_name}*"
+      },
       {
         Sid    = "SecretsManagerAccess"
         Effect = "Allow"
