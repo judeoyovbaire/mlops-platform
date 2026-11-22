@@ -40,7 +40,7 @@ spec:
         # pass the current SHA explicitly:
         #   argo submit --from workflowtemplate/ml-training-pipeline \
         #     -p pipeline-image=ghcr.io/judeoyovbaire/mlops-platform/ml-training:$(git rev-parse --short HEAD)
-        value: "ghcr.io/judeoyovbaire/mlops-platform/ml-training:5699e6a"
+        value: "ghcr.io/judeoyovbaire/mlops-platform/ml-training:d9b2189"
       - name: dataset-url
         value: "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv"
       - name: target-column
