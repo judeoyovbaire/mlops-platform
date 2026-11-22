@@ -66,6 +66,25 @@ resource "helm_release" "kyverno" {
       name  = "admissionController.container.resources.limits.memory"
       value = "512Mi"
     },
+    # ServiceMonitors for the controllers that emit kyverno_policy_results_total
+    # (admission requests and background scans) and the reports controller;
+    # the cleanup controller emits none of the policy metrics and is left out.
+    # Without them Prometheus had no Kyverno target and KyvernoPolicyViolations
+    # evaluated on no data (session 2, 2026-11-21, JDH-417). Prometheus
+    # selects every ServiceMonitor (serviceMonitorSelectorNilUsesHelmValues
+    # is false), so no release label is needed.
+    {
+      name  = "admissionController.serviceMonitor.enabled"
+      value = "true"
+    },
+    {
+      name  = "backgroundController.serviceMonitor.enabled"
+      value = "true"
+    },
+    {
+      name  = "reportsController.serviceMonitor.enabled"
+      value = "true"
+    },
   ]
 
   depends_on = [

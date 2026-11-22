@@ -19,10 +19,14 @@ module "eks" {
   # Cost optimization for dev: single NAT gateway
   single_nat_gateway = true
 
+  # Three, not two: the platform baseline alone fills two t3.large to 98 %
+  # CPU requests, Karpenter then adds on-demand c6a.large nodes for the first
+  # workload pod and one Alloy pod cannot schedule (session 2, 2026-11-21,
+  # JDH-431). About 0.09 USD/h more in eu-west-1.
   general_instance_types = ["t3.large"]
-  general_min_size       = 2
+  general_min_size       = 3
   general_max_size       = 4
-  general_desired_size   = 2
+  general_desired_size   = 3
 
   training_instance_types = ["c5.2xlarge"]
   training_capacity_type  = "SPOT"
