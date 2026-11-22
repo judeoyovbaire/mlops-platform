@@ -31,6 +31,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
+      # Each image reports its own result: with the default fail-fast, one
+      # failed leg cancels the other two, possibly after their push but
+      # before sign and verify, leaving unsigned or missing tags and no
+      # result for those images (JDH-432).
+      fail-fast: false
       matrix:
         include:
           - image_name: ml-training
