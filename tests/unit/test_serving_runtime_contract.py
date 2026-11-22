@@ -19,6 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 CONTRACT_PATH = REPO_ROOT / "pipelines" / "serving-runtime-contract.yaml"
 CHAMPION_TEMPLATE = REPO_ROOT / "examples" / "kserve" / "champion-inferenceservice.template.yaml"
+TRANSFORMER_EXAMPLE = REPO_ROOT / "examples" / "kserve" / "transformer-inferenceservice.yaml"
 TRAINING_WORKFLOW = REPO_ROOT / "pipelines" / "training" / "ml-training-workflow.yaml"
 TRAINING_DOCKERFILE = REPO_ROOT / "pipelines" / "training" / "Dockerfile"
 TRAINING_REQUIREMENTS = REPO_ROOT / "pipelines" / "training" / "requirements.in"
@@ -41,13 +42,15 @@ class TestServingRuntimeContract:
             f"mlserver_version '{contract['mlserver_version']}' - fix {CONTRACT_PATH}"
         )
 
-    def test_champion_template_runtime_version(self, contract):
-        """KServe serves with the runtime the contract declares."""
-        template = CHAMPION_TEMPLATE.read_text()
+    @pytest.mark.parametrize("manifest", [CHAMPION_TEMPLATE, TRANSFORMER_EXAMPLE])
+    def test_manifests_pin_the_contract_runtime_version(self, contract, manifest):
+        """KServe serves with the runtime the contract declares: the champion
+        template and the transformer example (its bare-model predictor)."""
+        template = manifest.read_text()
         m = re.search(r'runtimeVersion:\s*"([^"]+)"', template)
-        assert m, f"runtimeVersion not found in {CHAMPION_TEMPLATE}"
+        assert m, f"runtimeVersion not found in {manifest}"
         assert m.group(1) == contract["mlserver_version"], (
-            f"{CHAMPION_TEMPLATE} pins runtimeVersion {m.group(1)}, contract says "
+            f"{manifest} pins runtimeVersion {m.group(1)}, contract says "
             f"{contract['mlserver_version']}"
         )
 

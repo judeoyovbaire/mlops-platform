@@ -241,6 +241,24 @@ class TestV2Protocol:
         assert out.datatype == "FP32"  # a floating request datatype is kept
         assert out.data == [float(v) for v in range(12)]
 
+    def test_request_level_parameters_survive_the_transform(self, iris_transformer):
+        """The example manifest sends request-level content_type "np" so the
+        MLServer predictor decodes the forwarded tensor as a 2-D array; the
+        transformer must forward the request's parameters untouched."""
+        iris_transformer.preprocessor = _fitted()
+        request = kserve_stub.InferRequest(
+            "iris",
+            [kserve_stub.InferInput("input-0", [1, 4], "FP64", data=[5.1, 3.5, 1.4, 0.2])],
+            request_id="r1",
+            parameters={"content_type": "np"},
+        )
+
+        result = iris_transformer.preprocess(request, headers={})
+
+        assert result is request
+        assert result.parameters == {"content_type": "np"}
+        assert result.inputs[0].shape == [1, 4]
+
     def test_integer_request_datatype_widens_to_fp64(self, iris_transformer):
         iris_transformer.preprocessor = _fitted()
 
