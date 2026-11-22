@@ -154,6 +154,12 @@ module "eks" {
         }
       })
     }
+    # Resource metrics API for the KServe and future HPAs; without it every
+    # HPA logged FailedGetResourceMetric (session 2, 2026-11-21, JDH-429).
+    metrics-server = {
+      addon_version               = "v0.9.1-eksbuild.2"
+      resolve_conflicts_on_create = "OVERWRITE"
+    }
     aws-ebs-csi-driver = {
       addon_version               = "v1.67.2-eksbuild.1"
       resolve_conflicts_on_create = "OVERWRITE"

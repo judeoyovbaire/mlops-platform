@@ -99,6 +99,10 @@ controller:
   type: daemonset
   # Pod settings live under `controller.`. Tolerate every taint so the
   # DaemonSet also lands on the GPU and training nodes.
+  # Schedule ahead of workloads: on 2026-11-21 one Alloy pod sat Pending on a
+  # CPU-full node for the whole session and that node's logs were never
+  # shipped (JDH-431).
+  priorityClassName: system-node-critical
   tolerations:
     - effect: NoSchedule
       operator: Exists

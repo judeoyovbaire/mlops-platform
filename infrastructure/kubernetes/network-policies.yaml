@@ -210,6 +210,30 @@ spec:
           port: 5000
 
 ---
+# Allow the Prometheus scrape of MLflow's /metrics (ServiceMonitor in
+# monitoring.yaml, JDH-430). The scrape goes through the Service name, but
+# the Service DNATs to the pod, so the policy must admit it like any client.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mlflow-from-monitoring
+  namespace: mlflow
+spec:
+  podSelector:
+    matchLabels:
+      app: mlflow
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 5000
+
+---
 # Allow MLflow access from kserve namespace (model loading)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -547,6 +571,10 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: argocd
+        # Kyverno controller metrics (chart ServiceMonitors, JDH-417)
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kyverno
     # HTTPS egress for cloud APIs (remote write, alerts, etc.)
     - ports:
         - protocol: TCP

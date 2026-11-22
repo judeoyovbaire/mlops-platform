@@ -19,6 +19,14 @@ spec:
     - port: http
       path: /metrics
       interval: 30s
+      # Scrape through the Service name, not the pod IP: MLflow 3 validates
+      # the Host header against --allowed-hosts (mlflow-values.yaml), which
+      # lists the Service DNS names, and answered 403 to every pod-IP scrape
+      # (session 2, 2026-11-21, JDH-430). One replica, so nothing is lost.
+      relabelings:
+        - action: replace
+          targetLabel: __address__
+          replacement: mlflow.mlflow.svc.cluster.local:5000
   namespaceSelector:
     matchNames:
       - mlflow
@@ -225,8 +233,10 @@ spec:
         # never fire. Re-add it with prometheus.servicemonitor.enabled=true on
         # cert-manager when the first Certificate exists.
 
-        # Kyverno policy violations. The metric name and labels are unverified
-        # on Kyverno 1.19 (JDH-417); check on a live session.
+        # Kyverno policy violations. Metric name and labels verified on
+        # Kyverno 1.19 (session 2, 2026-11-21): kyverno_policy_results_total
+        # carries rule_result on kyverno-svc-metrics. Scraped since the
+        # chart's ServiceMonitors were enabled (modules/aws-platform/kyverno.tf).
         - alert: KyvernoPolicyViolations
           expr: |
             increase(kyverno_policy_results_total{rule_result="fail"}[1h]) > 0
