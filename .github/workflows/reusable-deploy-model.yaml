@@ -77,8 +77,14 @@ jobs:
       # and apply it. Promoting a different version in MLflow changes what the
       # next deploy serves - with full traceability in labels/annotations.
       - name: Resolve champion model from MLflow registry
+        env:
+          # The 2.x pin predated the MLflow 3 server (mlflow-values.yaml);
+          # keep the client on the server's major, at the version the
+          # training and pretrained images use (JDH-432).
+          # renovate: datasource=pypi depName=mlflow-skinny
+          MLFLOW_SKINNY_VERSION: "3.18.0"
         run: |
-          pip install --quiet mlflow-skinny==2.21.3
+          pip install --quiet "mlflow-skinny==${MLFLOW_SKINNY_VERSION}"
 
           # MLflow is cluster-internal; reach it via port-forward.
           kubectl port-forward -n mlflow svc/mlflow 5000:5000 &
