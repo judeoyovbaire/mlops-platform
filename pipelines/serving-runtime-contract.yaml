@@ -24,6 +24,7 @@
 # different image with numpy 1.x that cannot unpickle numpy-2 models.
 # Surfaces:
 # - examples/kserve/champion-inferenceservice.template.yaml (runtimeVersion)
+# - examples/kserve/transformer-inferenceservice.yaml (predictor runtimeVersion)
 # - pipelines/training/ml-training-workflow.yaml (serving-load-test image)
 mlserver_version: "1.7.1-mlflow"
 mlserver_image: "docker.io/seldonio/mlserver:1.7.1-mlflow"

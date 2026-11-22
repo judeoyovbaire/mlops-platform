@@ -182,13 +182,13 @@ for the evidence PR as you go.
      `default-deny-ingress` in the new namespaces.
    - One log line arrives in Loki once: query a predictor pod's logs in
      Grafana Explore and count streams (JDH-418).
-4. **Transformer** (JDH-425): copy `examples/kserve/transformer-inferenceservice.yaml`,
-   replace the predictor `storageUri` (a `gs://` placeholder) with the
-   champion's S3 URI from MLflow, and add `PASSTHROUGH_MODE: "true"` to the
-   transformer's `env` (the champion bundles the preprocessor, so a
-   transforming pass would scale twice). Apply it and send one v1 request.
-   Record that the plumbing works; the bare-model variant with
-   `--predictor_protocol=v2` is a follow-up, Jude's call.
+4. **Transformer** (JDH-425): copy `examples/kserve/transformer-inferenceservice.yaml`
+   and fill in the account id and the training run id in both storageUris
+   and the run-id annotation (the run's `bare_model/` and `preprocessor/`
+   artifacts, logged by build-serving-model). Apply it and send the v2 request from the file's
+   header comment through the transformer Service; the answer is the class
+   for each row. Session 2 proved the plumbing with the champion behind the
+   transformer; this is the intended bare-model pairing.
 5. **Pretrained** (JDH-412): nothing deploys this WorkflowTemplate, so
    `kubectl -n argo create -f pipelines/pretrained/hf-pretrained-workflow.yaml`
    creates the template and submits one run (the file holds both; on a rerun

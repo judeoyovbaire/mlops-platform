@@ -1,5 +1,7 @@
 """Unit tests for build_serving_model module."""
 
+import os
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -132,6 +134,8 @@ class TestLocalServingCopy:
         mocker.patch("mlflow.set_tracking_uri")
         mocker.patch("mlflow.start_run")
         mocker.patch("mlflow.pyfunc.log_model")
+        mocker.patch("mlflow.log_artifacts")
+        mocker.patch("mlflow.log_artifact")
 
         local_copy = tmp_path / "serving_model"
         result = build_serving_model(
@@ -167,6 +171,8 @@ class TestLocalServingCopy:
         mocker.patch("mlflow.set_tracking_uri")
         mocker.patch("mlflow.start_run")
         mocker.patch("mlflow.pyfunc.log_model")
+        mocker.patch("mlflow.log_artifacts")
+        mocker.patch("mlflow.log_artifact")
 
         local_copy = tmp_path / "serving_model"
         build_serving_model(
@@ -180,3 +186,87 @@ class TestLocalServingCopy:
 
         assert (local_copy / "input_example.json").exists()
         assert (local_copy / "serving_input_example.json").exists()
+
+
+class TestTransformerPatternArtifacts:
+    """The run also carries the bare estimator and the preprocessor as plain
+    artifacts, the two storageUris of the transformer example (JDH-425)."""
+
+    def _build(
+        self, tmp_path, trained_rf, fitted_preprocessor, iris_features, mocker, *, with_preprocessor
+    ):
+        import joblib
+
+        from pipelines.training.src.build_serving_model import build_serving_model
+
+        model_file = tmp_path / "model.joblib"
+        joblib.dump(trained_rf, model_file)
+        preproc_file = None
+        if with_preprocessor:
+            preproc_file = tmp_path / "preprocessor.joblib"
+            joblib.dump(fitted_preprocessor, preproc_file)
+        sample_csv = tmp_path / "input.csv"
+        iris_features.head(3).to_csv(sample_csv, index=False)
+
+        mocker.patch("mlflow.set_tracking_uri")
+        mocker.patch("mlflow.start_run")
+        mocker.patch("mlflow.pyfunc.log_model")
+        log_artifacts = mocker.patch("mlflow.log_artifacts")
+        log_artifact = mocker.patch("mlflow.log_artifact")
+
+        result = build_serving_model(
+            model_path=str(model_file),
+            preprocessor_path=str(preproc_file) if preproc_file else None,
+            run_id="fake-run",
+            mlflow_uri="http://localhost:5000",
+            sample_input_path=str(sample_csv),
+        )
+        return result, log_artifacts, log_artifact, preproc_file
+
+    def test_bare_model_is_a_loadable_sklearn_flavour_without_signature(
+        self, tmp_path, trained_rf, fitted_preprocessor, iris_features, mocker
+    ):
+        import mlflow
+
+        result, log_artifacts, log_artifact, preproc_file = self._build(
+            tmp_path, trained_rf, fitted_preprocessor, iris_features, mocker, with_preprocessor=True
+        )
+
+        assert result.bare_model_artifact_path == "bare_model"
+        assert result.preprocessor_artifact_path == "preprocessor"
+        log_artifacts.assert_called_once()
+        saved_dir, kwargs = log_artifacts.call_args.args[0], log_artifacts.call_args.kwargs
+        assert kwargs == {"artifact_path": "bare_model"}
+        # The temporary directory is gone by now; the call must have pointed
+        # at a directory named after the artifact path.
+        assert os.path.basename(saved_dir) == "bare_model"
+        log_artifact.assert_called_once_with(str(preproc_file), artifact_path="preprocessor")
+
+        # Save the same way the code does and prove the flavour loads and
+        # scores a positional (transformed) tensor, which is what the
+        # transformer forwards: no signature, no column names required.
+        bare_dir = tmp_path / "bare_model"
+        mlflow.sklearn.save_model(trained_rf, str(bare_dir), serialization_format="cloudpickle")
+        loaded = mlflow.pyfunc.load_model(str(bare_dir))
+        assert loaded.metadata.signature is None
+        # .to_numpy(): MLServer's np codec hands the model an ndarray, not the
+        # pandas-output DataFrame the fixture's preprocessor returns.
+        transformed = fitted_preprocessor.transform(iris_features.head(2)).to_numpy()
+        assert len(loaded.predict(transformed)) == 2
+
+    def test_no_preprocessor_logs_only_the_bare_model(
+        self, tmp_path, trained_rf, fitted_preprocessor, iris_features, mocker
+    ):
+        result, log_artifacts, log_artifact, _ = self._build(
+            tmp_path,
+            trained_rf,
+            fitted_preprocessor,
+            iris_features,
+            mocker,
+            with_preprocessor=False,
+        )
+
+        assert result.has_preprocessor is False
+        assert result.preprocessor_artifact_path is None
+        log_artifacts.assert_called_once()
+        log_artifact.assert_not_called()

@@ -1,19 +1,30 @@
 # InferenceService with Transformer + Predictor pattern.
-# The transformer applies preprocessing (feature scaling, encoding) before
-# forwarding to the sklearn predictor, decoupling preprocessing from the model.
-# KServe injects --model_name and --predictor_host into the transformer but
-# not the predictor protocol, which defaults to v1. That matches this sklearn
-# predictor; in front of a v2 predictor (MLServer), add
-#   args: ["--predictor_protocol=v2"]
-# to the transformer container. v2 requests may carry spec-style flat data
-# with a shape or nested rows; the forwarded tensor's shape and datatype
-# describe the transformed features.
+# The transformer applies the fitted ColumnTransformer (feature scaling,
+# encoding) to raw features and forwards the transformed tensor to a bare
+# predictor, decoupling preprocessing from the model.
 #
-# Note the CI-deployed champion (champion-inferenceservice.template.yaml) is
-# the bundled pyfunc from build_serving_model.py: it already preprocesses raw
-# features, so this transformer in front of it would scale twice. Pair the
-# transformer with the bare model artifact (train-model's model.joblib), or
-# set PASSTHROUGH_MODE=true to exercise the plumbing only.
+# Both storageUris come from one training run: build_serving_model logs the
+# bare estimator at <run>/artifacts/bare_model (MLflow sklearn flavour, no
+# signature, so MLServer takes the tensor as it arrives) and the fitted
+# preprocessor at <run>/artifacts/preprocessor/preprocessor.joblib. Read the
+# run id from the MLflow UI or `resolve_serving_uri.py` and fill it in on
+# both storageUris and the run-id annotation; the CI-deployed champion
+# (champion-inferenceservice.template.yaml)
+# is a different artifact of the same run, the pyfunc that bundles the
+# preprocessor, and must NOT sit behind this transformer (it would scale
+# twice).
+#
+# KServe injects --model_name and --predictor_host into the transformer but
+# not the predictor protocol, which defaults to v1; the MLServer predictor
+# speaks v2, hence the args. Send v2 with a single raw-feature tensor and
+# request-level content_type "np", which the transformer passes through so
+# MLServer hands the model a 2-D array:
+#   {"parameters": {"content_type": "np"},
+#    "inputs": [{"name": "input-0", "shape": [2, 4], "datatype": "FP64",
+#                "data": [5.1, 3.5, 1.4, 0.2, 6.7, 3.0, 5.2, 2.3]}]}
+# Session 2 (2026-11-21) proved the transformer -> predictor -> MLServer
+# plumbing with the champion behind it; this bare-model pairing is the
+# intended use and gets its live check on the next session (JDH-425).
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
@@ -26,17 +37,23 @@ metadata:
     mlops.io/model-stage: staging
   annotations:
     mlops.io/mlflow-experiment-id: "1"
-    mlops.io/mlflow-run-id: "placeholder"
+    mlops.io/mlflow-run-id: "<RUN_ID>"
 spec:
   transformer:
+    # IRSA for the storage-initializer that fetches the preprocessor from S3.
+    serviceAccountName: kserve-inference
     containers:
       - name: transformer
         # Pinned Git-SHA tag from build-sign-publish. Mutable tags are
         # rejected at admission (governance/immutable-image-tags-policy.yaml).
         image: ghcr.io/judeoyovbaire/mlops-platform/kserve-transformer:5699e6a
+        args: ["--predictor_protocol=v2"]
         env:
           - name: PREPROCESSOR_PATH
             value: /mnt/models/preprocessor.joblib
+          # The preprocessor artifact directory of the training run.
+          - name: STORAGE_URI
+            value: s3://mlops-platform-dev-mlflow-artifacts-<ACCOUNT_ID>/1/<RUN_ID>/artifacts/preprocessor
         resources:
           requests:
             cpu: 100m
@@ -45,14 +62,20 @@ spec:
             cpu: 500m
             memory: 512Mi
   predictor:
+    serviceAccountName: kserve-inference
     model:
       modelFormat:
-        name: sklearn
-      storageUri: gs://mlops-models/iris-classifier/v1
+        name: mlflow
+      protocolVersion: v2
+      # The same MLServer runtime (and pickle boundary) as the champion:
+      # pipelines/serving-runtime-contract.yaml.
+      runtimeVersion: "1.7.1-mlflow"
+      # The bare-estimator artifact directory of the same training run.
+      storageUri: s3://mlops-platform-dev-mlflow-artifacts-<ACCOUNT_ID>/1/<RUN_ID>/artifacts/bare_model
       resources:
         requests:
           cpu: 100m
-          memory: 256Mi
+          memory: 512Mi
         limits:
-          cpu: 1
+          cpu: "1"
           memory: 1Gi

@@ -10,17 +10,23 @@ This module solves the problem by wrapping the preprocessor and trained model
 into a single MLflow ``pyfunc`` model.  The resulting artifact accepts *raw*
 feature DataFrames and returns predictions, making KServe deployment
 straightforward.
+
+The same run also gets the two halves separately, ``bare_model/`` and
+``preprocessor/``, for the transformer pattern (a kserve-transformer applying
+the preprocessor in front of a bare predictor); see the constants below.
 """
 
 import argparse
 import os
 import sys
+import tempfile
 from dataclasses import dataclass
 from typing import Any
 
 import joblib
 import mlflow
 import mlflow.pyfunc
+import mlflow.sklearn
 import numpy as np
 import pandas as pd
 
@@ -28,6 +34,18 @@ from pipelines.shared.exceptions import ModelTrainingError
 from pipelines.shared.logging_utils import get_logger
 
 logger = get_logger(__name__)
+
+# Run-artifact paths for the transformer pattern (examples/kserve/
+# transformer-inferenceservice.yaml, JDH-425): the bare estimator for the
+# predictor and the fitted ColumnTransformer for the kserve-transformer in
+# front of it. Logged as plain run artifacts (not a LoggedModel), so their
+# S3 location is <artifact root>/<experiment>/<run id>/artifacts/<path> and
+# can be written into a manifest from the run id alone. cloudpickle for the
+# same reason as train_model.SKLEARN_SERIALIZATION_FORMAT: MLflow 3.17's
+# skops default refuses tree models.
+BARE_MODEL_ARTIFACT_PATH = "bare_model"
+PREPROCESSOR_ARTIFACT_PATH = "preprocessor"
+BARE_MODEL_SERIALIZATION_FORMAT = "cloudpickle"
 
 
 class PreprocessingModel(mlflow.pyfunc.PythonModel):  # type: ignore[name-defined]  # mlflow stubs omit PythonModel
@@ -73,6 +91,8 @@ class ServingModelResult:
     has_preprocessor: bool
     success: bool = True
     error_message: str | None = None
+    bare_model_artifact_path: str = BARE_MODEL_ARTIFACT_PATH
+    preprocessor_artifact_path: str | None = None
 
 
 def build_serving_model(
@@ -98,6 +118,12 @@ def build_serving_model(
         local_copy_path: Optional directory to also save the pyfunc model to.
             The serving-load-test workflow step validates this copy inside the
             MLServer runtime image before the model can be registered.
+
+    Besides the pyfunc, the run gets two plain artifacts for the transformer
+    pattern: ``bare_model/`` (the estimator in the MLflow sklearn flavour,
+    no signature, so MLServer accepts the transformed feature tensor as it
+    arrives) and ``preprocessor/preprocessor.joblib`` when a preprocessor was
+    given. See examples/kserve/transformer-inferenceservice.yaml.
 
     Returns:
         ServingModelResult with artifact metadata.
@@ -138,13 +164,34 @@ def build_serving_model(
         input_example = sample_df.head(1)
 
     artifact_path = "serving_model"
+    preprocessor_artifact_path = None
     with mlflow.start_run(run_id=run_id):
         mlflow.pyfunc.log_model(
             artifact_path=artifact_path,
             python_model=pyfunc_model,
             input_example=input_example,
         )
-    logger.info(f"Logged serving model to run {run_id} at '{artifact_path}'")
+        # The bare estimator and the preprocessor for the transformer pattern
+        # (constants above). save_model + log_artifacts keeps them under the
+        # run's artifact root; sklearn.log_model would create a LoggedModel
+        # with a models:/m-<id> location instead.
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            bare_model_dir = os.path.join(tmp_dir, BARE_MODEL_ARTIFACT_PATH)
+            mlflow.sklearn.save_model(
+                model,
+                bare_model_dir,
+                serialization_format=BARE_MODEL_SERIALIZATION_FORMAT,
+            )
+            mlflow.log_artifacts(bare_model_dir, artifact_path=BARE_MODEL_ARTIFACT_PATH)
+        # preprocessor is only set when preprocessor_path exists; the second
+        # test narrows the Optional for the type checker.
+        if preprocessor is not None and preprocessor_path:
+            mlflow.log_artifact(preprocessor_path, artifact_path=PREPROCESSOR_ARTIFACT_PATH)
+            preprocessor_artifact_path = PREPROCESSOR_ARTIFACT_PATH
+    logged = f"'{artifact_path}' and the bare estimator at '{BARE_MODEL_ARTIFACT_PATH}'"
+    if preprocessor_artifact_path:
+        logged += f", the preprocessor at '{preprocessor_artifact_path}'"
+    logger.info(f"Logged to run {run_id}: the serving model at {logged}")
 
     if local_copy_path:
         # Same pyfunc, saved to a local directory - the shape KServe's
@@ -165,6 +212,7 @@ def build_serving_model(
         run_id=run_id,
         has_preprocessor=preprocessor is not None,
         success=True,
+        preprocessor_artifact_path=preprocessor_artifact_path,
     )
 
 
@@ -198,7 +246,11 @@ if __name__ == "__main__":
             target_column=args.target_column,
             local_copy_path=args.local_copy,
         )
-        print(f"Serving model logged to run {result.run_id} at '{result.artifact_path}'")
+        print(
+            f"Serving model logged to run {result.run_id} at '{result.artifact_path}' "
+            f"(bare estimator at '{result.bare_model_artifact_path}', preprocessor at "
+            f"'{result.preprocessor_artifact_path}')"
+        )
     except ModelTrainingError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
