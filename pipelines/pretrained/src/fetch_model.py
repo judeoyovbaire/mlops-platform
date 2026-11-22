@@ -114,6 +114,10 @@ def fetch_model(
     # use_safetensors: refuse pickle-based .bin weights - loading them
     # executes arbitrary code. trust_remote_code=False is the library
     # default but the security posture here is explicit, not implied.
+    # The hub cache stays under HF_HOME (set by the image), not inside
+    # output_dir: everything under output_dir is the step's output artifact,
+    # and a cache there made every downstream step download the weights a
+    # second time from S3 (JDH-432).
     logger.info(f"Downloading model and tokenizer for '{model_id}@{resolved_revision[:12]}'...")
     try:
         pipe = pipeline(  # type: ignore[call-overload]  # task is a runtime str, overloads expect Literal
@@ -121,10 +125,7 @@ def fetch_model(
             model=model_id,
             revision=resolved_revision,
             trust_remote_code=False,
-            model_kwargs={
-                "cache_dir": os.path.join(output_dir, "cache"),
-                "use_safetensors": True,
-            },
+            model_kwargs={"use_safetensors": True},
         )
     except Exception as e:
         raise RuntimeError(f"Failed to download model '{model_id}': {e}") from e

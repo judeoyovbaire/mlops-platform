@@ -193,10 +193,7 @@ class TestFetchModel:
             model="test/model",
             revision=RESOLVED_SHA,
             trust_remote_code=False,
-            model_kwargs={
-                "cache_dir": os.path.join(output_dir, "cache"),
-                "use_safetensors": True,
-            },
+            model_kwargs={"use_safetensors": True},
         )
         mock_model_info.assert_called_once_with("test/model", revision="v1.0")
         assert result.requested_revision == "v1.0"

@@ -11,6 +11,10 @@ WORKDIR /app
 ENV PYTHONPATH=/app
 # Writable matplotlib cache for the non-root user (silences startup warning)
 ENV MPLCONFIGDIR=/tmp/matplotlib
+# Writable Hugging Face home for uid 1000 (no home directory): the hub and
+# xet caches and the token path live under it. Without it fetch-model died
+# with "Permission denied (os error 13)" on 2026-11-21 (JDH-412, JDH-432).
+ENV HF_HOME=/tmp/hf-home
 
 # Patch OS-level vulnerabilities
 RUN apt-get update && apt-get upgrade -y --no-install-recommends \
