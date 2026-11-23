@@ -33,7 +33,7 @@ variable "eks_ami_release" {
   EOT
   type        = string
   # renovate: datasource=github-releases depName=awslabs/amazon-eks-ami versioning=regex:^v(?<major>\d{4})(?<minor>\d{2})(?<patch>\d{2})$
-  default = "v20261031"
+  default = "v20261119"
 
   validation {
     condition     = can(regex("^v[0-9]{8}$", var.eks_ami_release))
