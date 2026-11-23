@@ -42,4 +42,4 @@ helm_otel_collector_version = "0.178.1"
 # renovate: datasource=helm depName=alloy registryUrl=https://grafana.github.io/helm-charts
 helm_alloy_version = "1.15.0"
 # renovate: datasource=helm depName=nvidia-device-plugin registryUrl=https://nvidia.github.io/k8s-device-plugin
-helm_nvidia_device_plugin_version = "0.20.1"
+helm_nvidia_device_plugin_version = "0.20.2"
