@@ -29,7 +29,7 @@ repos:
   # Keep in step with ruff in uv.lock (the Lint Python job); Renovate's
   # python-linting group bumps both together.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.5
+    rev: v0.17.6
     hooks:
       - id: ruff
         args: ["--fix"]
