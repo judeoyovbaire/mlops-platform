@@ -20,7 +20,7 @@ helm_mlflow_version = "1.11.7"
 # renovate: datasource=helm depName=argo-workflows registryUrl=https://argoproj.github.io/argo-helm
 helm_argo_workflows_version = "2.0.15"
 # renovate: datasource=helm depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
-helm_prometheus_stack_version = "92.17.0"
+helm_prometheus_stack_version = "92.22.0"
 # Capped below chart 3.10 in renovate.json: Kyverno 1.20 rejects create/update
 # of ClusterPolicy (removed in 1.21), so the cap stays until the policies move
 # to CEL ValidatingPolicy.
@@ -38,8 +38,8 @@ helm_loki_version = "6.55.0"
 # renovate: datasource=helm depName=tempo registryUrl=https://grafana-community.github.io/helm-charts
 helm_tempo_version = "2.4.0"
 # renovate: datasource=helm depName=opentelemetry-collector registryUrl=https://open-telemetry.github.io/opentelemetry-helm-charts
-helm_otel_collector_version = "0.178.1"
+helm_otel_collector_version = "0.183.2"
 # renovate: datasource=helm depName=alloy registryUrl=https://grafana.github.io/helm-charts
-helm_alloy_version = "1.15.0"
+helm_alloy_version = "1.16.0"
 # renovate: datasource=helm depName=nvidia-device-plugin registryUrl=https://nvidia.github.io/k8s-device-plugin
 helm_nvidia_device_plugin_version = "0.20.2"
