@@ -248,6 +248,16 @@
       "allowedVersions": "<3.0.0"
     },
     {
+      "description": "dcgm-exporter 4.9.0 renames 23 default metrics, changes units (utilisation from a percentage to a 0 to 1 ratio, GPU memory from MiB to bytes) and moves exporter settings in the Helm values under `config`. The GPU alerts, the dashboards and the Grafana Cloud remote-write allowlist here still use the 4.8 names and units, and CI cannot see a wrong threshold. Hold on 4.8.x until JDH-399 migrates them and checks the series on a GPU session.",
+      "matchDatasources": [
+        "helm"
+      ],
+      "matchPackageNames": [
+        "dcgm-exporter"
+      ],
+      "allowedVersions": "<4.9.0"
+    },
+    {
       "description": "vLLM 0.x minors are breaking (v0.32 changed CORS, max_tokens and the transformers pin) and CI never runs vLLM. Never automerge; validate on a GPU session first.",
       "matchPackageNames": [
         "vllm/vllm-openai"

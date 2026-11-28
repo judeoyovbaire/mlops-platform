@@ -299,6 +299,9 @@ variable "helm_opencost_version" {
 variable "helm_dcgm_exporter_version" {
   description = "NVIDIA DCGM Exporter Helm chart version"
   type        = string
+  # Capped below 4.9.0 in renovate.json: 4.9 renames the default metrics and
+  # changes their units, so the cap stays until JDH-399 migrates the GPU
+  # alerts, dashboards and the Grafana Cloud remote-write allowlist.
   # renovate: datasource=helm depName=dcgm-exporter registryUrl=https://nvidia.github.io/dcgm-exporter/helm-charts
   default = "4.8.4"
 
