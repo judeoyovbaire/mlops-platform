@@ -27,7 +27,7 @@ helm_prometheus_stack_version = "92.17.0"
 # renovate: datasource=helm depName=kyverno registryUrl=https://kyverno.github.io/kyverno
 helm_kyverno_version = "3.9.2"
 # renovate: datasource=helm depName=external-secrets registryUrl=https://charts.external-secrets.io
-helm_external_secrets_version = "2.14.0"
+helm_external_secrets_version = "2.15.0"
 # 6.55.0 is the last open-source chart in grafana/helm-charts: 7.x there is
 # Enterprise-only (capped in renovate.json). The OSS chart continues in
 # grafana-community/helm-charts; moving there is a separate change.
