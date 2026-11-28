@@ -36,4 +36,4 @@ numba>=0.61
 # MLflow S3 artifact uploads happen CLIENT-side - every image that logs
 # artifacts needs boto3 (discovered live: training succeeded, artifact
 # upload died).
-boto3==1.44.5
+boto3==1.44.11
