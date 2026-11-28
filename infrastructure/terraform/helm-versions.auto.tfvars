@@ -6,7 +6,7 @@
 # renovate: datasource=helm depName=cert-manager registryUrl=https://charts.jetstack.io
 helm_cert_manager_version = "v1.21.3"
 # renovate: datasource=helm depName=argo-cd registryUrl=https://argoproj.github.io/argo-helm
-helm_argocd_version = "10.11.6"
+helm_argocd_version = "10.20.0"
 # One version for the kserve-crd, kserve-resources and kserve-runtime-configs
 # charts. It also sets the huggingfaceserver image in
 # pipelines/serving-runtime-contract.yaml (test_serving_runtime_contract.py).
@@ -18,7 +18,7 @@ helm_kserve_version = "v0.21.0"
 # renovate: datasource=helm depName=mlflow registryUrl=https://community-charts.github.io/helm-charts
 helm_mlflow_version = "1.11.7"
 # renovate: datasource=helm depName=argo-workflows registryUrl=https://argoproj.github.io/argo-helm
-helm_argo_workflows_version = "2.0.15"
+helm_argo_workflows_version = "2.0.18"
 # renovate: datasource=helm depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
 helm_prometheus_stack_version = "92.17.0"
 # Capped below chart 3.10 in renovate.json: Kyverno 1.20 rejects create/update

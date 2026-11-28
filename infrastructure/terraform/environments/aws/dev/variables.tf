@@ -264,7 +264,7 @@ variable "helm_argo_rollouts_version" {
   description = "Argo Rollouts Helm chart version"
   type        = string
   # renovate: datasource=helm depName=argo-rollouts registryUrl=https://argoproj.github.io/argo-helm
-  default = "2.43.8"
+  default = "2.43.12"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_rollouts_version))
@@ -276,7 +276,7 @@ variable "helm_argo_events_version" {
   description = "Argo Events Helm chart version"
   type        = string
   # renovate: datasource=helm depName=argo-events registryUrl=https://argoproj.github.io/argo-helm
-  default = "2.4.27"
+  default = "2.4.28"
 
   validation {
     condition     = can(regex("^v?[0-9]+\\.[0-9]+\\.[0-9]+$", var.helm_argo_events_version))
